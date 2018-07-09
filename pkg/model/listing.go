@@ -8,15 +8,15 @@ import (
 // GovernanceState specifies the current state of a listing
 type GovernanceState int
 
-const (
-	governanceStateNone GovernanceState = iota
-	governanceStateApplied
-	governanceStateChallenged
-	governanceStateAppWhitelisted
-	governanceStateAppRemoved
-	governanceStateRemoved
-	governanceStateWithdrawn
-)
+// const (
+// 	governanceStateNone GovernanceState = iota
+// 	governanceStateApplied
+// 	governanceStateChallenged
+// 	governanceStateAppWhitelisted
+// 	governanceStateAppRemoved
+// 	governanceStateRemoved
+// 	governanceStateWithdrawn
+// )
 
 // Listing represents a newsroom listing in the Civil TCR
 type Listing struct {
