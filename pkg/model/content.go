@@ -33,6 +33,11 @@ func (c *Content) Payload() ArticlePayload {
 	return c.payload
 }
 
+// PayloadHash returns the hash of the payload
+func (c *Content) PayloadHash() string {
+	return c.payloadHash
+}
+
 // ContractContentID returns the contract content ID
 func (c *Content) ContractContentID() uint64 {
 	return c.contractContentID
