@@ -4,17 +4,27 @@ import (
 	"errors"
 	log "github.com/golang/glog"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
+	"github.com/joincivil/civil-events-crawler/pkg/generated/filterer"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
-	"github.com/joincivil/civil-events-processor/pkg/generated/contract"
-	"github.com/joincivil/civil-events-processor/pkg/generated/eventlist"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 )
+
+func isStringInSlice(slice []string, target string) bool {
+	for _, str := range slice {
+		if target == str {
+			return true
+		}
+	}
+	return false
+}
 
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
@@ -56,8 +66,20 @@ func (e *EventProcessor) Process(events []*crawlermodel.CivilEvent) error {
 	return err
 }
 
+func (e *EventProcessor) isValidNewsroomContractEventName(name string) bool {
+	name = strings.Trim(name, " _")
+	eventNames := filterer.EventTypesNewsroomContract()
+	return isStringInSlice(eventNames, name)
+}
+
+func (e *EventProcessor) isValidCivilTCRContractEventName(name string) bool {
+	name = strings.Trim(name, " _")
+	eventNames := filterer.EventTypesCivilTCRContract()
+	return isStringInSlice(eventNames, name)
+}
+
 func (e *EventProcessor) processNewsroomEvent(event *crawlermodel.CivilEvent) (bool, error) {
-	if !eventlist.IsValidNewsroomContractEventName(event.EventType()) {
+	if !e.isValidNewsroomContractEventName(event.EventType()) {
 		return false, nil
 	}
 	var err error
@@ -81,7 +103,7 @@ func (e *EventProcessor) processNewsroomEvent(event *crawlermodel.CivilEvent) (b
 }
 
 func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.CivilEvent) (bool, error) {
-	if !eventlist.IsValidCivilTCRContractEventName(event.EventType()) {
+	if !e.isValidCivilTCRContractEventName(event.EventType()) {
 		return false, nil
 	}
 

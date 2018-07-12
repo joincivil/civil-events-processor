@@ -8,10 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
+	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	"github.com/joincivil/civil-events-crawler/pkg/utils"
 
-	"github.com/joincivil/civil-events-processor/pkg/generated/contract"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 )
@@ -44,84 +44,84 @@ func setupCivilEvent() (*crawlermodel.CivilEvent, error) {
 		testEvent, utils.CurrentEpochSecsInInt())
 }
 
-type TestAggregatePersister struct{}
+type TestPersister struct{}
 
 // GetListingsByAddress returns a slice of Listings based on addresses
-func (t *TestAggregatePersister) ListingsByAddress(addresses []common.Address) ([]*model.Listing, error) {
+func (t *TestPersister) ListingsByAddress(addresses []common.Address) ([]*model.Listing, error) {
 	return []*model.Listing{}, nil
 }
 
 // GetListingByAddress retrieves listings based on addresses
-func (t *TestAggregatePersister) ListingByAddress(address common.Address) (*model.Listing, error) {
+func (t *TestPersister) ListingByAddress(address common.Address) (*model.Listing, error) {
 	return &model.Listing{}, nil
 }
 
 // CreateListing creates a new listing
-func (t *TestAggregatePersister) CreateListing(listing *model.Listing) error {
+func (t *TestPersister) CreateListing(listing *model.Listing) error {
 	return nil
 }
 
 // UpdateListing updates fields on an existing listing
-func (t *TestAggregatePersister) UpdateListing(listing *model.Listing) error {
+func (t *TestPersister) UpdateListing(listing *model.Listing) error {
 	return nil
 }
 
 // DeleteListing removes a listing
-func (t *TestAggregatePersister) DeleteListing(listing *model.Listing) error {
+func (t *TestPersister) DeleteListing(listing *model.Listing) error {
 	return nil
 }
 
 // GetContentRevisions retrieves content items based on criteria
-func (t *TestAggregatePersister) ContentRevisions(address common.Address,
+func (t *TestPersister) ContentRevisions(address common.Address,
 	contentID uint64) ([]*model.ContentRevision, error) {
 	return []*model.ContentRevision{}, nil
 }
 
 // GetContentRevision retrieves content items based on criteria
-func (t *TestAggregatePersister) ContentRevision(address common.Address, contentID uint64,
+func (t *TestPersister) ContentRevision(address common.Address, contentID uint64,
 	revisionID uint64) (*model.ContentRevision, error) {
 	return &model.ContentRevision{}, nil
 }
 
 // CreateContentRevision creates a new content item
-func (t *TestAggregatePersister) CreateContentRevision(revision *model.ContentRevision) error {
+func (t *TestPersister) CreateContentRevision(revision *model.ContentRevision) error {
 	return nil
 }
 
 // UpdateContentRevision updates fields on an existing content item
-func (t *TestAggregatePersister) UpdateContentRevision(revision *model.ContentRevision) error {
+func (t *TestPersister) UpdateContentRevision(revision *model.ContentRevision) error {
 	return nil
 }
 
 // DeleteContentRevision removes a content item
-func (t *TestAggregatePersister) DeleteContentRevision(revision *model.ContentRevision) error {
+func (t *TestPersister) DeleteContentRevision(revision *model.ContentRevision) error {
 	return nil
 }
 
 // GetGovernanceEventsByListingAddress retrieves governance events based on criteria
-func (t *TestAggregatePersister) GovernanceEventsByListingAddress(address common.Address) ([]*model.GovernanceEvent, error) {
+func (t *TestPersister) GovernanceEventsByListingAddress(address common.Address) ([]*model.GovernanceEvent, error) {
 	return []*model.GovernanceEvent{}, nil
 }
 
 // CreateGovernanceEvent creates a new governance event
-func (t *TestAggregatePersister) CreateGovernanceEvent(govEvent *model.GovernanceEvent) error {
+func (t *TestPersister) CreateGovernanceEvent(govEvent *model.GovernanceEvent) error {
 	return nil
 }
 
 // UpdateGovernanceEvent updates fields on an existing governance event
-func (t *TestAggregatePersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent) error {
+func (t *TestPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent) error {
 	return nil
 }
 
 // DeleteGovenanceEvent removes a governance event
-func (t *TestAggregatePersister) DeleteGovenanceEvent(govEvent *model.GovernanceEvent) error {
+func (t *TestPersister) DeleteGovenanceEvent(govEvent *model.GovernanceEvent) error {
 	return nil
 }
 
 func TestEventProcessor(t *testing.T) {
 	gasLimit := uint64(8000000)
 	client, _ := contractutils.SetupSimulatedClient(gasLimit)
-	persister := &TestAggregatePersister{}
+	persister := &TestPersister{}
 	proc := processor.NewEventProcessor(client, persister, persister, persister)
 	numEvents := 10
 	events := make([]*crawlermodel.CivilEvent, numEvents)
