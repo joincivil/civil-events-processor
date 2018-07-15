@@ -132,7 +132,12 @@ func (l *Listing) AddOwnerAddress(addr common.Address) {
 
 // RemoveOwnerAddress removes an address from the list of owner addresses
 func (l *Listing) RemoveOwnerAddress(addr common.Address) {
-	addrs := make([]common.Address, len(l.ownerAddresses)-1)
+	numAddrs := len(l.ownerAddresses)
+	if numAddrs <= 1 {
+		l.ownerAddresses = []common.Address{}
+		return
+	}
+	addrs := make([]common.Address, numAddrs-1)
 	addrsIndex := 0
 	for _, existingAddr := range l.ownerAddresses {
 		if existingAddr != addr {

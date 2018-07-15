@@ -2,31 +2,51 @@
 package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 import (
+	"fmt"
+	"math/big"
+	"sort"
+
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // ArticlePayload is the metadata and content data for an article
 type ArticlePayload map[string]interface{}
 
+// Hash returns the hash of the article payload.  Hashes
+// all the values from the map together as slice of keyvalue pairs.
+// Returns a keccak256 hash hex string.
+func (a ArticlePayload) Hash() string {
+	toEncode := make([]string, len(a))
+	index := 0
+	for key, val := range a {
+		hashPart := fmt.Sprintf("%v%v", key, val)
+		toEncode[index] = hashPart
+		index++
+	}
+	sort.Strings(toEncode)
+	eventBytes, _ := rlp.EncodeToBytes(toEncode)
+	h := crypto.Keccak256Hash(eventBytes)
+	return h.Hex()
+}
+
 // NewContentRevision is a convenience function to init a ContentRevision
 // struct
 func NewContentRevision(listingAddr common.Address, payload ArticlePayload,
-	editorAddress common.Address, contractContentID uint64, contractRevisionID uint64,
-	revisionURI string, revisionDateTs uint64) (*ContentRevision, error) {
+	editorAddress common.Address, contractContentID *big.Int, contractRevisionID *big.Int,
+	revisionURI string, revisionDateTs uint64) *ContentRevision {
 	revision := &ContentRevision{
 		listingAddress:     listingAddr,
 		payload:            payload,
+		payloadHash:        payload.Hash(),
 		editorAddress:      editorAddress,
 		contractContentID:  contractContentID,
 		contractRevisionID: contractRevisionID,
 		revisionURI:        revisionURI,
 		revisionDateTs:     revisionDateTs,
 	}
-	err := revision.hashPayload()
-	if err != nil {
-		return nil, err
-	}
-	return revision, nil
+	return revision
 }
 
 // ContentRevision represents a revision to a content item
@@ -39,20 +59,13 @@ type ContentRevision struct {
 
 	editorAddress common.Address
 
-	contractContentID uint64
+	contractContentID *big.Int
 
-	contractRevisionID uint64
+	contractRevisionID *big.Int
 
 	revisionURI string
 
 	revisionDateTs uint64
-}
-
-// hashPayload creates the hash of the payload and sets the payloadHash field.
-// What will this hash be?
-func (c *ContentRevision) hashPayload() error {
-	c.payloadHash = ""
-	return nil
 }
 
 // ListingAddress returns the associated listing address
@@ -81,12 +94,12 @@ func (c *ContentRevision) RevisionURI() string {
 }
 
 // ContractContentID returns the contract content ID
-func (c *ContentRevision) ContractContentID() uint64 {
+func (c *ContentRevision) ContractContentID() *big.Int {
 	return c.contractContentID
 }
 
 // ContractRevisionID returns the contract content revision ID
-func (c *ContentRevision) ContractRevisionID() uint64 {
+func (c *ContentRevision) ContractRevisionID() *big.Int {
 	return c.contractRevisionID
 }
 

@@ -3,7 +3,12 @@ package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"math/big"
 )
+
+// errors must not be returned in valid conditions, such as when there is no
+// record for a query.  In this case, return the empty value for the return
+// type. errors must be reserved for actual internal errors.
 
 // ListingPersister is the interface to store the listings data related to the processor
 // and the aggregated data from the events.  Potentially to be used to service
@@ -26,9 +31,9 @@ type ListingPersister interface {
 // the APIs to pull data.
 type ContentRevisionPersister interface {
 	// ContentRevisions retrieves the revisions for content on a listing
-	ContentRevisions(address common.Address, contentID uint64) ([]*ContentRevision, error)
+	ContentRevisions(address common.Address, contentID *big.Int) ([]*ContentRevision, error)
 	// ContentRevision retrieves a specific content revision for newsroom content
-	ContentRevision(address common.Address, contentID uint64, revisionID uint64) (*ContentRevision, error)
+	ContentRevision(address common.Address, contentID *big.Int, revisionID *big.Int) (*ContentRevision, error)
 	// CreateContentRevision creates a new content revision
 	CreateContentRevision(revision *ContentRevision) error
 	// UpdateContentRevision updates fields on an existing content revision

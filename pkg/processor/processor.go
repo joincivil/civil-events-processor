@@ -29,12 +29,15 @@ func isStringInSlice(slice []string, target string) bool {
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
 	revisionPersister model.ContentRevisionPersister,
-	govEventPersister model.GovernanceEventPersister) *EventProcessor {
+	govEventPersister model.GovernanceEventPersister, contentScraper model.ContentScraper,
+	metadataScraper model.MetadataScraper) *EventProcessor {
 	return &EventProcessor{
 		client:            client,
 		listingPersister:  listingPersister,
 		revisionPersister: revisionPersister,
 		govEventPersister: govEventPersister,
+		contentScraper:    contentScraper,
+		metadataScraper:   metadataScraper,
 	}
 }
 
@@ -45,6 +48,8 @@ type EventProcessor struct {
 	listingPersister  model.ListingPersister
 	revisionPersister model.ContentRevisionPersister
 	govEventPersister model.GovernanceEventPersister
+	contentScraper    model.ContentScraper
+	metadataScraper   model.MetadataScraper
 }
 
 // Process runs the processor with the given set of raw CivilEvents
@@ -53,14 +58,16 @@ func (e *EventProcessor) Process(events []*crawlermodel.CivilEvent) error {
 	var err error
 	var ran bool
 	for _, event := range events {
-		if ran, err = e.processNewsroomEvent(event); !ran {
-			if err != nil {
-				log.Errorf("Error processing newsroom event: err: %v\n", err)
-			}
-		} else if ran, err = e.processCivilTCREvent(event); !ran {
-			if err != nil {
-				log.Errorf("Error processing civil tcr event: err: %v\n", err)
-			}
+		ran, err = e.processNewsroomEvent(event)
+		if err != nil {
+			log.Errorf("Error processing newsroom event: err: %v\n", err)
+		}
+		if ran {
+			continue
+		}
+		_, err = e.processCivilTCREvent(event)
+		if err != nil {
+			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
 	}
 	return err
@@ -106,7 +113,6 @@ func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.CivilEvent) (b
 	if !e.isValidCivilTCRContractEventName(event.EventType()) {
 		return false, nil
 	}
-
 	var err error
 	// Handling all the actionable events from the TCR
 	switch event.EventType() {
@@ -144,6 +150,20 @@ func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.CivilEvent) (b
 	return true, err
 }
 
+func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
+	senderAddr common.Address, metadata model.Metadata, eventType string) error {
+	govEvent := model.NewGovernanceEvent(
+		listingAddr,
+		senderAddr,
+		metadata,
+		eventType,
+		uint64(crawlerutils.CurrentEpochSecsInInt()),
+		uint64(crawlerutils.CurrentEpochSecsInInt()),
+	)
+	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
+	return err
+}
+
 func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	whitelisted bool, lastGovernanceState model.GovernanceState) error {
 	// TODO(PN): How do I get the URL of the site?
@@ -168,7 +188,6 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	}
 	ownerAddresses := []common.Address{ownerAddr}
 	contributorAddresses := []common.Address{charterAuthorAddr}
-
 	listing := model.NewListing(
 		name,
 		listingAddress,
@@ -183,7 +202,6 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		uint64(0),
 		uint64(crawlerutils.CurrentEpochSecsInInt()),
 	)
-
 	err = e.listingPersister.CreateListing(listing)
 	return err
 }
@@ -203,6 +221,16 @@ func (e *EventProcessor) processTCRApplication(event *crawlermodel.CivilEvent) e
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -226,6 +254,16 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.CivilEvent) err
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -249,6 +287,16 @@ func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Ci
 	whitelisted := true
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -272,6 +320,16 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.CivilE
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -295,6 +353,16 @@ func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.CivilEvent
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -318,6 +386,16 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.CivilEve
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -365,12 +443,18 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Civi
 	if !ok {
 		return errors.New("No revision uri found")
 	}
-	revision, err := model.NewContentRevision(
+	scraperContent, err := e.contentScraper.ScrapeContent(revisionURI.(string))
+	if err != nil {
+		log.Errorf("Error scraping content: err: %v", err)
+	}
+
+	articlePayload := e.scraperContentToPayload(scraperContent)
+	revision := model.NewContentRevision(
 		listingAddress,
-		payload,
+		articlePayload,
 		editorAddress.(common.Address),
-		contentID.(uint64),
-		revisionID.(uint64),
+		contentID.(*big.Int),
+		revisionID.(*big.Int),
 		revisionURI.(string),
 		uint64(crawlerutils.CurrentEpochSecsInInt()),
 	)
@@ -403,4 +487,13 @@ func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel
 	listing.AddOwnerAddress(newOwner.(common.Address))
 	err = e.listingPersister.UpdateListing(listing)
 	return err
+}
+
+func (e *EventProcessor) scraperContentToPayload(content *model.ScraperContent) model.ArticlePayload {
+	payload := model.ArticlePayload{}
+	payload["text"] = content.Text()
+	payload["html"] = content.HTML()
+	payload["uri"] = content.URI()
+	payload["data"] = content.Data()
+	return payload
 }
