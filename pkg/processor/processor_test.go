@@ -278,7 +278,7 @@ func TestEventProcessor(t *testing.T) {
 	}
 	revision1 := &contract.NewsroomContractRevisionUpdated{
 		Editor:     common.HexToAddress(editorAddress),
-		ContentId:  big.NewInt(1),
+		ContentId:  big.NewInt(0),
 		RevisionId: big.NewInt(0),
 		Uri:        "http://joincivil.com/1",
 		Raw: types.Log{

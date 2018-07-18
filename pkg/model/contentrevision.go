@@ -17,6 +17,8 @@ type ArticlePayload map[string]interface{}
 // Hash returns the hash of the article payload.  Hashes
 // all the values from the map together as slice of keyvalue pairs.
 // Returns a keccak256 hash hex string.
+// NOTE(PN): Currently using the contentHash from the newsroom contract
+// for the hash.  This is here as an alterative if needed.
 func (a ArticlePayload) Hash() string {
 	toEncode := make([]string, len(a))
 	index := 0
@@ -33,13 +35,13 @@ func (a ArticlePayload) Hash() string {
 
 // NewContentRevision is a convenience function to init a ContentRevision
 // struct
-func NewContentRevision(listingAddr common.Address, payload ArticlePayload,
+func NewContentRevision(listingAddr common.Address, payload ArticlePayload, payloadHash string,
 	editorAddress common.Address, contractContentID *big.Int, contractRevisionID *big.Int,
 	revisionURI string, revisionDateTs uint64) *ContentRevision {
 	revision := &ContentRevision{
 		listingAddress:     listingAddr,
 		payload:            payload,
-		payloadHash:        payload.Hash(),
+		payloadHash:        payloadHash,
 		editorAddress:      editorAddress,
 		contractContentID:  contractContentID,
 		contractRevisionID: contractRevisionID,

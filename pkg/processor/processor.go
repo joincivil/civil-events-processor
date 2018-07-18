@@ -1,7 +1,9 @@
 package processor
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
 	log "github.com/golang/glog"
 	"math/big"
 	"strings"
@@ -24,6 +26,10 @@ func isStringInSlice(slice []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func byte32ToHexString(input [32]byte) string {
+	return hex.EncodeToString(input[:])
 }
 
 // NewEventProcessor is a convenience function to init an EventProcessor
@@ -380,14 +386,14 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.CivilEve
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error retrieving listing by address: err: %v", err)
 	}
 	lastGovState := model.GovernanceStateWithdrawn
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error persisting new listing: err: %v", err)
 		}
 		metadata := map[string]interface{}{}
 		err = e.persistNewGovernanceEvent(
@@ -409,7 +415,7 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.CivilEve
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error retrieving listing by address: err: %v", err)
 	}
 	if listing == nil {
 		return errors.New("No listing found to update with new name")
@@ -443,6 +449,17 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Civi
 	if !ok {
 		return errors.New("No revision uri found")
 	}
+
+	newsroom, err := contract.NewNewsroomContract(listingAddress, e.client)
+	if err != nil {
+		return fmt.Errorf("Error creating newsroom contract: err: %v", err)
+	}
+	content, err := newsroom.GetContent(&bind.CallOpts{}, contentID.(*big.Int))
+	if err != nil {
+		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
+	}
+	contentHash := byte32ToHexString(content.ContentHash)
+
 	scraperContent, err := e.contentScraper.ScrapeContent(revisionURI.(string))
 	if err != nil {
 		log.Errorf("Error scraping content: err: %v", err)
@@ -452,6 +469,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Civi
 	revision := model.NewContentRevision(
 		listingAddress,
 		articlePayload,
+		contentHash,
 		editorAddress.(common.Address),
 		contentID.(*big.Int),
 		revisionID.(*big.Int),
