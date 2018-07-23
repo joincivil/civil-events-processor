@@ -1,7 +1,9 @@
 package processor
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/golang/glog"
@@ -25,15 +27,22 @@ func isStringInSlice(slice []string, target string) bool {
 	return false
 }
 
+func byte32ToHexString(input [32]byte) string {
+	return hex.EncodeToString(input[:])
+}
+
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
 	revisionPersister model.ContentRevisionPersister,
-	govEventPersister model.GovernanceEventPersister) *EventProcessor {
+	govEventPersister model.GovernanceEventPersister, contentScraper model.ContentScraper,
+	metadataScraper model.MetadataScraper) *EventProcessor {
 	return &EventProcessor{
 		client:            client,
 		listingPersister:  listingPersister,
 		revisionPersister: revisionPersister,
 		govEventPersister: govEventPersister,
+		contentScraper:    contentScraper,
+		metadataScraper:   metadataScraper,
 	}
 }
 
@@ -44,6 +53,8 @@ type EventProcessor struct {
 	listingPersister  model.ListingPersister
 	revisionPersister model.ContentRevisionPersister
 	govEventPersister model.GovernanceEventPersister
+	contentScraper    model.ContentScraper
+	metadataScraper   model.MetadataScraper
 }
 
 // Process runs the processor with the given set of raw CivilEvents
@@ -52,14 +63,16 @@ func (e *EventProcessor) Process(events []*crawlermodel.CivilEvent) error {
 	var err error
 	var ran bool
 	for _, event := range events {
-		if ran, err = e.processNewsroomEvent(event); !ran {
-			if err != nil {
-				log.Errorf("Error processing newsroom event: err: %v\n", err)
-			}
-		} else if ran, err = e.processCivilTCREvent(event); !ran {
-			if err != nil {
-				log.Errorf("Error processing civil tcr event: err: %v\n", err)
-			}
+		ran, err = e.processNewsroomEvent(event)
+		if err != nil {
+			log.Errorf("Error processing newsroom event: err: %v\n", err)
+		}
+		if ran {
+			continue
+		}
+		_, err = e.processCivilTCREvent(event)
+		if err != nil {
+			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
 	}
 	return err
@@ -105,7 +118,6 @@ func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.CivilEvent) (b
 	if !e.isValidCivilTCRContractEventName(event.EventType()) {
 		return false, nil
 	}
-
 	var err error
 	// Handling all the actionable events from the TCR
 	switch event.EventType() {
@@ -143,6 +155,20 @@ func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.CivilEvent) (b
 	return true, err
 }
 
+func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
+	senderAddr common.Address, metadata model.Metadata, eventType string) error {
+	govEvent := model.NewGovernanceEvent(
+		listingAddr,
+		senderAddr,
+		metadata,
+		eventType,
+		uint64(crawlerutils.CurrentEpochSecsInInt()),
+		uint64(crawlerutils.CurrentEpochSecsInInt()),
+	)
+	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
+	return err
+}
+
 func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	whitelisted bool, lastGovernanceState model.GovernanceState) error {
 	// TODO(PN): How do I get the URL of the site?
@@ -167,7 +193,6 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	}
 	ownerAddresses := []common.Address{ownerAddr}
 	contributorAddresses := []common.Address{charterAuthorAddr}
-
 	listing := model.NewListing(
 		name,
 		listingAddress,
@@ -182,7 +207,6 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		int64(0),
 		crawlerutils.CurrentEpochSecsInInt64(),
 	)
-
 	err = e.listingPersister.CreateListing(listing)
 	return err
 }
@@ -202,6 +226,16 @@ func (e *EventProcessor) processTCRApplication(event *crawlermodel.CivilEvent) e
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -225,6 +259,16 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.CivilEvent) err
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -248,6 +292,16 @@ func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Ci
 	whitelisted := true
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -271,6 +325,16 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.CivilE
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -294,6 +358,16 @@ func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.CivilEvent
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return err
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -311,12 +385,22 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.CivilEve
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error retrieving listing by address: err: %v", err)
 	}
 	lastGovState := model.GovernanceStateWithdrawn
 	whitelisted := false
 	if listing == nil {
 		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
+		if err != nil {
+			return fmt.Errorf("Error persisting new listing: err: %v", err)
+		}
+		metadata := map[string]interface{}{}
+		err = e.persistNewGovernanceEvent(
+			listingAddress,
+			event.ContractAddress(),
+			metadata,
+			event.EventType(),
+		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
@@ -330,7 +414,7 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.CivilEve
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error retrieving listing by address: err: %v", err)
 	}
 	if listing == nil {
 		return errors.New("No listing found to update with new name")
@@ -364,12 +448,30 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Civi
 	if !ok {
 		return errors.New("No revision uri found")
 	}
-	revision, err := model.NewContentRevision(
+
+	newsroom, err := contract.NewNewsroomContract(listingAddress, e.client)
+	if err != nil {
+		return fmt.Errorf("Error creating newsroom contract: err: %v", err)
+	}
+	content, err := newsroom.GetContent(&bind.CallOpts{}, contentID.(*big.Int))
+	if err != nil {
+		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
+	}
+	contentHash := byte32ToHexString(content.ContentHash)
+
+	scraperContent, err := e.contentScraper.ScrapeContent(revisionURI.(string))
+	if err != nil {
+		log.Errorf("Error scraping content: err: %v", err)
+	}
+
+	articlePayload := e.scraperContentToPayload(scraperContent)
+	revision := model.NewContentRevision(
 		listingAddress,
-		payload,
+		articlePayload,
+		contentHash,
 		editorAddress.(common.Address),
-		contentID.(uint64),
-		revisionID.(uint64),
+		contentID.(*big.Int),
+		revisionID.(*big.Int),
 		revisionURI.(string),
 		crawlerutils.CurrentEpochSecsInInt64(),
 	)
@@ -402,4 +504,13 @@ func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel
 	listing.AddOwnerAddress(newOwner.(common.Address))
 	err = e.listingPersister.UpdateListing(listing)
 	return err
+}
+
+func (e *EventProcessor) scraperContentToPayload(content *model.ScraperContent) model.ArticlePayload {
+	payload := model.ArticlePayload{}
+	payload["text"] = content.Text()
+	payload["html"] = content.HTML()
+	payload["uri"] = content.URI()
+	payload["data"] = content.Data()
+	return payload
 }

@@ -14,11 +14,12 @@ func NewGovernanceEvent(listingAddr common.Address, senderAddr common.Address,
 	metadata Metadata, eventType string, creationDateTs int64,
 	lastUpdatedDateTs int64) *GovernanceEvent {
 	return &GovernanceEvent{
-		listingAddress:    listingAddr,
-		senderAddress:     senderAddr,
-		metadata:          metadata,
-		creationDateTs:    creationDateTs,
-		lastUpdatedDateTs: lastUpdatedDateTs,
+		listingAddress:      listingAddr,
+		senderAddress:       senderAddr,
+		metadata:            metadata,
+		governanceEventType: eventType,
+		creationDateTs:      creationDateTs,
+		lastUpdatedDateTs:   lastUpdatedDateTs,
 	}
 }
 
