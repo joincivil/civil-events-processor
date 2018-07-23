@@ -10,7 +10,7 @@ import (
 // the APIs to pull data.
 type ListingPersister interface {
 	// ListingsByAddress returns a slice of Listings based on addresses
-	ListingsByAddress(addresses []common.Address) ([]*Listing, error)
+	ListingsByAddresses(addresses []common.Address) ([]*Listing, error)
 	// ListingByAddress retrieves listings based on addresses
 	ListingByAddress(address common.Address) (*Listing, error)
 	// CreateListing creates a new listing

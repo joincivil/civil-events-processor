@@ -8,27 +8,6 @@ import (
 // ArticlePayload is the metadata and content data for an article
 type ArticlePayload map[string]interface{}
 
-// NewContentRevision is a convenience function to init a ContentRevision
-// struct
-func NewContentRevision(listingAddr common.Address, payload ArticlePayload,
-	editorAddress common.Address, contractContentID uint64, contractRevisionID uint64,
-	revisionURI string, revisionDateTs uint64) (*ContentRevision, error) {
-	revision := &ContentRevision{
-		listingAddress:     listingAddr,
-		payload:            payload,
-		editorAddress:      editorAddress,
-		contractContentID:  contractContentID,
-		contractRevisionID: contractRevisionID,
-		revisionURI:        revisionURI,
-		revisionDateTs:     revisionDateTs,
-	}
-	err := revision.hashPayload()
-	if err != nil {
-		return nil, err
-	}
-	return revision, nil
-}
-
 // ContentRevision represents a revision to a content item
 type ContentRevision struct {
 	listingAddress common.Address
@@ -45,7 +24,28 @@ type ContentRevision struct {
 
 	revisionURI string
 
-	revisionDateTs uint64
+	revisionDateTs int64
+}
+
+// NewContentRevision is a convenience function to init a ContentRevision
+// struct
+func NewContentRevision(listingAddr common.Address, payload ArticlePayload,
+	editorAddress common.Address, contractContentID uint64, contractRevisionID uint64,
+	revisionURI string, revisionDateTs int64) (*ContentRevision, error) {
+	revision := &ContentRevision{
+		listingAddress:     listingAddr,
+		payload:            payload,
+		editorAddress:      editorAddress,
+		contractContentID:  contractContentID,
+		contractRevisionID: contractRevisionID,
+		revisionURI:        revisionURI,
+		revisionDateTs:     revisionDateTs,
+	}
+	err := revision.hashPayload()
+	if err != nil {
+		return nil, err
+	}
+	return revision, nil
 }
 
 // hashPayload creates the hash of the payload and sets the payloadHash field.
@@ -91,6 +91,6 @@ func (c *ContentRevision) ContractRevisionID() uint64 {
 }
 
 // RevisionDateTs returns the timestamp of the revision
-func (c *ContentRevision) RevisionDateTs() uint64 {
+func (c *ContentRevision) RevisionDateTs() int64 {
 	return c.revisionDateTs
 }

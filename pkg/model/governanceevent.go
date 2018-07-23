@@ -11,8 +11,8 @@ type Metadata map[string]interface{}
 // NewGovernanceEvent is a convenience function to init a new GovernanceEvent
 // struct
 func NewGovernanceEvent(listingAddr common.Address, senderAddr common.Address,
-	metadata Metadata, eventType string, creationDateTs uint64,
-	lastUpdatedDateTs uint64) *GovernanceEvent {
+	metadata Metadata, eventType string, creationDateTs int64,
+	lastUpdatedDateTs int64) *GovernanceEvent {
 	return &GovernanceEvent{
 		listingAddress:    listingAddr,
 		senderAddress:     senderAddr,
@@ -33,9 +33,9 @@ type GovernanceEvent struct {
 
 	governanceEventType string
 
-	creationDateTs uint64
+	creationDateTs int64
 
-	lastUpdatedDateTs uint64
+	lastUpdatedDateTs int64
 }
 
 // ListingAddress returns the listing address associated with this event
@@ -61,11 +61,11 @@ func (g *GovernanceEvent) GovernanceEventType() string {
 }
 
 // CreationDateTs is the timestamp of creation for this event
-func (g *GovernanceEvent) CreationDateTs() uint64 {
+func (g *GovernanceEvent) CreationDateTs() int64 {
 	return g.creationDateTs
 }
 
 // LastUpdatedDateTs is the timestamp of the last update of this event
-func (g *GovernanceEvent) LastUpdatedDateTs() uint64 {
+func (g *GovernanceEvent) LastUpdatedDateTs() int64 {
 	return g.lastUpdatedDateTs
 }

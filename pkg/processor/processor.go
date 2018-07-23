@@ -2,12 +2,11 @@ package processor
 
 import (
 	"errors"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	log "github.com/golang/glog"
 	"math/big"
 	"strings"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/filterer"
@@ -178,10 +177,10 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		charterURI,
 		ownerAddresses,
 		contributorAddresses,
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
-		uint64(0),
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
+		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochSecsInInt64(),
+		int64(0),
+		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 
 	err = e.listingPersister.CreateListing(listing)
@@ -372,7 +371,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Civi
 		contentID.(uint64),
 		revisionID.(uint64),
 		revisionURI.(string),
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
+		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 	if err != nil {
 		return err

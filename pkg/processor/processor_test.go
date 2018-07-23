@@ -47,7 +47,7 @@ func setupCivilEvent() (*crawlermodel.CivilEvent, error) {
 type TestPersister struct{}
 
 // GetListingsByAddress returns a slice of Listings based on addresses
-func (t *TestPersister) ListingsByAddress(addresses []common.Address) ([]*model.Listing, error) {
+func (t *TestPersister) ListingsByAddresses(addresses []common.Address) ([]*model.Listing, error) {
 	return []*model.Listing{}, nil
 }
 
