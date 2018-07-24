@@ -294,8 +294,8 @@ func TestEventProcessor(t *testing.T) {
 		},
 	}
 
-	events := []*crawlermodel.CivilEvent{}
-	event1, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
 		"_Application",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -303,7 +303,7 @@ func TestEventProcessor(t *testing.T) {
 		utils.CurrentEpochSecsInInt(),
 	)
 	events = append(events, event1)
-	event2, _ := crawlermodel.NewCivilEventFromContractEvent(
+	event2, _ := crawlermodel.NewEventFromContractEvent(
 		"RevisionUpdated",
 		"NewsroomContract",
 		contracts.NewsroomAddr,
@@ -311,7 +311,7 @@ func TestEventProcessor(t *testing.T) {
 		utils.CurrentEpochSecsInInt(),
 	)
 	events = append(events, event2)
-	event3, _ := crawlermodel.NewCivilEventFromContractEvent(
+	event3, _ := crawlermodel.NewEventFromContractEvent(
 		"_Application",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -399,8 +399,8 @@ func TestEventProcessorChallenge(t *testing.T) {
 		},
 	}
 
-	events := []*crawlermodel.CivilEvent{}
-	event1, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
 		"_Challenge",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -436,8 +436,8 @@ func TestEventProcessorChallenge(t *testing.T) {
 		t.Errorf("Should have at least one owner address")
 	}
 
-	events = []*crawlermodel.CivilEvent{}
-	event2, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events = []*crawlermodel.Event{}
+	event2, _ := crawlermodel.NewEventFromContractEvent(
 		"_Application",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -445,7 +445,7 @@ func TestEventProcessorChallenge(t *testing.T) {
 		utils.CurrentEpochSecsInInt(),
 	)
 	events = append(events, event2)
-	event3, _ := crawlermodel.NewCivilEventFromContractEvent(
+	event3, _ := crawlermodel.NewEventFromContractEvent(
 		"_Challenge",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -507,8 +507,8 @@ func TestEventProcessorAppWhitelisted(t *testing.T) {
 		},
 	}
 
-	events := []*crawlermodel.CivilEvent{}
-	event1, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
 		"_ApplicationWhitelisted",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -544,8 +544,8 @@ func TestEventProcessorAppWhitelisted(t *testing.T) {
 		t.Errorf("Should have at least one owner address")
 	}
 
-	events = []*crawlermodel.CivilEvent{}
-	event1, _ = crawlermodel.NewCivilEventFromContractEvent(
+	events = []*crawlermodel.Event{}
+	event1, _ = crawlermodel.NewEventFromContractEvent(
 		"_ApplicationWhitelisted",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -588,8 +588,8 @@ func TestEventProcessorApplicationRemoved(t *testing.T) {
 		},
 	}
 
-	events := []*crawlermodel.CivilEvent{}
-	event1, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
 		"_ApplicationRemoved",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -625,8 +625,8 @@ func TestEventProcessorApplicationRemoved(t *testing.T) {
 		t.Errorf("Should have at least one owner address")
 	}
 
-	events = []*crawlermodel.CivilEvent{}
-	event1, _ = crawlermodel.NewCivilEventFromContractEvent(
+	events = []*crawlermodel.Event{}
+	event1, _ = crawlermodel.NewEventFromContractEvent(
 		"_ApplicationRemoved",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -669,8 +669,8 @@ func TestEventProcessorListingRemoved(t *testing.T) {
 		},
 	}
 
-	events := []*crawlermodel.CivilEvent{}
-	event1, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
 		"_ListingRemoved",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -706,8 +706,8 @@ func TestEventProcessorListingRemoved(t *testing.T) {
 		t.Errorf("Should have at least one owner address")
 	}
 
-	events = []*crawlermodel.CivilEvent{}
-	event1, _ = crawlermodel.NewCivilEventFromContractEvent(
+	events = []*crawlermodel.Event{}
+	event1, _ = crawlermodel.NewEventFromContractEvent(
 		"_ListingRemoved",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -750,8 +750,8 @@ func TestEventProcessorListingWithdrawn(t *testing.T) {
 		},
 	}
 
-	events := []*crawlermodel.CivilEvent{}
-	event1, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
 		"_ListingWithdrawn",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -787,8 +787,8 @@ func TestEventProcessorListingWithdrawn(t *testing.T) {
 		t.Errorf("Should have at least one owner address")
 	}
 
-	events = []*crawlermodel.CivilEvent{}
-	event1, _ = crawlermodel.NewCivilEventFromContractEvent(
+	events = []*crawlermodel.Event{}
+	event1, _ = crawlermodel.NewEventFromContractEvent(
 		"_ListingWithdrawn",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -851,8 +851,8 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 		},
 	}
 
-	events := []*crawlermodel.CivilEvent{}
-	event1, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
 		"NameChanged",
 		"NewsroomContract",
 		contracts.NewsroomAddr,
@@ -865,8 +865,8 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 		t.Errorf("Should have failed processing events due to non existent listing")
 	}
 
-	events = []*crawlermodel.CivilEvent{}
-	event, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events = []*crawlermodel.Event{}
+	event, _ := crawlermodel.NewEventFromContractEvent(
 		"_Application",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -874,7 +874,7 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 		utils.CurrentEpochSecsInInt(),
 	)
 	events = append(events, event)
-	event1, _ = crawlermodel.NewCivilEventFromContractEvent(
+	event1, _ = crawlermodel.NewEventFromContractEvent(
 		"NameChanged",
 		"NewsroomContract",
 		contracts.NewsroomAddr,
@@ -939,8 +939,8 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 			Removed:     false,
 		},
 	}
-	events := []*crawlermodel.CivilEvent{}
-	event1, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
 		"OwnershipTransferred",
 		"NewsroomContract",
 		contracts.NewsroomAddr,
@@ -953,8 +953,8 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 		t.Errorf("Should have failed processing events due to non existent listing")
 	}
 
-	events = []*crawlermodel.CivilEvent{}
-	event, _ := crawlermodel.NewCivilEventFromContractEvent(
+	events = []*crawlermodel.Event{}
+	event, _ := crawlermodel.NewEventFromContractEvent(
 		"_Application",
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
@@ -962,7 +962,7 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 		utils.CurrentEpochSecsInInt(),
 	)
 	events = append(events, event)
-	event1, _ = crawlermodel.NewCivilEventFromContractEvent(
+	event1, _ = crawlermodel.NewEventFromContractEvent(
 		"OwnershipTransferred",
 		"NewsroomContract",
 		contracts.NewsroomAddr,

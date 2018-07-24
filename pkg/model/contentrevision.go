@@ -28,7 +28,7 @@ func (a ArticlePayload) Hash() string {
 		index++
 	}
 	sort.Strings(toEncode)
-	eventBytes, _ := rlp.EncodeToBytes(toEncode)
+	eventBytes, _ := rlp.EncodeToBytes(toEncode) // nolint: gosec
 	h := crypto.Keccak256Hash(eventBytes)
 	return h.Hex()
 }
