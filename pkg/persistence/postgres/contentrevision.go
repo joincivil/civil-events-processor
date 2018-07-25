@@ -5,6 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	crawlerpostgres "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres"
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"math/big"
 )
 
 // ContentRevisionSchema returns the query to create the content_revision table
@@ -31,13 +32,14 @@ func ContentRevisionSchemaString(tableName string) string {
 }
 
 // ContentRevision is the model for content_revision table in db
+// Make IDs strings?
 type ContentRevision struct {
 	ListingAddress     string                       `db:"listing_address"`
 	ArticlePayload     crawlerpostgres.JsonbPayload `db:"article_payload"`
 	ArticlePayloadHash string                       `db:"article_payload_hash"`
 	EditorAddress      string                       `db:"editor_address"`
-	ContractContentID  uint64                       `db:"contract_content_id"`
-	ContractRevisionID uint64                       `db:"contract_revision_id"`
+	ContractContentID  int64                        `db:"contract_content_id"`
+	ContractRevisionID int64                        `db:"contract_revision_id"`
 	RevisionURI        string                       `db:"revision_uri"`
 	RevisionDateTs     int64                        `db:"revision_timestamp"`
 }
@@ -47,26 +49,28 @@ func NewContentRevision(contentRevision *model.ContentRevision) *ContentRevision
 	listingAddress := contentRevision.ListingAddress().Hex()
 	articlePayload := crawlerpostgres.JsonbPayload(contentRevision.Payload())
 	editorAddress := contentRevision.EditorAddress().Hex()
+	contractContentID := contentRevision.ContractContentID().Int64()
+	contractRevisionID := contentRevision.ContractRevisionID().Int64()
 	return &ContentRevision{
 		ListingAddress:     listingAddress,
 		ArticlePayload:     articlePayload,
 		ArticlePayloadHash: contentRevision.PayloadHash(),
 		EditorAddress:      editorAddress,
-		ContractContentID:  contentRevision.ContractContentID(),
-		ContractRevisionID: contentRevision.ContractRevisionID(),
+		ContractContentID:  contractContentID,
+		ContractRevisionID: contractRevisionID,
 		RevisionURI:        contentRevision.RevisionURI(),
 		RevisionDateTs:     contentRevision.RevisionDateTs(),
 	}
 }
 
 // DbToContentRevisionData creates a model.ContentRevision from postgres ContentRevision
-func (cr *ContentRevision) DbToContentRevisionData() (*model.ContentRevision, error) {
+func (cr *ContentRevision) DbToContentRevisionData() *model.ContentRevision {
 	listingAddress := common.HexToAddress(cr.ListingAddress)
 	// TODO (IS): maybe should do a generic conversion of jsonb types back to map[string]interface{}
 	payload := model.ArticlePayload(cr.ArticlePayload)
 	editorAddress := common.HexToAddress(cr.EditorAddress)
-	contractContentID := cr.ContractContentID
-	contractRevisionID := cr.ContractRevisionID
-	return model.NewContentRevision(listingAddress, payload, editorAddress, contractContentID,
+	contractContentID := big.NewInt(cr.ContractContentID)
+	contractRevisionID := big.NewInt(cr.ContractRevisionID)
+	return model.NewContentRevision(listingAddress, payload, cr.ArticlePayloadHash, editorAddress, contractContentID,
 		contractRevisionID, cr.RevisionURI, cr.RevisionDateTs)
 }

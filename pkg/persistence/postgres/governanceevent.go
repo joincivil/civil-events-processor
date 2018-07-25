@@ -19,6 +19,7 @@ func GovernanceEventSchemaString(tableName string) string {
             listing_address TEXT,
             sender_address TEXT,
             metadata JSONB,
+            gov_event_type TEXT,
             creation_date BIGINT,
             last_updated BIGINT
         );
@@ -26,23 +27,8 @@ func GovernanceEventSchemaString(tableName string) string {
 	return schema
 }
 
-// GovernanceEvent is postgres definition of model.GovernanceEvent
-type GovernanceEvent struct {
-	ListingAddress string
-
-	SenderAddress string
-
-	Metadata crawlerpostgres.JsonbPayload
-
-	GovernanceEventType string
-
-	CreationDateTs int64
-
-	LastUpdatedDateTs int64
-}
-
 // NewGovernanceEvent creates a new postgres GovernanceEvent
-func (ge *GovernanceEvent) NewGovernanceEvent(governanceEvent *model.GovernanceEvent) *GovernanceEvent {
+func NewGovernanceEvent(governanceEvent *model.GovernanceEvent) *GovernanceEvent {
 	listingAddress := governanceEvent.ListingAddress().Hex()
 	senderAddress := governanceEvent.SenderAddress().Hex()
 	metadata := crawlerpostgres.JsonbPayload(governanceEvent.Metadata())
@@ -54,6 +40,21 @@ func (ge *GovernanceEvent) NewGovernanceEvent(governanceEvent *model.GovernanceE
 		CreationDateTs:      governanceEvent.CreationDateTs(),
 		LastUpdatedDateTs:   governanceEvent.LastUpdatedDateTs(),
 	}
+}
+
+// GovernanceEvent is postgres definition of model.GovernanceEvent
+type GovernanceEvent struct {
+	ListingAddress string `db:"listing_address"`
+
+	SenderAddress string `db:"sender_address"`
+
+	Metadata crawlerpostgres.JsonbPayload `db:"metadata"`
+
+	GovernanceEventType string `db:"gov_event_type"`
+
+	CreationDateTs int64 `db:"creation_date"`
+
+	LastUpdatedDateTs int64 `db:"last_updated"`
 }
 
 // DbToGovernanceData creates a model.GovernanceEvent from postgres.GovernanceEvent

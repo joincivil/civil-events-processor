@@ -1,7 +1,10 @@
 package postgres // import "github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"reflect"
 	"strings"
 )
 
@@ -33,4 +36,37 @@ func ListCommonAddressesToString(addresses []common.Address) string {
 func StringToCommonAddressesList(addresses string) []common.Address {
 	addressesString := strings.Split(addresses, ",")
 	return ListStringToListCommonAddress(addressesString)
+}
+
+// DbFieldNameFromModelName gets the field name from db given postgres model struct
+func DbFieldNameFromModelName(exampleStruct interface{}, fieldName string) (string, error) {
+	sType := reflect.TypeOf(exampleStruct)
+	field, ok := sType.FieldByName(fieldName)
+	if !ok {
+		return "", fmt.Errorf("%s may not exist in struct", fieldName)
+	}
+	return field.Tag.Get("db"), nil
+}
+
+// GetAllStructFieldsForQuery is a generic Insert statement for any table
+func GetAllStructFieldsForQuery(exampleStruct interface{}, colon bool) (string, string) {
+	var fields bytes.Buffer
+	var fieldsWithColon bytes.Buffer
+	valStruct := reflect.ValueOf(exampleStruct)
+	typeOf := valStruct.Type()
+	for i := 0; i < valStruct.NumField(); i++ {
+		dbFieldName := typeOf.Field(i).Tag.Get("db")
+		fields.WriteString(dbFieldName)
+		if colon {
+			fieldsWithColon.WriteString(":")
+			fieldsWithColon.WriteString(dbFieldName)
+		}
+		if i+1 < valStruct.NumField() {
+			fields.WriteString(", ")
+			if colon {
+				fieldsWithColon.WriteString(", ")
+			}
+		}
+	}
+	return fields.String(), fieldsWithColon.String()
 }

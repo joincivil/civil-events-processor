@@ -21,7 +21,7 @@ type ListingPersister interface {
 	// CreateListing creates a new listing
 	CreateListing(listing *Listing) error
 	// UpdateListing updates fields on an existing listing
-	UpdateListing(listing *Listing) error
+	UpdateListing(listing *Listing, updatedFields []string) error
 	// DeleteListing removes a listing
 	DeleteListing(listing *Listing) error
 }
@@ -37,7 +37,7 @@ type ContentRevisionPersister interface {
 	// CreateContentRevision creates a new content revision
 	CreateContentRevision(revision *ContentRevision) error
 	// UpdateContentRevision updates fields on an existing content revision
-	UpdateContentRevision(revision *ContentRevision) error
+	UpdateContentRevision(revision *ContentRevision, updatedFields []string) error
 	// DeleteContentRevision removes a content revision
 	DeleteContentRevision(revision *ContentRevision) error
 }
@@ -51,7 +51,7 @@ type GovernanceEventPersister interface {
 	// CreateGovernanceEvent creates a new governance event
 	CreateGovernanceEvent(govEvent *GovernanceEvent) error
 	// UpdateGovernanceEvent updates fields on an existing governance event
-	UpdateGovernanceEvent(govEvent *GovernanceEvent) error
+	UpdateGovernanceEvent(govEvent *GovernanceEvent, updatedFields []string) error
 	// DeleteGovenanceEvent removes a governance event
 	DeleteGovenanceEvent(govEvent *GovernanceEvent) error
 }

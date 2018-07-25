@@ -15,9 +15,8 @@ func ListingSchema() string {
 func ListingSchemaString(tableName string) string {
 	schema := fmt.Sprintf(`
         CREATE TABLE IF NOT EXISTS %s(
-            id SERIAL PRIMARY KEY,
             name TEXT,
-            contract_address TEXT,
+            contract_address TEXT PRIMARY KEY,
             whitelisted BOOL,
             last_governance_state BIGINT, 
             url TEXT,

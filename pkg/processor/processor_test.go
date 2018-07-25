@@ -57,7 +57,7 @@ func (t *TestPersister) CreateListing(listing *model.Listing) error {
 }
 
 // UpdateListing updates fields on an existing listing
-func (t *TestPersister) UpdateListing(listing *model.Listing) error {
+func (t *TestPersister) UpdateListing(listing *model.Listing, updatedFields []string) error {
 	addressHex := listing.ContractAddress().Hex()
 	if t.listings == nil {
 		t.listings = map[string]*model.Listing{}
@@ -124,7 +124,7 @@ func (t *TestPersister) CreateContentRevision(revision *model.ContentRevision) e
 }
 
 // UpdateContentRevision updates fields on an existing content item
-func (t *TestPersister) UpdateContentRevision(revision *model.ContentRevision) error {
+func (t *TestPersister) UpdateContentRevision(revision *model.ContentRevision, updatedFields []string) error {
 	addressHex := revision.ListingAddress().Hex()
 	addrRevs, ok := t.revisions[addressHex]
 	if !ok {
@@ -183,7 +183,7 @@ func (t *TestPersister) CreateGovernanceEvent(govEvent *model.GovernanceEvent) e
 }
 
 // UpdateGovernanceEvent updates fields on an existing governance event
-func (t *TestPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent) error {
+func (t *TestPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent, updatedFields []string) error {
 	addressHex := govEvent.ListingAddress().Hex()
 	events, ok := t.govEvents[addressHex]
 	if !ok {

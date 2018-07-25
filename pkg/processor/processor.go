@@ -162,8 +162,8 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 		senderAddr,
 		metadata,
 		eventType,
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
+		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
 	return err
@@ -212,6 +212,7 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 }
 
 func (e *EventProcessor) processTCRApplication(event *crawlermodel.CivilEvent) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -239,12 +240,15 @@ func (e *EventProcessor) processTCRApplication(event *crawlermodel.CivilEvent) e
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, "LastGovernanceState")
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, "whitelisted")
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRChallenge(event *crawlermodel.CivilEvent) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -272,12 +276,15 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.CivilEvent) err
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, "LastGovernanceState")
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, "whitelisted")
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.CivilEvent) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -305,12 +312,15 @@ func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Ci
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, "LastGovernanceState")
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, "whitelisted")
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.CivilEvent) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -338,12 +348,15 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.CivilE
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, "LastGovernanceState")
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, "whitelisted")
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.CivilEvent) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -371,12 +384,15 @@ func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.CivilEvent
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, "LastGovernanceState")
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, "whitelisted")
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.CivilEvent) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -404,12 +420,15 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.CivilEve
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, "LastGovernanceState")
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, "whitelisted")
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.CivilEvent) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
@@ -424,7 +443,8 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.CivilEve
 		return errors.New("No NewName field found")
 	}
 	listing.SetName(name.(string))
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, "Name")
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
@@ -483,6 +503,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Civi
 }
 
 func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel.CivilEvent) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
@@ -502,7 +523,8 @@ func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel
 	}
 	listing.RemoveOwnerAddress(previousOwner.(common.Address))
 	listing.AddOwnerAddress(newOwner.(common.Address))
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, "OwnerAddresses")
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
