@@ -34,28 +34,30 @@ func byte32ToHexString(input [32]byte) string {
 
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
-	revisionPersister model.ContentRevisionPersister,
-	govEventPersister model.GovernanceEventPersister, contentScraper model.ContentScraper,
-	metadataScraper model.MetadataScraper) *EventProcessor {
+	revisionPersister model.ContentRevisionPersister, govEventPersister model.GovernanceEventPersister,
+	contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
+	civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
 	return &EventProcessor{
-		client:            client,
-		listingPersister:  listingPersister,
-		revisionPersister: revisionPersister,
-		govEventPersister: govEventPersister,
-		contentScraper:    contentScraper,
-		metadataScraper:   metadataScraper,
+		client:               client,
+		listingPersister:     listingPersister,
+		revisionPersister:    revisionPersister,
+		govEventPersister:    govEventPersister,
+		contentScraper:       contentScraper,
+		metadataScraper:      metadataScraper,
+		civilMetadataScraper: civilMetadataScraper,
 	}
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
 // for use via the API.
 type EventProcessor struct {
-	client            bind.ContractBackend
-	listingPersister  model.ListingPersister
-	revisionPersister model.ContentRevisionPersister
-	govEventPersister model.GovernanceEventPersister
-	contentScraper    model.ContentScraper
-	metadataScraper   model.MetadataScraper
+	client               bind.ContractBackend
+	listingPersister     model.ListingPersister
+	revisionPersister    model.ContentRevisionPersister
+	govEventPersister    model.GovernanceEventPersister
+	contentScraper       model.ContentScraper
+	metadataScraper      model.MetadataScraper
+	civilMetadataScraper model.CivilMetadataScraper
 }
 
 // Process runs the processor with the given set of raw CivilEvents
@@ -445,11 +447,13 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 	if !ok {
 		return errors.New("No revision id found")
 	}
+	// Metadata URI
 	revisionURI, ok := payload["Uri"]
 	if !ok {
 		return errors.New("No revision uri found")
 	}
 
+	// Pull data from the newsroom contract
 	newsroom, err := contract.NewNewsroomContract(listingAddress, e.client)
 	if err != nil {
 		return fmt.Errorf("Error creating newsroom contract: err: %v", err)
@@ -460,12 +464,18 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 	}
 	contentHash := byte32ToHexString(content.ContentHash)
 
-	scraperContent, err := e.contentScraper.ScrapeContent(revisionURI.(string))
+	// Scrape the metadata and content for the revision
+	metadata, scraperContent, err := e.scrapeData(revisionURI.(string))
 	if err != nil {
-		log.Errorf("Error scraping content: err: %v", err)
+		log.Errorf("Error scraping data: err: %v", err)
 	}
 
-	articlePayload := e.scraperContentToPayload(scraperContent)
+	var articlePayload model.ArticlePayload
+	if metadata != nil {
+		articlePayload = e.scraperDataToPayload(metadata, scraperContent)
+	}
+
+	// Store the new revision
 	revision := model.NewContentRevision(
 		listingAddress,
 		articlePayload,
@@ -476,9 +486,6 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		revisionURI.(string),
 		uint64(crawlerutils.CurrentEpochSecsInInt()),
 	)
-	if err != nil {
-		return err
-	}
 	err = e.revisionPersister.CreateContentRevision(revision)
 	return err
 }
@@ -507,11 +514,73 @@ func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel
 	return err
 }
 
-func (e *EventProcessor) scraperContentToPayload(content *model.ScraperContent) model.ArticlePayload {
+func (e *EventProcessor) scrapeData(metadataURL string) (
+	*model.ScraperCivilMetadata, *model.ScraperContent, error) {
+	var err error
+	var civilMetadata *model.ScraperCivilMetadata
+	var content *model.ScraperContent
+
+	if metadataURL != "" {
+		civilMetadata, err = e.civilMetadataScraper.ScrapeCivilMetadata(metadataURL)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// TODO(PN): Use canonical URL or the revision URL here?
+	// TODO(PN): Commenting out the scraping of content until we make a decision on it
+
+	// if civilMetadata != nil && civilMetadata.RevisionContentURL() != "" {
+	// 	content, err = e.contentScraper.ScrapeContent(civilMetadata.RevisionContentURL())
+	// 	if err != nil {
+	// 		err = fmt.Errorf("Error scraping content: err: %v", err)
+	// 	}
+	// }
+	return civilMetadata, content, err
+}
+
+func (e *EventProcessor) scraperDataToPayload(metadata *model.ScraperCivilMetadata,
+	content *model.ScraperContent) model.ArticlePayload {
+	// TODO(PN): ArticlePayload should be a struct rather than a map
+	// TODO(PN): Do we need the content here?
 	payload := model.ArticlePayload{}
-	payload["text"] = content.Text()
-	payload["html"] = content.HTML()
-	payload["uri"] = content.URI()
-	payload["data"] = content.Data()
+	payload["title"] = metadata.Title()
+	payload["revisionContentHash"] = metadata.RevisionContentHash()
+	payload["revisionContentURL"] = metadata.RevisionContentURL()
+	payload["canonicalURL"] = metadata.CanonicalURL()
+	payload["slug"] = metadata.Slug()
+	payload["description"] = metadata.Description()
+	payload["primaryTag"] = metadata.PrimaryTag()
+	payload["revisionDate"] = metadata.RevisionDate()
+	payload["originalPublishDate"] = metadata.OriginalPublishDate()
+	payload["opinion"] = metadata.Opinion()
+	payload["schemaVersion"] = metadata.SchemaVersion()
+	payload["authors"] = e.buildAuthors(metadata)
+	payload["images"] = e.buildImages(metadata)
 	return payload
+}
+
+func (e *EventProcessor) buildAuthors(metadata *model.ScraperCivilMetadata) []map[string]interface{} {
+	authors := []map[string]interface{}{}
+	for _, author := range metadata.Authors() {
+		entry := map[string]interface{}{
+			"byline": author.Byline(),
+		}
+		authors = append(authors, entry)
+	}
+	return authors
+}
+
+func (e *EventProcessor) buildImages(metadata *model.ScraperCivilMetadata) []map[string]interface{} {
+	images := []map[string]interface{}{}
+	for _, image := range metadata.Images() {
+		entry := map[string]interface{}{
+			"url":  image.URL(),
+			"hash": image.Hash(),
+			"h":    image.Height(),
+			"w":    image.Width(),
+		}
+		images = append(images, entry)
+	}
+	return images
 }
