@@ -6,14 +6,14 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 )
 
-// ListingSchema returns the query to create the listing table
-func ListingSchema() string {
-	return ListingSchemaString("listing")
+// CreateListingTableQuery returns the query to create the listing table
+func CreateListingTableQuery() string {
+	return CreateListingTableQueryString("listing")
 }
 
-// ListingSchemaString returns the query to create this table
-func ListingSchemaString(tableName string) string {
-	schema := fmt.Sprintf(`
+// CreateListingTableQueryString returns the query to create this table
+func CreateListingTableQueryString(tableName string) string {
+	queryString := fmt.Sprintf(`
         CREATE TABLE IF NOT EXISTS %s(
             name TEXT,
             contract_address TEXT PRIMARY KEY,
@@ -29,7 +29,7 @@ func ListingSchemaString(tableName string) string {
             last_updated_timestamp BIGINT
         );
     `, tableName)
-	return schema
+	return queryString
 }
 
 // Listing is the model definition for listing table in crawler db
@@ -50,6 +50,7 @@ type Listing struct {
 
 	CharterURI string `db:"charter_uri"`
 
+	// OwnerAddresses is a comma delimited string
 	OwnerAddresses string `db:"owner_addresses"`
 
 	ContributorAddresses string `db:"contributor_addresses"`

@@ -32,7 +32,7 @@ func ListCommonAddressesToString(addresses []common.Address) string {
 	return strings.Join(addressesString, ",")
 }
 
-// StringToCommonAddressesList converts a list of common.address to string
+// StringToCommonAddressesList converts a list of common.address to comma delimited string
 func StringToCommonAddressesList(addresses string) []common.Address {
 	addressesString := strings.Split(addresses, ",")
 	return ListStringToListCommonAddress(addressesString)
@@ -48,8 +48,8 @@ func DbFieldNameFromModelName(exampleStruct interface{}, fieldName string) (stri
 	return field.Tag.Get("db"), nil
 }
 
-// GetAllStructFieldsForQuery is a generic Insert statement for any table
-func GetAllStructFieldsForQuery(exampleStruct interface{}, colon bool) (string, string) {
+// StructFieldsForQuery is a generic Insert statement for any table
+func StructFieldsForQuery(exampleStruct interface{}, colon bool) (string, string) {
 	var fields bytes.Buffer
 	var fieldsWithColon bytes.Buffer
 	valStruct := reflect.ValueOf(exampleStruct)

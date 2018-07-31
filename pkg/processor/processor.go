@@ -156,7 +156,7 @@ func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.CivilEvent) (b
 }
 
 func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
-	senderAddr common.Address, metadata model.Metadata, eventType string) error {
+	senderAddr common.Address, metadata model.Metadata, eventType string, eventHash string) error {
 	govEvent := model.NewGovernanceEvent(
 		listingAddr,
 		senderAddr,
@@ -164,6 +164,7 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 		eventType,
 		crawlerutils.CurrentEpochSecsInInt64(),
 		crawlerutils.CurrentEpochSecsInInt64(),
+		eventHash,
 	)
 	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
 	return err
@@ -236,6 +237,7 @@ func (e *EventProcessor) processTCRApplication(event *crawlermodel.CivilEvent) e
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
@@ -272,6 +274,7 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.CivilEvent) err
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
@@ -308,6 +311,7 @@ func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Ci
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
@@ -344,6 +348,7 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.CivilE
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
@@ -380,6 +385,7 @@ func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.CivilEvent
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
@@ -416,6 +422,7 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.CivilEve
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}

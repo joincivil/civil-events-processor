@@ -62,14 +62,14 @@ func TestDbFieldNameFromModelName(t *testing.T) {
 
 func TestGetAllStructFieldsForQuery(t *testing.T) {
 	listing := postgres.Listing{}
-	structFieldsString, structFieldsString2 := postgres.GetAllStructFieldsForQuery(listing, false)
+	structFieldsString, structFieldsString2 := postgres.StructFieldsForQuery(listing, false)
 	if structFieldsString != "name, contract_address, whitelisted, last_governance_state, url, charter_uri, owner_addresses, contributor_addresses, creation_timestamp, application_timestamp, approval_timestamp, last_updated_timestamp" {
 		t.Errorf("Generated structFieldString is not what it should be.")
 	}
 	if structFieldsString2 != "" {
 		t.Errorf("Structfield must be empty but it isn't")
 	}
-	structFieldsString3, structFieldsString4 := postgres.GetAllStructFieldsForQuery(listing, true)
+	structFieldsString3, structFieldsString4 := postgres.StructFieldsForQuery(listing, true)
 	if structFieldsString3 != "name, contract_address, whitelisted, last_governance_state, url, charter_uri, owner_addresses, contributor_addresses, creation_timestamp, application_timestamp, approval_timestamp, last_updated_timestamp" {
 		t.Errorf("Generated structFieldString is not what it should be: %v", structFieldsString3)
 	}

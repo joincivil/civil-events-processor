@@ -8,14 +8,14 @@ import (
 	"math/big"
 )
 
-// ContentRevisionSchema returns the query to create the content_revision table
-func ContentRevisionSchema() string {
-	return ContentRevisionSchemaString("content_revision")
+// CreateContentRevisionTableQuery returns the query to create the content_revision table
+func CreateContentRevisionTableQuery() string {
+	return CreateContentRevisionTableQueryString("content_revision")
 }
 
-// ContentRevisionSchemaString returns the query to create this table
-func ContentRevisionSchemaString(tableName string) string {
-	schema := fmt.Sprintf(`
+// CreateContentRevisionTableQueryString returns the query to create this table
+func CreateContentRevisionTableQueryString(tableName string) string {
+	queryString := fmt.Sprintf(`
         CREATE TABLE IF NOT EXISTS %s(
             id SERIAL PRIMARY KEY,
             listing_address TEXT,
@@ -28,7 +28,7 @@ func ContentRevisionSchemaString(tableName string) string {
             revision_timestamp BIGINT
         );
     `, tableName)
-	return schema
+	return queryString
 }
 
 // ContentRevision is the model for content_revision table in db

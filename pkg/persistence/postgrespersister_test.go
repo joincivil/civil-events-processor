@@ -14,6 +14,7 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 	"math/big"
+	mathrand "math/rand"
 	"reflect"
 	"testing"
 )
@@ -45,16 +46,16 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 	if err != nil {
 		return persister, fmt.Errorf("Error connecting to DB: %v", err)
 	}
-	var schema string
+	var queryString string
 	switch tableName {
 	case "listing_test":
-		schema = postgres.ListingSchemaString(tableName)
+		queryString = postgres.CreateListingTableQueryString(tableName)
 	case "content_revision_test":
-		schema = postgres.ContentRevisionSchemaString(tableName)
+		queryString = postgres.CreateContentRevisionTableQueryString(tableName)
 	case "governance_event_test":
-		schema = postgres.GovernanceEventSchemaString(tableName)
+		queryString = postgres.CreateGovernanceEventTableQueryString(tableName)
 	}
-	_, err = persister.db.Query(schema)
+	_, err = persister.db.Query(queryString)
 	if err != nil {
 		return persister, fmt.Errorf("Couldn't create test table %s: %v", tableName, err)
 	}
@@ -155,6 +156,15 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	return testListing, contractAddress
 }
 
+func setupSampleListings(numListings int) ([]*model.Listing, []common.Address) {
+	listings := make([]*model.Listing, numListings)
+	addresses := make([]common.Address, numListings)
+	for i := 0; i < numListings; i++ {
+		listings[i], addresses[i] = setupSampleListing()
+	}
+	return listings, addresses
+}
+
 /*
 All tests for listing table:
 */
@@ -207,25 +217,98 @@ func TestListingByAddress(t *testing.T) {
 	}
 
 	// retrieve from test table
-	dbListing := &postgres.Listing{}
 	queryStringRetrieve := persister.listingByAddressQuery("listing_test")
-	dbListing, err = persister.getListingFromTableByAddress(queryStringRetrieve, modelListingAddress)
+	_, err = persister.listingFromTableByAddress(queryStringRetrieve, modelListingAddress.Hex())
 	if err != nil {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
-	modelListingFromDB := dbListing.DbToListingData()
-	// check that retrieved fields match with inserted listing
-	// TODO(IS): more correct for this to be in a different test. This test should probably be on its own
-	if !reflect.DeepEqual(modelListing, modelListingFromDB) {
-		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelListingFromDB, modelListing)
-	}
+
 	err = deleteTestTable(persister, tableName)
 	if err != nil {
 		t.Errorf("Could not delete test listing table: %v", err)
 	}
 }
 
-// TODO(IS): test retrieving multiple listings
+// TestDBListingToModelListing tests that the db listing can be properly converted to model listing
+func TestDBListingToModelListing(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// create fake listing in listing_test
+	modelListing, modelListingAddress := setupSampleListing()
+
+	// save to test table
+	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.Listing{})
+	err = persister.saveListingToTable(queryStringCreate, modelListing)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	// retrieve from test table
+	dbListing := &postgres.Listing{}
+	queryStringRetrieve := persister.listingByAddressQuery("listing_test")
+	dbListing, err = persister.listingFromTableByAddress(queryStringRetrieve, modelListingAddress.Hex())
+	if err != nil {
+		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
+	}
+
+	modelListingFromDB := dbListing.DbToListingData()
+	// check that retrieved fields match with inserted listing
+	if !reflect.DeepEqual(modelListing, modelListingFromDB) {
+		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelListingFromDB, modelListing)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete test listing table: %v", err)
+	}
+}
+
+// Test retrieving multiple listings
+func TestListingsByAddresses(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// create fake listings in listing_test
+	numListings := 3
+	modelListings, modelListingAddresses := setupSampleListings(numListings)
+
+	// Insert
+	for _, list := range modelListings {
+		err := persister.CreateListing(list)
+		if err != nil {
+			t.Errorf("Couldn't save listing to table: %v", err)
+		}
+	}
+
+	//retrieve listings
+	dbListings := []*model.Listing{}
+	for _, modelListingAddress := range modelListingAddresses {
+		dbListing, err := persister.ListingByAddress(modelListingAddress)
+		if err != nil {
+			t.Errorf("Error getting listing by address: %v", err)
+		}
+		dbListings = append(dbListings, dbListing)
+	}
+
+	if len(dbListings) != numListings {
+		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbListings), numListings)
+	}
+
+	//delete test table
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete test listing table: %v", err)
+	}
+}
 
 // TestUpdateListing tests that updating the Listing works
 func TestUpdateListing(t *testing.T) {
@@ -265,7 +348,7 @@ func TestUpdateListing(t *testing.T) {
 	//check here that update happened
 	updatedDbListing := &postgres.Listing{}
 	queryStringRetrieve := persister.listingByAddressQuery("listing_test")
-	updatedDbListing, err = persister.getListingFromTableByAddress(queryStringRetrieve, modelListingAddress)
+	updatedDbListing, err = persister.listingFromTableByAddress(queryStringRetrieve, modelListingAddress.Hex())
 	if err != nil {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
@@ -329,16 +412,20 @@ func TestDeleteListing(t *testing.T) {
 Helpers for content_revision table tests:
 */
 
-func setupSampleContentRevision() (*model.ContentRevision, common.Address, *big.Int, *big.Int) {
-	address1, _ := randomHex(32)
+func setupRandomSampleContentRevision() (*model.ContentRevision, common.Address, *big.Int, *big.Int) {
+	address, _ := randomHex(32)
+	listingAddr := common.HexToAddress(address)
+	contractContentID := big.NewInt(mathrand.Int63())
+	return setupSampleContentRevision(listingAddr, contractContentID)
+}
+
+func setupSampleContentRevision(listingAddr common.Address, contractContentID *big.Int) (*model.ContentRevision, common.Address, *big.Int, *big.Int) {
 	address2, _ := randomHex(32)
 	address3, _ := randomHex(32)
-	listingAddr := common.HexToAddress(address1)
 	payload := model.ArticlePayload{}
 	payloadHash := address2
 	editorAddress := common.HexToAddress(address3)
-	contractContentID := big.NewInt(3434343334)
-	contractRevisionID := big.NewInt(676767676676)
+	contractRevisionID := big.NewInt(mathrand.Int63())
 	revisionURI := "revisionURI"
 	revisionDateTs := crawlerutils.CurrentEpochSecsInInt64()
 	testContentRevision := model.NewContentRevision(listingAddr, payload, payloadHash, editorAddress,
@@ -346,11 +433,25 @@ func setupSampleContentRevision() (*model.ContentRevision, common.Address, *big.
 	return testContentRevision, listingAddr, contractContentID, contractRevisionID
 }
 
+func setupSampleContentRevisionsSameAddressContentID(numRevisions int) ([]*model.ContentRevision, common.Address, *big.Int, []*big.Int) {
+	address, _ := randomHex(32)
+	listingAddr := common.HexToAddress(address)
+	contractContentID := big.NewInt(mathrand.Int63())
+	testContentRevisions := make([]*model.ContentRevision, numRevisions)
+	testContractRevisionIDs := make([]*big.Int, numRevisions)
+	for i := 0; i < numRevisions; i++ {
+		testContentRevision, _, _, testContractRevisionID := setupSampleContentRevision(listingAddr, contractContentID)
+		testContentRevisions[i] = testContentRevision
+		testContractRevisionIDs[i] = testContractRevisionID
+	}
+	return testContentRevisions, listingAddr, contractContentID, testContractRevisionIDs
+}
+
 /*
 All tests for content_revision table:
 */
 
-// TestCreateListing tests that a ContentRevision is created
+// TestCreateContentRevision tests that a ContentRevision is created
 func TestCreateContentRevision(t *testing.T) {
 	tableName := "content_revision_test"
 	persister, err := setupTestTable(tableName)
@@ -360,7 +461,7 @@ func TestCreateContentRevision(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelContentRevision, _, _, _ := setupSampleContentRevision()
+	modelContentRevision, _, _, _ := setupRandomSampleContentRevision()
 
 	// insert to table
 	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
@@ -381,7 +482,7 @@ func TestCreateContentRevision(t *testing.T) {
 	}
 }
 
-// TestContentRevision tests that a content revision is created
+// TestContentRevision tests that a content revision can be retrieved
 func TestContentRevision(t *testing.T) {
 	tableName := "content_revision_test"
 	persister, err := setupTestTable(tableName)
@@ -391,7 +492,7 @@ func TestContentRevision(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelContentRevision, listingAddr, contentID, revisionID := setupSampleContentRevision()
+	modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
 
 	// insert to table
 	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
@@ -402,7 +503,7 @@ func TestContentRevision(t *testing.T) {
 
 	// retrieve from table
 	queryString := persister.contentRevisionQuery("content_revision_test")
-	_, err = persister.getContentRevisionFromTable(queryString, listingAddr.Hex(), contentID.Int64(), revisionID.Int64())
+	_, err = persister.contentRevisionFromTable(queryString, listingAddr.Hex(), contentID.Int64(), revisionID.Int64())
 	if err != nil {
 		t.Errorf("Wasn't able to get content revision from postgres table: %v", err)
 	}
@@ -413,9 +514,145 @@ func TestContentRevision(t *testing.T) {
 	}
 }
 
-// TODO(IS): test multiple contentrevisions
+// TestDBCRToModelCR tests that the db listing can be properly converted to model listing
+func TestDBCRToModelCR(t *testing.T) {
+	tableName := "content_revision_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
 
-// TODO(IS): test update content revision
+	// sample contentRevision
+	modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
+
+	// insert to table
+	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
+	err = persister.saveContentRevisionToTable(queryStringCreate, modelContentRevision)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	// retrieve from table
+	queryString := persister.contentRevisionQuery("content_revision_test")
+	dbContRev, err := persister.contentRevisionFromTable(queryString, listingAddr.Hex(), contentID.Int64(), revisionID.Int64())
+	if err != nil {
+		t.Errorf("Wasn't able to get content revision from postgres table: %v", err)
+	}
+
+	// do a deep equal
+	modelCRFromDB := dbContRev.DbToContentRevisionData()
+	// check that retrieved fields match with inserted listing
+	if !reflect.DeepEqual(modelContentRevision, modelCRFromDB) {
+		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelCRFromDB, modelContentRevision)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete test listing table: %v", err)
+	}
+}
+
+// TestContentRevision tests that multiple content revisions can be retrieved
+func TestContentRevisions(t *testing.T) {
+	tableName := "content_revision_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// create multiple contentRevisions
+	numRevisions := 10
+	testContentRevisions, listingAddr, contractContentID, testContractRevisionIDs := setupSampleContentRevisionsSameAddressContentID(numRevisions)
+
+	// save all to table
+	for _, contRev := range testContentRevisions {
+		err := persister.CreateContentRevision(contRev)
+		if err != nil {
+			t.Errorf("Couldn't save content revision to table: %v", err)
+		}
+	}
+
+	// retrieve from table
+	dbContentRevisions, err := persister.ContentRevisions(listingAddr, contractContentID)
+	if err != nil {
+		t.Errorf("Error with persister.ContentRevisions(): %v", err)
+	}
+	// test various things
+	// test length of both
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbContentRevisions), numRevisions)
+	}
+	// order will be the same:
+	contractRevisionIDsFromDB := make([]*big.Int, numRevisions)
+	for i, contrev := range dbContentRevisions {
+		contractRevisionIDsFromDB[i] = contrev.ContractRevisionID()
+	}
+	reflect.DeepEqual(contractRevisionIDsFromDB, testContractRevisionIDs)
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete test listing table: %v", err)
+	}
+
+}
+
+// Test update content revision -- TODO(IS) create an update where address, contentid, revisionid don't change
+func TestUpdateContentRevision(t *testing.T) {
+	tableName := "content_revision_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// // Setup sample content revision
+	// modelContentRevision, listingAddrOld, contentIDOld, revisionIDOld := setupRandomSampleContentRevision()
+
+	// // insert to table
+	// queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
+	// err = persister.saveContentRevisionToTable(queryStringCreate, modelContentRevision)
+	// if err != nil {
+	// 	t.Errorf("error saving contentRevision: %v", err)
+	// }
+
+	// // cannot modify fields so just create a new sample content revision
+	// modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
+	// updatedFields := []string{"ListingAddress", "ContractContentID", "ContractRevisionID"}
+
+	// // test update
+	// queryString, err := persister.UpdateContentRevision(updatedFields, tableName)
+	// if err != nil {
+	// 	t.Errorf("Error generating update contentRevision query: %v", err)
+	// }
+
+	// dbContentRevision := postgres.NewContentRevision(modelContentRevision)
+	// _, err = persister.db.NamedQuery(queryString, dbContentRevision)
+	// if err != nil {
+	// 	t.Errorf("Error updating fields: %v", err)
+	// }
+
+	// //check here that update happened
+	// updatedDbContentRevision := &postgres.ContentRevision{}
+	// queryString := persister.contentRevisionQuery("content_revision_test")
+	// updatedDbContentRevision, err = persister.getContentRevisionFromTable(queryString, listingAddr.Hex(), contentID.Int64(), revisionID.Int64())
+
+	// if err != nil {
+	// 	t.Errorf("Wasn't able to get listing from postgres table: %v", err)
+	// }
+	// if updatedDbListing.Name != "New Name" {
+	// 	t.Errorf("Name field was not updated correctly. %v", updatedDbListing.Name)
+	// }
+	// if updatedDbListing.Whitelisted != false {
+	// 	t.Errorf("Whitelisted field was not updated correctly. %v", updatedDbListing.Whitelisted)
+	// }
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete test listing table: %v", err)
+	}
+}
 
 // TestDeleteContentRevision tests that the deleting the ContentRevision works
 func TestDeleteContentRevision(t *testing.T) {
@@ -427,7 +664,7 @@ func TestDeleteContentRevision(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelContentRevision, _, _, _ := setupSampleContentRevision()
+	modelContentRevision, _, _, _ := setupRandomSampleContentRevision()
 
 	// insert to table
 	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
@@ -464,7 +701,7 @@ func TestDeleteContentRevision(t *testing.T) {
 Helpers for governance_event table tests:
 */
 
-func setupSampleGovernanceEvent() (*model.GovernanceEvent, common.Address) {
+func setupSampleGovernanceEvent() (*model.GovernanceEvent, common.Address, string) {
 	address1, _ := randomHex(32)
 	address2, _ := randomHex(32)
 	listingAddr := common.HexToAddress(address1)
@@ -473,9 +710,10 @@ func setupSampleGovernanceEvent() (*model.GovernanceEvent, common.Address) {
 	governanceEventType := "governanceeventtypehere"
 	creationDateTs := crawlerutils.CurrentEpochSecsInInt64()
 	lastUpdatedDateTs := crawlerutils.CurrentEpochSecsInInt64() + 1
+	eventHash, _ := randomHex(5)
 	testGovernanceEvent := model.NewGovernanceEvent(listingAddr, senderAddress, metadata, governanceEventType,
-		creationDateTs, lastUpdatedDateTs)
-	return testGovernanceEvent, listingAddr
+		creationDateTs, lastUpdatedDateTs, eventHash)
+	return testGovernanceEvent, listingAddr, eventHash
 }
 
 /*
@@ -492,7 +730,7 @@ func TestCreateGovernanceEvent(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelGovernanceEvent, _ := setupSampleGovernanceEvent()
+	modelGovernanceEvent, _, _ := setupSampleGovernanceEvent()
 
 	// insert to table
 	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.GovernanceEvent{})
@@ -523,7 +761,7 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelGovernanceEvent, listingAddr := setupSampleGovernanceEvent()
+	modelGovernanceEvent, listingAddr, _ := setupSampleGovernanceEvent()
 
 	// insert to table
 	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.GovernanceEvent{})
@@ -534,7 +772,7 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 
 	// retrieve from table
 	queryString := persister.govEventsQuery(tableName)
-	dbGovEvents, err := persister.getGovEventsFromTable(queryString, listingAddr.Hex())
+	dbGovEvents, err := persister.govEventsFromTable(queryString, listingAddr.Hex())
 	if err != nil {
 		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
 	}
@@ -549,7 +787,48 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 	}
 }
 
-// TODO(IS): test update gov event
+// TestDBGovEventToModelGovEvent tests that the db listing can be properly converted to model listing
+func TestDBGovEventToModelGovEvent(t *testing.T) {
+	tableName := "governance_event_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// sample contentRevision
+	modelGovernanceEvent, listingAddr, _ := setupSampleGovernanceEvent()
+
+	// insert to table
+	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.GovernanceEvent{})
+	err = persister.saveGovEventToTable(queryStringCreate, modelGovernanceEvent)
+	if err != nil {
+		t.Errorf("error saving GovernanceEvent: %v", err)
+	}
+
+	// retrieve from table
+	queryString := persister.govEventsQuery(tableName)
+	dbGovEvents, err := persister.govEventsFromTable(queryString, listingAddr.Hex())
+	if err != nil {
+		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
+	}
+	dbGovEvent := dbGovEvents[0]
+
+	// do a deep equal
+	modelGovEventFromDB := dbGovEvent.DbToGovernanceData()
+	// check that retrieved fields match with inserted listing
+	if !reflect.DeepEqual(modelGovernanceEvent, modelGovEventFromDB) {
+		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelGovEventFromDB, modelGovernanceEvent)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete governance_event_test table: %v", err)
+	}
+
+}
+
+// TODO(IS): test update gov event -- test update that's not by listing
 
 // TestDeleteContentRevision tests that the deleting the ContentRevision works
 // TODO(IS) : this will delete more than you want. need to put some kind of hash for the gov event.
@@ -562,7 +841,7 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelGovernanceEvent, _ := setupSampleGovernanceEvent()
+	modelGovernanceEvent, _, _ := setupSampleGovernanceEvent()
 
 	// insert to table
 	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.GovernanceEvent{})
@@ -594,6 +873,3 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRows)
 	}
 }
-
-// TODO (IS): tests here to make sure that each dbtype that you save in the db is the same as the one
-// you pull out.
