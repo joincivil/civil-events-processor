@@ -18,6 +18,13 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 )
 
+const (
+	govStateDBModelName    = "LastGovernanceState"
+	whitelistedDBModelName = "Whitelisted"
+	listingNameDBModelName = "Name"
+	ownerAddDBModelName    = "OwnerAddresses"
+)
+
 func isStringInSlice(slice []string, target string) bool {
 	for _, str := range slice {
 		if target == str {
@@ -242,9 +249,9 @@ func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error 
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, "LastGovernanceState")
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, "whitelisted")
+	updatedFields = append(updatedFields, whitelistedDBModelName)
 	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
@@ -279,9 +286,9 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, "LastGovernanceState")
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, "whitelisted")
+	updatedFields = append(updatedFields, whitelistedDBModelName)
 	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
@@ -316,9 +323,9 @@ func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Ev
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, "LastGovernanceState")
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, "whitelisted")
+	updatedFields = append(updatedFields, whitelistedDBModelName)
 	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
@@ -353,9 +360,9 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, "LastGovernanceState")
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, "whitelisted")
+	updatedFields = append(updatedFields, whitelistedDBModelName)
 	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
@@ -391,9 +398,9 @@ func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) err
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, "LastGovernanceState")
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, "whitelisted")
+	updatedFields = append(updatedFields, whitelistedDBModelName)
 	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
@@ -428,9 +435,9 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) e
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, "LastGovernanceState")
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, "whitelisted")
+	updatedFields = append(updatedFields, whitelistedDBModelName)
 	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
@@ -451,7 +458,7 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) e
 		return errors.New("No NewName field found")
 	}
 	listing.SetName(name.(string))
-	updatedFields = append(updatedFields, "Name")
+	updatedFields = append(updatedFields, listingNameDBModelName)
 	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
@@ -531,7 +538,7 @@ func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel
 	}
 	listing.RemoveOwnerAddress(previousOwner.(common.Address))
 	listing.AddOwnerAddress(newOwner.(common.Address))
-	updatedFields = append(updatedFields, "OwnerAddresses")
+	updatedFields = append(updatedFields, ownerAddDBModelName)
 	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
