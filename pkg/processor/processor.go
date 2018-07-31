@@ -59,7 +59,7 @@ type EventProcessor struct {
 
 // Process runs the processor with the given set of raw CivilEvents
 // Returns the last error if one has occurred
-func (e *EventProcessor) Process(events []*crawlermodel.CivilEvent) error {
+func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	var err error
 	var ran bool
 	for _, event := range events {
@@ -90,7 +90,7 @@ func (e *EventProcessor) isValidCivilTCRContractEventName(name string) bool {
 	return isStringInSlice(eventNames, name)
 }
 
-func (e *EventProcessor) processNewsroomEvent(event *crawlermodel.CivilEvent) (bool, error) {
+func (e *EventProcessor) processNewsroomEvent(event *crawlermodel.Event) (bool, error) {
 	if !e.isValidNewsroomContractEventName(event.EventType()) {
 		return false, nil
 	}
@@ -114,7 +114,7 @@ func (e *EventProcessor) processNewsroomEvent(event *crawlermodel.CivilEvent) (b
 	return true, err
 }
 
-func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.CivilEvent) (bool, error) {
+func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, error) {
 	if !e.isValidCivilTCRContractEventName(event.EventType()) {
 		return false, nil
 	}
@@ -212,7 +212,7 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	return err
 }
 
-func (e *EventProcessor) processTCRApplication(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
@@ -249,7 +249,7 @@ func (e *EventProcessor) processTCRApplication(event *crawlermodel.CivilEvent) e
 	return err
 }
 
-func (e *EventProcessor) processTCRChallenge(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
@@ -286,7 +286,7 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.CivilEvent) err
 	return err
 }
 
-func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
@@ -323,7 +323,7 @@ func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Ci
 	return err
 }
 
-func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
@@ -360,7 +360,8 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.CivilE
 	return err
 }
 
-func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) error {
+
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
@@ -397,7 +398,7 @@ func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.CivilEvent
 	return err
 }
 
-func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
@@ -434,7 +435,7 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.CivilEve
 	return err
 }
 
-func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
@@ -455,7 +456,7 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.CivilEve
 	return err
 }
 
-func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
 
@@ -509,7 +510,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Civi
 	return err
 }
 
-func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel.CivilEvent) error {
+func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()

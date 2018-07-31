@@ -2,6 +2,8 @@
 // and testing smart contracts
 package contractutils
 
+// NOTE: very specific to Civil's smart contract implementation
+
 import (
 	"math/big"
 
@@ -54,7 +56,7 @@ func SetupRinkebyClient() (*ethclient.Client, error) {
 
 // SetupSimulatedClient returns an an instance of the simulated backend.
 func SetupSimulatedClient(gasLimit uint64) (*backends.SimulatedBackend, *bind.TransactOpts) {
-	key, _ := crypto.GenerateKey() // nolint: gas
+	key, _ := crypto.GenerateKey() // nolint: gosec
 	auth := bind.NewKeyedTransactor(key)
 	genAlloc := make(core.GenesisAlloc)
 	genAlloc[auth.From] = core.GenesisAccount{Balance: big.NewInt(9223372036854775807)}
@@ -97,7 +99,7 @@ func SetupAllTestContracts() (*AllTestContracts, error) {
 
 	client.Commit()
 
-	balance, _ := eip20.BalanceOf(&bind.CallOpts{}, auth.From)
+	balance, _ := eip20.BalanceOf(&bind.CallOpts{}, auth.From) // nolint: gosec
 	approveOpts := &bind.TransactOpts{
 		From:   auth.From,
 		Signer: auth.Signer,
