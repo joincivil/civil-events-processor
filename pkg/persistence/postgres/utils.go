@@ -49,6 +49,7 @@ func DbFieldNameFromModelName(exampleStruct interface{}, fieldName string) (stri
 }
 
 // StructFieldsForQuery is a generic Insert statement for any table
+// TODO(IS): gosec linting errors for bytes.buffer use here. figure out if it's inefficient
 func StructFieldsForQuery(exampleStruct interface{}, colon bool) (string, string) {
 	var fields bytes.Buffer
 	var fieldsWithColon bytes.Buffer
@@ -56,15 +57,15 @@ func StructFieldsForQuery(exampleStruct interface{}, colon bool) (string, string
 	typeOf := valStruct.Type()
 	for i := 0; i < valStruct.NumField(); i++ {
 		dbFieldName := typeOf.Field(i).Tag.Get("db")
-		fields.WriteString(dbFieldName)
+		fields.WriteString(dbFieldName) // nolint: gosec
 		if colon {
-			fieldsWithColon.WriteString(":")
-			fieldsWithColon.WriteString(dbFieldName)
+			fieldsWithColon.WriteString(":")         // nolint: gosec
+			fieldsWithColon.WriteString(dbFieldName) // nolint: gosec
 		}
 		if i+1 < valStruct.NumField() {
-			fields.WriteString(", ")
+			fields.WriteString(", ") // nolint: gosec
 			if colon {
-				fieldsWithColon.WriteString(", ")
+				fieldsWithColon.WriteString(", ") // nolint: gosec
 			}
 		}
 	}

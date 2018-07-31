@@ -216,23 +216,23 @@ func (p *PostgresPersister) DeleteGovenanceEvent(govEvent *model.GovernanceEvent
 
 func (p *PostgresPersister) insertIntoDBQueryString(tableName string, dbModelStruct interface{}) string {
 	fieldNames, fieldNamesColon := postgres.StructFieldsForQuery(dbModelStruct, true)
-	queryString := fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s);", tableName, fieldNames, fieldNamesColon) // nolint: gas
+	queryString := fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s);", tableName, fieldNames, fieldNamesColon) // nolint: gosec
 	return queryString
 }
 
 func (p *PostgresPersister) updateDBQueryBuffer(updatedFields []string, tableName string, dbModelStruct interface{}) (bytes.Buffer, error) {
 	var queryString bytes.Buffer
-	queryString.WriteString("UPDATE ")
-	queryString.WriteString(tableName)
-	queryString.WriteString(" SET ")
+	queryString.WriteString("UPDATE ") // nolint: gosec
+	queryString.WriteString(tableName) // nolint: gosec
+	queryString.WriteString(" SET ")   // nolint: gosec
 	for idx, field := range updatedFields {
 		dbFieldName, err := postgres.DbFieldNameFromModelName(dbModelStruct, field)
 		if err != nil {
 			return queryString, fmt.Errorf("Error getting %s from %s table DB struct tag: %v", field, tableName, err)
 		}
-		queryString.WriteString(fmt.Sprintf("%s=:%s", dbFieldName, dbFieldName))
+		queryString.WriteString(fmt.Sprintf("%s=:%s", dbFieldName, dbFieldName)) // nolint: gosec
 		if idx+1 < len(updatedFields) {
-			queryString.WriteString(", ")
+			queryString.WriteString(", ") // nolint: gosec
 		}
 	}
 	return queryString, nil
@@ -246,7 +246,7 @@ func (p *PostgresPersister) listingFromTableByAddress(query string, address stri
 
 func (p *PostgresPersister) listingByAddressQuery(tableName string) string {
 	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Listing{}, false)
-	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE contract_address=$1;", fieldNames, tableName) // nolint: gas
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE contract_address=$1;", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
 
@@ -264,12 +264,12 @@ func (p *PostgresPersister) updateListingQuery(updatedFields []string, tableName
 	if err != nil {
 		return "", err
 	}
-	queryString.WriteString(" WHERE contract_address=:contract_address;")
+	queryString.WriteString(" WHERE contract_address=:contract_address;") // nolint: gosec
 	return queryString.String(), nil
 }
 
 func (p *PostgresPersister) deleteListingQuery(tableName string) string {
-	queryString := fmt.Sprintf("DELETE FROM %s WHERE contract_address=:contract_address", tableName) // nolint: gas
+	queryString := fmt.Sprintf("DELETE FROM %s WHERE contract_address=:contract_address", tableName) // nolint: gosec
 	return queryString
 }
 
@@ -284,7 +284,7 @@ func (p *PostgresPersister) saveContentRevisionToTable(query string, revision *m
 
 func (p *PostgresPersister) contentRevisionQuery(tableName string) string {
 	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false)
-	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE (listing_address=$1 AND contract_content_id=$2 AND contract_revision_id=$3)", fieldNames, tableName) // nolint: gas
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE (listing_address=$1 AND contract_content_id=$2 AND contract_revision_id=$3)", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
 
@@ -296,7 +296,7 @@ func (p *PostgresPersister) contentRevisionFromTable(query string, address strin
 
 func (p *PostgresPersister) contentRevisionsQuery(tableName string) string {
 	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false)
-	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE (listing_address=$1 AND contract_content_id=$2)", fieldNames, tableName) // nolint: gas
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE (listing_address=$1 AND contract_content_id=$2)", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
 
@@ -311,12 +311,12 @@ func (p *PostgresPersister) updateContentRevisionQuery(updatedFields []string, t
 	if err != nil {
 		return "", err
 	}
-	queryString.WriteString(" WHERE (listing_address=:listing_address AND contract_content_id=:contract_content_id AND contract_revision_id=:contract_revision_id);")
+	queryString.WriteString(" WHERE (listing_address=:listing_address AND contract_content_id=:contract_content_id AND contract_revision_id=:contract_revision_id);") // nolint: gosec
 	return queryString.String(), nil
 }
 
 func (p *PostgresPersister) deleteContentRevisionQuery(tableName string) string {
-	queryString := fmt.Sprintf("DELETE FROM %s WHERE (listing_address=:listing_address AND contract_content_id=:contract_content_id AND contract_revision_id=:contract_revision_id)", tableName) // nolint: gas
+	queryString := fmt.Sprintf("DELETE FROM %s WHERE (listing_address=:listing_address AND contract_content_id=:contract_content_id AND contract_revision_id=:contract_revision_id)", tableName) // nolint: gosec
 	return queryString
 }
 
@@ -340,17 +340,17 @@ func (p *PostgresPersister) updateGovEventsQuery(updatedFields []string, tableNa
 	if err != nil {
 		return "", err
 	}
-	queryString.WriteString(" WHERE event_hash=:event_hash;")
+	queryString.WriteString(" WHERE event_hash=:event_hash;") // nolint: gosec
 	return queryString.String(), nil
 }
 
 func (p *PostgresPersister) govEventsQuery(tableName string) string {
 	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
-	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE listing_address=$1", fieldNames, tableName) // nolint: gas
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE listing_address=$1", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
 
 func (p *PostgresPersister) deleteGovEventQuery(tableName string) string {
-	queryString := fmt.Sprintf("DELETE FROM %s WHERE event_hash=:event_hash;", tableName) // nolint: gas
+	queryString := fmt.Sprintf("DELETE FROM %s WHERE event_hash=:event_hash;", tableName) // nolint: gosec
 	return queryString
 }
