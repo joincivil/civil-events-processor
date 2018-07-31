@@ -15,7 +15,6 @@ import (
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
-	// "github.com/joincivil/civil-events-processor/pkg/scraper"
 )
 
 const (
