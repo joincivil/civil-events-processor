@@ -4,12 +4,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	log "github.com/golang/glog"
 	"math/big"
 	"strings"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/filterer"
@@ -17,6 +16,13 @@ import (
 	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+)
+
+const (
+	govStateDBModelName    = "LastGovernanceState"
+	whitelistedDBModelName = "Whitelisted"
+	listingNameDBModelName = "Name"
+	ownerAddDBModelName    = "OwnerAddresses"
 )
 
 func isStringInSlice(slice []string, target string) bool {
@@ -157,14 +163,15 @@ func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, 
 }
 
 func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
-	senderAddr common.Address, metadata model.Metadata, eventType string) error {
+	senderAddr common.Address, metadata model.Metadata, eventType string, eventHash string) error {
 	govEvent := model.NewGovernanceEvent(
 		listingAddr,
 		senderAddr,
 		metadata,
 		eventType,
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
+		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochSecsInInt64(),
+		eventHash,
 	)
 	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
 	return err
@@ -203,16 +210,17 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		charterURI,
 		ownerAddresses,
 		contributorAddresses,
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
-		uint64(0),
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
+		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochSecsInInt64(),
+		int64(0),
+		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 	err = e.listingPersister.CreateListing(listing)
 	return err
 }
 
 func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -236,16 +244,20 @@ func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error 
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, whitelistedDBModelName)
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -269,16 +281,20 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, whitelistedDBModelName)
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Event) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -302,16 +318,20 @@ func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Ev
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, whitelistedDBModelName)
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -335,16 +355,21 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event)
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, whitelistedDBModelName)
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) error {
+
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -368,16 +393,20 @@ func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) err
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, whitelistedDBModelName)
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
@@ -401,16 +430,20 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) e
 			event.ContractAddress(),
 			metadata,
 			event.EventType(),
+			event.Hash(),
 		)
 		return err
 	}
 	listing.SetLastGovernanceState(lastGovState)
+	updatedFields = append(updatedFields, govStateDBModelName)
 	listing.SetWhitelisted(whitelisted)
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, whitelistedDBModelName)
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
 func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
@@ -425,7 +458,8 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) e
 		return errors.New("No NewName field found")
 	}
 	listing.SetName(name.(string))
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, listingNameDBModelName)
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 
@@ -474,7 +508,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		contentID.(*big.Int),
 		revisionID.(*big.Int),
 		revisionURI.(string),
-		uint64(crawlerutils.CurrentEpochSecsInInt()),
+		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 	if err != nil {
 		return err
@@ -484,6 +518,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 }
 
 func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel.Event) error {
+	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
@@ -503,7 +538,8 @@ func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel
 	}
 	listing.RemoveOwnerAddress(previousOwner.(common.Address))
 	listing.AddOwnerAddress(newOwner.(common.Address))
-	err = e.listingPersister.UpdateListing(listing)
+	updatedFields = append(updatedFields, ownerAddDBModelName)
+	err = e.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
 

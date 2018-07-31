@@ -37,7 +37,7 @@ func (a ArticlePayload) Hash() string {
 // struct
 func NewContentRevision(listingAddr common.Address, payload ArticlePayload, payloadHash string,
 	editorAddress common.Address, contractContentID *big.Int, contractRevisionID *big.Int,
-	revisionURI string, revisionDateTs uint64) *ContentRevision {
+	revisionURI string, revisionDateTs int64) *ContentRevision {
 	revision := &ContentRevision{
 		listingAddress:     listingAddr,
 		payload:            payload,
@@ -67,7 +67,7 @@ type ContentRevision struct {
 
 	revisionURI string
 
-	revisionDateTs uint64
+	revisionDateTs int64
 }
 
 // ListingAddress returns the associated listing address
@@ -106,6 +106,6 @@ func (c *ContentRevision) ContractRevisionID() *big.Int {
 }
 
 // RevisionDateTs returns the timestamp of the revision
-func (c *ContentRevision) RevisionDateTs() uint64 {
+func (c *ContentRevision) RevisionDateTs() int64 {
 	return c.revisionDateTs
 }

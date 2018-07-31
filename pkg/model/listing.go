@@ -29,8 +29,8 @@ const (
 // NewListing is a convenience function to initialize a new Listing struct
 func NewListing(name string, contractAddress common.Address, whitelisted bool,
 	lastState GovernanceState, url string, charterURI string, ownerAddresses []common.Address,
-	contributorAddresses []common.Address, createdDateTs uint64, applicationDateTs uint64,
-	approvalDateTs uint64, lastUpdatedDateTs uint64) *Listing {
+	contributorAddresses []common.Address, createdDateTs int64, applicationDateTs int64,
+	approvalDateTs int64, lastUpdatedDateTs int64) *Listing {
 	return &Listing{
 		name:                 name,
 		contractAddress:      contractAddress,
@@ -65,13 +65,13 @@ type Listing struct {
 
 	contributorAddresses []common.Address
 
-	createdDateTs uint64
+	createdDateTs int64
 
-	applicationDateTs uint64
+	applicationDateTs int64
 
-	approvalDateTs uint64
+	approvalDateTs int64
 
-	lastUpdatedDateTs uint64
+	lastUpdatedDateTs int64
 }
 
 // Name returns the newsroom name
@@ -172,26 +172,31 @@ func (l *Listing) RemoveContributorAddress(addr common.Address) {
 }
 
 // ApplicationDateTs returns the timestamp of the listing's initial application
-func (l *Listing) ApplicationDateTs() uint64 {
+func (l *Listing) ApplicationDateTs() int64 {
 	return l.applicationDateTs
 }
 
 // ApprovalDateTs returns the timestamp of the listing's whitelisted/approved
-func (l *Listing) ApprovalDateTs() uint64 {
+func (l *Listing) ApprovalDateTs() int64 {
 	return l.approvalDateTs
 }
 
 // SetApprovalDateTs sets the date of the last time this listing was whitelisted/approval
-func (l *Listing) SetApprovalDateTs(date uint64) {
+func (l *Listing) SetApprovalDateTs(date int64) {
 	l.approvalDateTs = date
 }
 
 // LastUpdatedDateTs returns the timestamp of the last update to the listing
-func (l *Listing) LastUpdatedDateTs() uint64 {
+func (l *Listing) LastUpdatedDateTs() int64 {
 	return l.lastUpdatedDateTs
 }
 
 // SetLastUpdatedDateTs sets the value of the last time this listing was updated
-func (l *Listing) SetLastUpdatedDateTs(date uint64) {
+func (l *Listing) SetLastUpdatedDateTs(date int64) {
 	l.lastUpdatedDateTs = date
+}
+
+// CreatedDateTs returns the timestamp of listing creation
+func (l *Listing) CreatedDateTs() int64 {
+	return l.createdDateTs
 }
