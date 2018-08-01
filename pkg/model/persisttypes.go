@@ -55,7 +55,3 @@ type GovernanceEventPersister interface {
 	// DeleteGovenanceEvent removes a governance event
 	DeleteGovenanceEvent(govEvent *GovernanceEvent) error
 }
-
-// type ProcessorPersister interface {
-// 	GetLastBlock
-// }

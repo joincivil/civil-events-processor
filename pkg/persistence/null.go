@@ -13,8 +13,8 @@ import (
 // Implements the ListingPersister, ContentRevisionPersister, and GovernanceEventPersister
 type NullPersister struct{}
 
-// ListingsByAddress returns a slice of Listings based on addresses
-func (n *NullPersister) ListingsByAddress(addresses []common.Address) ([]*model.Listing, error) {
+// ListingsByAddresses returns a slice of Listings based on addresses
+func (n *NullPersister) ListingsByAddresses(addresses []common.Address) ([]*model.Listing, error) {
 	return []*model.Listing{}, nil
 }
 
@@ -29,7 +29,7 @@ func (n *NullPersister) CreateListing(listing *model.Listing) error {
 }
 
 // UpdateListing updates fields on an existing listing
-func (n *NullPersister) UpdateListing(listing *model.Listing) error {
+func (n *NullPersister) UpdateListing(listing *model.Listing, updatedFields []string) error {
 	return nil
 }
 
@@ -54,7 +54,7 @@ func (n *NullPersister) CreateContentRevision(revision *model.ContentRevision) e
 }
 
 // UpdateContentRevision updates fields on an existing content revision
-func (n *NullPersister) UpdateContentRevision(revision *model.ContentRevision) error {
+func (n *NullPersister) UpdateContentRevision(revision *model.ContentRevision, updatedFields []string) error {
 	return nil
 }
 
@@ -74,7 +74,7 @@ func (n *NullPersister) CreateGovernanceEvent(govEvent *model.GovernanceEvent) e
 }
 
 // UpdateGovernanceEvent updates fields on an existing governance event
-func (n *NullPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent) error {
+func (n *NullPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent, updatedFields []string) error {
 	return nil
 }
 

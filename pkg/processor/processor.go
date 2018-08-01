@@ -83,6 +83,10 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		if err != nil {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
+		// if ran {
+		// 	continue
+		// }
+		// log.Infof("Unhandled event: %v", event.EventType())
 	}
 	return err
 }
@@ -103,65 +107,86 @@ func (e *EventProcessor) processNewsroomEvent(event *crawlermodel.Event) (bool, 
 	if !e.isValidNewsroomContractEventName(event.EventType()) {
 		return false, nil
 	}
+
 	var err error
+	ran := true
+	eventName := strings.Trim(event.EventType(), " _")
+
 	// Handling all the actionable events from Newsroom Addressses
-	switch event.EventType() {
+	switch eventName {
 	// When a listing's name has changed
 	case "NameChanged":
-		log.Info("Handling NameChanged")
+		log.Infof("Handling NameChanged for %v\n", event.ContractAddress().Hex())
 		err = e.processNewsroomNameChanged(event)
+
 	// When there is a new revision on content
 	case "RevisionUpdated":
-		log.Info("Handling RevisionUpdated")
+		log.Infof("Handling RevisionUpdated for %v\n", event.ContractAddress().Hex())
 		err = e.processNewsroomRevisionUpdated(event)
+
 	// When there is a new owner
 	case "OwnershipTransferred":
-		log.Info("Handling OwnershipTransferred")
+		log.Infof("Handling OwnershipTransferred for %v\n", event.ContractAddress().Hex())
 		err = e.processNewsroomOwnershipTransferred(event)
 
+	default:
+		ran = false
 	}
-	return true, err
+	return ran, err
 }
 
 func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, error) {
 	if !e.isValidCivilTCRContractEventName(event.EventType()) {
 		return false, nil
 	}
+
 	var err error
+	ran := true
+	eventName := strings.Trim(event.EventType(), " _")
+
+	var listingAddress common.Address
+	addr := event.EventPayload()["ListingAddress"]
+	if addr != nil {
+		listingAddress = addr.(common.Address)
+	}
+
 	// Handling all the actionable events from the TCR
-	switch event.EventType() {
+	switch eventName {
 	// When a listing has applied
-	case "_Application":
-		log.Info("Handling _Application")
+	case "Application":
+		log.Infof("Handling Application for %v\n", listingAddress.Hex())
 		err = e.processTCRApplication(event)
 
 	// When a listing has been challenged at any point
-	case "_Challenge":
-		log.Info("Handling _Challenge")
+	case "Challenge":
+		log.Infof("Handling Challenge for %v\n", listingAddress.Hex())
 		err = e.processTCRChallenge(event)
 
 	// When a listing gets whitelisted
-	case "_ApplicationWhitelisted":
-		log.Info("Handling _ApplicationWhitelisted")
+	case "ApplicationWhitelisted":
+		log.Infof("Handling ApplicationWhitelisted for %v\n", listingAddress.Hex())
 		err = e.processTCRApplicationWhitelisted(event)
 
 	// When an application for a listing has been removed
-	case "_ApplicationRemoved":
-		log.Info("Handling _ApplicationRemoved")
+	case "ApplicationRemoved":
+		log.Infof("Handling ApplicationRemoved for %v\n", listingAddress.Hex())
 		err = e.processTCRApplicationRemoved(event)
 
 	// When a listing is de-listed
-	case "_ListingRemoved":
-		log.Info("Handling _ListingRemoved")
+	case "ListingRemoved":
+		log.Infof("Handling ListingRemoved for %v\n", listingAddress.Hex())
 		err = e.processTCRListingRemoved(event)
 
 	// When a listing applicaiton has been withdrawn
-	case "_ListingWithdrawn":
-		log.Info("Handling _ListingWithdrawn")
+	case "ListingWithdrawn":
+		log.Infof("Handling ListingWithdrawn for %v\n", listingAddress.Hex())
 		err = e.processTCRListingWithdrawn(event)
+
+	default:
+		ran = false
 	}
 
-	return true, err
+	return ran, err
 }
 
 func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,

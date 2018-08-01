@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"flag"
+	log "github.com/golang/glog"
 	"os"
 	"time"
 
@@ -25,7 +26,7 @@ const (
 func checkCron(cr *cron.Cron) {
 	entries := cr.Entries()
 	for _, entry := range entries {
-		fmt.Printf("Proc run times: prev: %v, next: %v\n", entry.Prev, entry.Next)
+		log.Infof("Proc run times: prev: %v, next: %v\n", entry.Prev, entry.Next)
 	}
 }
 
@@ -39,7 +40,7 @@ func eventPersister(config *utils.ProcessorConfig) crawlermodel.EventDataPersist
 			config.PersisterPostgresDbname,
 		)
 		if err != nil {
-			fmt.Printf("Error connecting to Postgresql, stopping...; err: %v", err)
+			log.Errorf("Error connecting to Postgresql, stopping...; err: %v", err)
 			os.Exit(1)
 		}
 		return persister
@@ -86,14 +87,14 @@ func metadataScraper(config *utils.ProcessorConfig) model.MetadataScraper {
 func runProcessor(config *utils.ProcessorConfig) {
 	client, err := ethclient.Dial(config.EthAPIURL)
 	if err != nil {
-		fmt.Printf("Error connecting to eth API: err: %v", err)
+		log.Errorf("Error connecting to eth API: err: %v", err)
 		return
 	}
 
 	eventPersister := eventPersister(config)
 	events, err := eventPersister.RetrieveEvents(&crawlermodel.RetrieveEventsCriteria{})
 	if err != nil {
-		fmt.Printf("Error retrieving events: err: %v", err)
+		log.Errorf("Error retrieving events: err: %v", err)
 		return
 	}
 
@@ -108,33 +109,37 @@ func runProcessor(config *utils.ProcessorConfig) {
 	)
 	err = proc.Process(events)
 	if err != nil {
-		fmt.Printf("Error retrieving events: err: %v", err)
+		log.Errorf("Error retrieving events: err: %v", err)
 		return
 	}
-	fmt.Println("Done running processor")
+	log.Info("Done running processor")
 }
 
 func main() {
 	config := &utils.ProcessorConfig{}
+	flag.Usage = func() {
+		config.OutputUsage()
+		os.Exit(0)
+	}
+	flag.Parse()
+
 	err := config.PopulateFromEnv()
 	if err != nil {
 		config.OutputUsage()
-		fmt.Printf("Invalid crawler config: err: %v\n", err)
+		log.Errorf("Invalid crawler config: err: %v\n", err)
 		os.Exit(2)
 	}
 
 	cr := cron.New()
 	err = cr.AddFunc(config.CronConfig, func() { runProcessor(config) })
 	if err != nil {
-		fmt.Printf("Error starting: err: %v", err)
+		log.Errorf("Error starting: err: %v", err)
 		os.Exit(1)
 	}
 	cr.Start()
 
-	for {
-		select {
-		case <-time.After(checkRunSecs * time.Second):
-			checkCron(cr)
-		}
+	// Blocks here while the cron process runs
+	for range time.After(checkRunSecs * time.Second) {
+		checkCron(cr)
 	}
 }
