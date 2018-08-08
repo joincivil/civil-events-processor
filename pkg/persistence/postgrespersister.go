@@ -4,19 +4,27 @@ package persistence // import "github.com/joincivil/civil-events-processor/pkg/p
 import (
 	"bytes"
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
-	"github.com/joincivil/civil-events-processor/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
-	"math/big"
 	// driver for postgresql
 	_ "github.com/lib/pq"
+
+	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 )
 
 const (
 	listingTableName  = "listing"
 	contRevTableName  = "content_revision"
 	govEventTableName = "governance_event"
+
+	// Could make this configurable later if needed
+	maxOpenConns    = 20
+	maxIdleConns    = 5
+	connMaxLifetime = time.Nanosecond
 )
 
 // NewPostgresPersister creates a new postgres persister
@@ -28,6 +36,9 @@ func NewPostgresPersister(host string, port int, user string, password string, d
 		return pgPersister, fmt.Errorf("Error connecting to sqlx: %v", err)
 	}
 	pgPersister.db = db
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxIdleConns)
+	db.SetConnMaxLifetime(connMaxLifetime)
 	return pgPersister, nil
 }
 
@@ -73,13 +84,12 @@ func (p *PostgresPersister) ListingsByAddresses(addresses []common.Address) ([]*
 
 // ListingByAddress retrieves listings based on addresses
 func (p *PostgresPersister) ListingByAddress(address common.Address) (*model.Listing, error) {
-	listing := &model.Listing{}
 	queryString := p.listingByAddressQuery(listingTableName)
 	dbListing, err := p.listingFromTableByAddress(queryString, address.Hex())
 	if err != nil {
-		return listing, fmt.Errorf("Wasn't able to get listing from postgres table: %v", err)
+		return nil, fmt.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
-	listing = dbListing.DbToListingData()
+	listing := dbListing.DbToListingData()
 	return listing, err
 }
 
@@ -96,7 +106,7 @@ func (p *PostgresPersister) UpdateListing(listing *model.Listing, updatedFields 
 		return fmt.Errorf("Error creating query string for update: %v ", err)
 	}
 	dbListing := postgres.NewListing(listing)
-	_, err = p.db.NamedQuery(queryString, dbListing)
+	_, err = p.db.NamedExec(queryString, dbListing)
 	if err != nil {
 		return fmt.Errorf("Error updating fields in db: %v", err)
 	}
@@ -107,7 +117,7 @@ func (p *PostgresPersister) UpdateListing(listing *model.Listing, updatedFields 
 func (p *PostgresPersister) DeleteListing(listing *model.Listing) error {
 	dbListing := postgres.NewListing(listing)
 	queryString := p.deleteListingQuery(listingTableName)
-	_, err := p.db.NamedQuery(queryString, dbListing)
+	_, err := p.db.NamedExec(queryString, dbListing)
 	if err != nil {
 		return fmt.Errorf("Error deleting listing in db: %v", err)
 	}
@@ -153,7 +163,7 @@ func (p *PostgresPersister) UpdateContentRevision(revision *model.ContentRevisio
 		return fmt.Errorf("Error creating query string for update: %v ", err)
 	}
 	dbContentRevision := postgres.NewContentRevision(revision)
-	_, err = p.db.NamedQuery(queryString, dbContentRevision)
+	_, err = p.db.NamedExec(queryString, dbContentRevision)
 	if err != nil {
 		return fmt.Errorf("Error updating fields in db: %v", err)
 	}
@@ -164,7 +174,7 @@ func (p *PostgresPersister) UpdateContentRevision(revision *model.ContentRevisio
 func (p *PostgresPersister) DeleteContentRevision(revision *model.ContentRevision) error {
 	dbContRev := postgres.NewContentRevision(revision)
 	queryString := p.deleteContentRevisionQuery(contRevTableName)
-	_, err := p.db.NamedQuery(queryString, dbContRev)
+	_, err := p.db.NamedExec(queryString, dbContRev)
 	if err != nil {
 		return fmt.Errorf("Error deleting content revision in db: %v", err)
 	}
@@ -196,7 +206,7 @@ func (p *PostgresPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEven
 	}
 	// get values to fill in query
 	dbGovEvent := postgres.NewGovernanceEvent(govEvent)
-	_, err = p.db.NamedQuery(queryString, dbGovEvent)
+	_, err = p.db.NamedExec(queryString, dbGovEvent)
 	if err != nil {
 		return fmt.Errorf("Error updating fields in db: %v", err)
 	}
@@ -207,7 +217,7 @@ func (p *PostgresPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEven
 func (p *PostgresPersister) DeleteGovenanceEvent(govEvent *model.GovernanceEvent) error {
 	dbGovEvent := postgres.NewGovernanceEvent(govEvent)
 	queryString := p.deleteGovEventQuery(govEventTableName)
-	_, err := p.db.NamedQuery(queryString, dbGovEvent)
+	_, err := p.db.NamedExec(queryString, dbGovEvent)
 	if err != nil {
 		return fmt.Errorf("Error deleting governanceEvent in db: %v", err)
 	}
