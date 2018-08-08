@@ -4,4 +4,4 @@ ADD build build
 ADD build/processorcron /processorcron
 RUN chmod u+x /processorcron
 
-CMD ["/processorcron"]
+CMD ["/processorcron", "-logtostderr=true", "-stderrthreshold=INFO"]
