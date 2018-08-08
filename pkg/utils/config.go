@@ -101,7 +101,7 @@ func (c *ProcessorConfig) PopulateFromEnv() error {
 }
 
 func (c *ProcessorConfig) validateCronConfig() error {
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	parser := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	_, err := parser.Parse(c.CronConfig)
 	if err != nil {
 		return fmt.Errorf("Invalid cron config: '%v'", c.CronConfig)
