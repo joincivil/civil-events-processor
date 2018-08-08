@@ -11,7 +11,7 @@ import (
 func TestCrawlerConfig(t *testing.T) {
 	os.Setenv(
 		"PROCESSOR_CRON_CONFIG",
-		"* * * * *",
+		"* * * * * *",
 	)
 	os.Setenv(
 		"PROCESSOR_ETH_API_URL",
@@ -43,7 +43,7 @@ func TestCrawlerConfig(t *testing.T) {
 func TestBadPersisterNameCrawlerConfig(t *testing.T) {
 	os.Setenv(
 		"PROCESSOR_CRON_CONFIG",
-		"* * * * *",
+		"* * * * * *",
 	)
 	os.Setenv(
 		"PROCESSOR_ETH_API_URL",
@@ -80,7 +80,7 @@ func TestBadPersisterNameCrawlerConfig(t *testing.T) {
 func TestBadPersisterPostgresqlAddressCrawlerConfig(t *testing.T) {
 	os.Setenv(
 		"PROCESSOR_CRON_CONFIG",
-		"* * * * *",
+		"* * * * * *",
 	)
 	os.Setenv(
 		"PROCESSOR_ETH_API_URL",
@@ -113,7 +113,7 @@ func TestBadPersisterPostgresqlAddressCrawlerConfig(t *testing.T) {
 func TestBadPersisterPostgresqlPortCrawlerConfig(t *testing.T) {
 	os.Setenv(
 		"PROCESSOR_CRON_CONFIG",
-		"* * * * *",
+		"* * * * * *",
 	)
 	os.Setenv(
 		"PROCESSOR_ETH_API_URL",
@@ -146,7 +146,7 @@ func TestBadPersisterPostgresqlPortCrawlerConfig(t *testing.T) {
 func TestBadPersisterPostgresqlDBNameCrawlerConfig(t *testing.T) {
 	os.Setenv(
 		"PROCESSOR_CRON_CONFIG",
-		"* * * * *",
+		"* * * * * *",
 	)
 	os.Setenv(
 		"PROCESSOR_ETH_API_URL",
@@ -211,7 +211,7 @@ func TestBadCronConfigCrawlerConfig1(t *testing.T) {
 func TestBadCronConfigCrawlerConfig2(t *testing.T) {
 	os.Setenv(
 		"PROCESSOR_CRON_CONFIG",
-		"* * * * 145",
+		"* * * * * 145",
 	)
 	os.Setenv(
 		"PROCESSOR_ETH_API_URL",
