@@ -40,28 +40,30 @@ func byte32ToHexString(input [32]byte) string {
 
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
-	revisionPersister model.ContentRevisionPersister,
-	govEventPersister model.GovernanceEventPersister, contentScraper model.ContentScraper,
-	metadataScraper model.MetadataScraper) *EventProcessor {
+	revisionPersister model.ContentRevisionPersister, govEventPersister model.GovernanceEventPersister,
+	contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
+	civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
 	return &EventProcessor{
-		client:            client,
-		listingPersister:  listingPersister,
-		revisionPersister: revisionPersister,
-		govEventPersister: govEventPersister,
-		contentScraper:    contentScraper,
-		metadataScraper:   metadataScraper,
+		client:               client,
+		listingPersister:     listingPersister,
+		revisionPersister:    revisionPersister,
+		govEventPersister:    govEventPersister,
+		contentScraper:       contentScraper,
+		metadataScraper:      metadataScraper,
+		civilMetadataScraper: civilMetadataScraper,
 	}
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
 // for use via the API.
 type EventProcessor struct {
-	client            bind.ContractBackend
-	listingPersister  model.ListingPersister
-	revisionPersister model.ContentRevisionPersister
-	govEventPersister model.GovernanceEventPersister
-	contentScraper    model.ContentScraper
-	metadataScraper   model.MetadataScraper
+	client               bind.ContractBackend
+	listingPersister     model.ListingPersister
+	revisionPersister    model.ContentRevisionPersister
+	govEventPersister    model.GovernanceEventPersister
+	contentScraper       model.ContentScraper
+	metadataScraper      model.MetadataScraper
+	civilMetadataScraper model.CivilMetadataScraper
 }
 
 // Process runs the processor with the given set of raw CivilEvents
@@ -81,6 +83,10 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		if err != nil {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
+		// if ran {
+		// 	continue
+		// }
+		// log.Infof("Unhandled event: %v", event.EventType())
 	}
 	return err
 }
@@ -101,65 +107,86 @@ func (e *EventProcessor) processNewsroomEvent(event *crawlermodel.Event) (bool, 
 	if !e.isValidNewsroomContractEventName(event.EventType()) {
 		return false, nil
 	}
+
 	var err error
+	ran := true
+	eventName := strings.Trim(event.EventType(), " _")
+
 	// Handling all the actionable events from Newsroom Addressses
-	switch event.EventType() {
+	switch eventName {
 	// When a listing's name has changed
 	case "NameChanged":
-		log.Info("Handling NameChanged")
+		log.Infof("Handling NameChanged for %v\n", event.ContractAddress().Hex())
 		err = e.processNewsroomNameChanged(event)
+
 	// When there is a new revision on content
 	case "RevisionUpdated":
-		log.Info("Handling RevisionUpdated")
+		log.Infof("Handling RevisionUpdated for %v\n", event.ContractAddress().Hex())
 		err = e.processNewsroomRevisionUpdated(event)
+
 	// When there is a new owner
 	case "OwnershipTransferred":
-		log.Info("Handling OwnershipTransferred")
+		log.Infof("Handling OwnershipTransferred for %v\n", event.ContractAddress().Hex())
 		err = e.processNewsroomOwnershipTransferred(event)
 
+	default:
+		ran = false
 	}
-	return true, err
+	return ran, err
 }
 
 func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, error) {
 	if !e.isValidCivilTCRContractEventName(event.EventType()) {
 		return false, nil
 	}
+
 	var err error
+	ran := true
+	eventName := strings.Trim(event.EventType(), " _")
+
+	var listingAddress common.Address
+	addr := event.EventPayload()["ListingAddress"]
+	if addr != nil {
+		listingAddress = addr.(common.Address)
+	}
+
 	// Handling all the actionable events from the TCR
-	switch event.EventType() {
+	switch eventName {
 	// When a listing has applied
-	case "_Application":
-		log.Info("Handling _Application")
+	case "Application":
+		log.Infof("Handling Application for %v\n", listingAddress.Hex())
 		err = e.processTCRApplication(event)
 
 	// When a listing has been challenged at any point
-	case "_Challenge":
-		log.Info("Handling _Challenge")
+	case "Challenge":
+		log.Infof("Handling Challenge for %v\n", listingAddress.Hex())
 		err = e.processTCRChallenge(event)
 
 	// When a listing gets whitelisted
-	case "_ApplicationWhitelisted":
-		log.Info("Handling _ApplicationWhitelisted")
+	case "ApplicationWhitelisted":
+		log.Infof("Handling ApplicationWhitelisted for %v\n", listingAddress.Hex())
 		err = e.processTCRApplicationWhitelisted(event)
 
 	// When an application for a listing has been removed
-	case "_ApplicationRemoved":
-		log.Info("Handling _ApplicationRemoved")
+	case "ApplicationRemoved":
+		log.Infof("Handling ApplicationRemoved for %v\n", listingAddress.Hex())
 		err = e.processTCRApplicationRemoved(event)
 
 	// When a listing is de-listed
-	case "_ListingRemoved":
-		log.Info("Handling _ListingRemoved")
+	case "ListingRemoved":
+		log.Infof("Handling ListingRemoved for %v\n", listingAddress.Hex())
 		err = e.processTCRListingRemoved(event)
 
 	// When a listing applicaiton has been withdrawn
-	case "_ListingWithdrawn":
-		log.Info("Handling _ListingWithdrawn")
+	case "ListingWithdrawn":
+		log.Infof("Handling ListingWithdrawn for %v\n", listingAddress.Hex())
 		err = e.processTCRListingWithdrawn(event)
+
+	default:
+		ran = false
 	}
 
-	return true, err
+	return ran, err
 }
 
 func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
@@ -479,11 +506,13 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 	if !ok {
 		return errors.New("No revision id found")
 	}
+	// Metadata URI
 	revisionURI, ok := payload["Uri"]
 	if !ok {
 		return errors.New("No revision uri found")
 	}
 
+	// Pull data from the newsroom contract
 	newsroom, err := contract.NewNewsroomContract(listingAddress, e.client)
 	if err != nil {
 		return fmt.Errorf("Error creating newsroom contract: err: %v", err)
@@ -494,12 +523,18 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 	}
 	contentHash := byte32ToHexString(content.ContentHash)
 
-	scraperContent, err := e.contentScraper.ScrapeContent(revisionURI.(string))
+	// Scrape the metadata and content for the revision
+	metadata, scraperContent, err := e.scrapeData(revisionURI.(string))
 	if err != nil {
-		log.Errorf("Error scraping content: err: %v", err)
+		log.Errorf("Error scraping data: err: %v", err)
 	}
 
-	articlePayload := e.scraperContentToPayload(scraperContent)
+	var articlePayload model.ArticlePayload
+	if metadata != nil {
+		articlePayload = e.scraperDataToPayload(metadata, scraperContent)
+	}
+
+	// Store the new revision
 	revision := model.NewContentRevision(
 		listingAddress,
 		articlePayload,
@@ -510,9 +545,6 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		revisionURI.(string),
 		crawlerutils.CurrentEpochSecsInInt64(),
 	)
-	if err != nil {
-		return err
-	}
 	err = e.revisionPersister.CreateContentRevision(revision)
 	return err
 }
@@ -543,11 +575,73 @@ func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel
 	return err
 }
 
-func (e *EventProcessor) scraperContentToPayload(content *model.ScraperContent) model.ArticlePayload {
+func (e *EventProcessor) scrapeData(metadataURL string) (
+	*model.ScraperCivilMetadata, *model.ScraperContent, error) {
+	var err error
+	var civilMetadata *model.ScraperCivilMetadata
+	var content *model.ScraperContent
+
+	if metadataURL != "" {
+		civilMetadata, err = e.civilMetadataScraper.ScrapeCivilMetadata(metadataURL)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// TODO(PN): Use canonical URL or the revision URL here?
+	// TODO(PN): Commenting out the scraping of content until we make a decision on it
+
+	// if civilMetadata != nil && civilMetadata.RevisionContentURL() != "" {
+	// 	content, err = e.contentScraper.ScrapeContent(civilMetadata.RevisionContentURL())
+	// 	if err != nil {
+	// 		err = fmt.Errorf("Error scraping content: err: %v", err)
+	// 	}
+	// }
+	return civilMetadata, content, err
+}
+
+func (e *EventProcessor) scraperDataToPayload(metadata *model.ScraperCivilMetadata,
+	content *model.ScraperContent) model.ArticlePayload {
+	// TODO(PN): ArticlePayload should be a struct rather than a map
+	// TODO(PN): Do we need the content here?
 	payload := model.ArticlePayload{}
-	payload["text"] = content.Text()
-	payload["html"] = content.HTML()
-	payload["uri"] = content.URI()
-	payload["data"] = content.Data()
+	payload["title"] = metadata.Title()
+	payload["revisionContentHash"] = metadata.RevisionContentHash()
+	payload["revisionContentURL"] = metadata.RevisionContentURL()
+	payload["canonicalURL"] = metadata.CanonicalURL()
+	payload["slug"] = metadata.Slug()
+	payload["description"] = metadata.Description()
+	payload["primaryTag"] = metadata.PrimaryTag()
+	payload["revisionDate"] = metadata.RevisionDate()
+	payload["originalPublishDate"] = metadata.OriginalPublishDate()
+	payload["opinion"] = metadata.Opinion()
+	payload["schemaVersion"] = metadata.SchemaVersion()
+	payload["authors"] = e.buildAuthors(metadata)
+	payload["images"] = e.buildImages(metadata)
 	return payload
+}
+
+func (e *EventProcessor) buildAuthors(metadata *model.ScraperCivilMetadata) []map[string]interface{} {
+	authors := []map[string]interface{}{}
+	for _, author := range metadata.Authors() {
+		entry := map[string]interface{}{
+			"byline": author.Byline(),
+		}
+		authors = append(authors, entry)
+	}
+	return authors
+}
+
+func (e *EventProcessor) buildImages(metadata *model.ScraperCivilMetadata) []map[string]interface{} {
+	images := []map[string]interface{}{}
+	for _, image := range metadata.Images() {
+		entry := map[string]interface{}{
+			"url":  image.URL(),
+			"hash": image.Hash(),
+			"h":    image.Height(),
+			"w":    image.Width(),
+		}
+		images = append(images, entry)
+	}
+	return images
 }

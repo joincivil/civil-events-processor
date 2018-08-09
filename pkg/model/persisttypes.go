@@ -46,7 +46,7 @@ type ContentRevisionPersister interface {
 // and the aggregated data from the events.  Potentially to be used to service
 // the APIs to pull data.
 type GovernanceEventPersister interface {
-	// GovernanceEventsbyListingAddress retrieves governance events based on criteria
+	// GovernanceEventsByListingAddress retrieves governance events based on criteria
 	GovernanceEventsByListingAddress(address common.Address) ([]*GovernanceEvent, error)
 	// CreateGovernanceEvent creates a new governance event
 	CreateGovernanceEvent(govEvent *GovernanceEvent) error
