@@ -65,11 +65,32 @@ func governanceEventPersister(config *utils.ProcessorConfig) model.GovernanceEve
 }
 
 func persister(config *utils.ProcessorConfig) interface{} {
-	// if config.PersisterType == utils.PersisterTypePostgresql {
-	// 	return postgresPersister(config)
-	// }
+	if config.PersisterType == utils.PersisterTypePostgresql {
+		return postgresPersister(config)
+	}
 	// Default to the NullPersister
 	return &persistence.NullPersister{}
+}
+
+func postgresPersister(config *utils.ProcessorConfig) *persistence.PostgresPersister {
+	persister, err := persistence.NewPostgresPersister(
+		config.PersisterPostgresAddress,
+		config.PersisterPostgresPort,
+		config.PersisterPostgresUser,
+		config.PersisterPostgresPw,
+		config.PersisterPostgresDbname,
+	)
+	if err != nil {
+		log.Errorf("Error connecting to Postgresql, stopping...; err: %v", err)
+		os.Exit(1)
+	}
+	// Attempts to create all the necessary tables here
+	err = persister.CreateTables()
+	if err != nil {
+		log.Errorf("Error creating tables, stopping...; err: %v", err)
+		os.Exit(1)
+	}
+	return persister
 }
 
 func civilMetadataScraper(config *utils.ProcessorConfig) model.CivilMetadataScraper {
