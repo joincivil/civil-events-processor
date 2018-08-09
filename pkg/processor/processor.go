@@ -83,10 +83,6 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		if err != nil {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
-		// if ran {
-		// 	continue
-		// }
-		// log.Infof("Unhandled event: %v", event.EventType())
 	}
 	return err
 }
@@ -247,225 +243,68 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 }
 
 func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error {
-	var updatedFields []string
-	payload := event.EventPayload()
-	listingAddrInterface, ok := payload["ListingAddress"]
-	if !ok {
-		return errors.New("Unable to find the listing address in the payload")
-	}
-	listingAddress := listingAddrInterface.(common.Address)
-	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil && err != model.ErrPersisterNoResults {
-		return err
-	}
-	lastGovState := model.GovernanceStateApplied
-	whitelisted := false
-	if listing == nil {
-		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
-		if err != nil {
-			return err
-		}
-		metadata := map[string]interface{}{}
-		err = e.persistNewGovernanceEvent(
-			listingAddress,
-			event.ContractAddress(),
-			metadata,
-			event.EventType(),
-			event.Hash(),
-		)
-		return err
-	}
-	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, govStateDBModelName)
-	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, whitelistedDBModelName)
-	err = e.listingPersister.UpdateListing(listing, updatedFields)
-	return err
+	return e.processTCREvent(event, model.GovernanceStateApplied, false)
 }
 
 func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
-	var updatedFields []string
-	payload := event.EventPayload()
-	listingAddrInterface, ok := payload["ListingAddress"]
-	if !ok {
-		return errors.New("Unable to find the listing address in the payload")
-	}
-	listingAddress := listingAddrInterface.(common.Address)
-	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil && err != model.ErrPersisterNoResults {
-		return err
-	}
-	lastGovState := model.GovernanceStateChallenged
-	whitelisted := false
-	if listing == nil {
-		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
-		if err != nil {
-			return err
-		}
-		metadata := map[string]interface{}{}
-		err = e.persistNewGovernanceEvent(
-			listingAddress,
-			event.ContractAddress(),
-			metadata,
-			event.EventType(),
-			event.Hash(),
-		)
-		return err
-	}
-	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, govStateDBModelName)
-	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, whitelistedDBModelName)
-	err = e.listingPersister.UpdateListing(listing, updatedFields)
-	return err
+	return e.processTCREvent(event, model.GovernanceStateChallenged, false)
 }
 
 func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Event) error {
-	var updatedFields []string
-	payload := event.EventPayload()
-	listingAddrInterface, ok := payload["ListingAddress"]
-	if !ok {
-		return errors.New("Unable to find the listing address in the payload")
-	}
-	listingAddress := listingAddrInterface.(common.Address)
-	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil && err != model.ErrPersisterNoResults {
-		return err
-	}
-	lastGovState := model.GovernanceStateAppWhitelisted
-	whitelisted := true
-	if listing == nil {
-		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
-		if err != nil {
-			return err
-		}
-		metadata := map[string]interface{}{}
-		err = e.persistNewGovernanceEvent(
-			listingAddress,
-			event.ContractAddress(),
-			metadata,
-			event.EventType(),
-			event.Hash(),
-		)
-		return err
-	}
-	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, govStateDBModelName)
-	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, whitelistedDBModelName)
-	err = e.listingPersister.UpdateListing(listing, updatedFields)
-	return err
+	return e.processTCREvent(event, model.GovernanceStateAppWhitelisted, true)
 }
 
 func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event) error {
-	var updatedFields []string
-	payload := event.EventPayload()
-	listingAddrInterface, ok := payload["ListingAddress"]
-	if !ok {
-		return errors.New("Unable to find the listing address in the payload")
-	}
-	listingAddress := listingAddrInterface.(common.Address)
-	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil && err != model.ErrPersisterNoResults {
-		return err
-	}
-	lastGovState := model.GovernanceStateAppRemoved
-	whitelisted := false
-	if listing == nil {
-		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
-		if err != nil {
-			return err
-		}
-		metadata := map[string]interface{}{}
-		err = e.persistNewGovernanceEvent(
-			listingAddress,
-			event.ContractAddress(),
-			metadata,
-			event.EventType(),
-			event.Hash(),
-		)
-		return err
-	}
-	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, govStateDBModelName)
-	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, whitelistedDBModelName)
-	err = e.listingPersister.UpdateListing(listing, updatedFields)
-	return err
+	return e.processTCREvent(event, model.GovernanceStateAppRemoved, false)
 }
 
 func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) error {
-	var updatedFields []string
-	payload := event.EventPayload()
-	listingAddrInterface, ok := payload["ListingAddress"]
-	if !ok {
-		return errors.New("Unable to find the listing address in the payload")
-	}
-	listingAddress := listingAddrInterface.(common.Address)
-	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil && err != model.ErrPersisterNoResults {
-		return err
-	}
-	lastGovState := model.GovernanceStateRemoved
-	whitelisted := false
-	if listing == nil {
-		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
-		if err != nil {
-			return err
-		}
-		metadata := map[string]interface{}{}
-		err = e.persistNewGovernanceEvent(
-			listingAddress,
-			event.ContractAddress(),
-			metadata,
-			event.EventType(),
-			event.Hash(),
-		)
-		return err
-	}
-	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, govStateDBModelName)
-	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, whitelistedDBModelName)
-	err = e.listingPersister.UpdateListing(listing, updatedFields)
-	return err
+	return e.processTCREvent(event, model.GovernanceStateRemoved, false)
 }
 
 func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) error {
-	var updatedFields []string
+	return e.processTCREvent(event, model.GovernanceStateWithdrawn, false)
+}
+
+func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState model.GovernanceState,
+	whitelisted bool) error {
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
 	if !ok {
 		return errors.New("Unable to find the listing address in the payload")
 	}
+
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != model.ErrPersisterNoResults {
-		return fmt.Errorf("Error retrieving listing by address: err: %v", err)
-	}
-	lastGovState := model.GovernanceStateWithdrawn
-	whitelisted := false
-	if listing == nil {
-		err = e.persistNewListing(listingAddress, whitelisted, lastGovState)
-		if err != nil {
-			return fmt.Errorf("Error persisting new listing: err: %v", err)
-		}
-		metadata := map[string]interface{}{}
-		err = e.persistNewGovernanceEvent(
-			listingAddress,
-			event.ContractAddress(),
-			metadata,
-			event.EventType(),
-			event.Hash(),
-		)
 		return err
 	}
-	listing.SetLastGovernanceState(lastGovState)
-	updatedFields = append(updatedFields, govStateDBModelName)
-	listing.SetWhitelisted(whitelisted)
-	updatedFields = append(updatedFields, whitelistedDBModelName)
-	err = e.listingPersister.UpdateListing(listing, updatedFields)
-	return err
+
+	if listing == nil {
+		err = e.persistNewListing(listingAddress, whitelisted, govState)
+	} else {
+		var updatedFields []string
+		listing.SetLastGovernanceState(govState)
+		updatedFields = append(updatedFields, govStateDBModelName)
+		listing.SetWhitelisted(whitelisted)
+		updatedFields = append(updatedFields, whitelistedDBModelName)
+		err = e.listingPersister.UpdateListing(listing, updatedFields)
+	}
+
+	metadata := map[string]interface{}{}
+	govErr := e.persistNewGovernanceEvent(
+		listingAddress,
+		event.ContractAddress(),
+		metadata,
+		event.EventType(),
+		event.Hash(),
+	)
+
+	if err != nil {
+		return err
+	}
+	return govErr
+
 }
 
 func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) error {

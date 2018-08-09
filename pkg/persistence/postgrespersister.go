@@ -77,9 +77,9 @@ func (p *PostgresPersister) ListingsByAddresses(addresses []common.Address) ([]*
 		listing, err := p.ListingByAddress(address)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				err = model.ErrPersisterNoResults
+				return listings, model.ErrPersisterNoResults
 			}
-			return listings, err
+			return listings, fmt.Errorf("Wasn't able to get listings from postgres table: %v", err)
 		}
 		listings = append(listings, listing)
 	}
@@ -92,7 +92,7 @@ func (p *PostgresPersister) ListingByAddress(address common.Address) (*model.Lis
 	dbListing, err := p.listingFromTableByAddress(queryString, address.Hex())
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrPersisterNoResults
+			return nil, model.ErrPersisterNoResults
 		}
 		return nil, fmt.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
@@ -139,16 +139,15 @@ func (p *PostgresPersister) CreateContentRevision(revision *model.ContentRevisio
 
 // ContentRevision retrieves a specific content revision for newsroom content
 func (p *PostgresPersister) ContentRevision(address common.Address, contentID *big.Int, revisionID *big.Int) (*model.ContentRevision, error) {
-	contRev := &model.ContentRevision{}
 	queryString := p.contentRevisionQuery(contRevTableName)
 	dbContRev, err := p.contentRevisionFromTable(queryString, address.Hex(), contentID.Int64(), revisionID.Int64())
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrPersisterNoResults
+			return nil, model.ErrPersisterNoResults
 		}
-		return contRev, fmt.Errorf("Wasn't able to get ContentRevision from postgres table: %v", err)
+		return nil, fmt.Errorf("Wasn't able to get ContentRevision from postgres table: %v", err)
 	}
-	contRev = dbContRev.DbToContentRevisionData()
+	contRev := dbContRev.DbToContentRevisionData()
 	return contRev, err
 }
 
@@ -159,7 +158,7 @@ func (p *PostgresPersister) ContentRevisions(address common.Address, contentID *
 	dbContRevs, err := p.contentRevisionsFromTable(queryString, address.Hex(), contentID.Int64())
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrPersisterNoResults
+			return contRevs, model.ErrPersisterNoResults
 		}
 		return contRevs, fmt.Errorf("Wasn't able to get ContentRevisions from postgres table: %v", err)
 	}
