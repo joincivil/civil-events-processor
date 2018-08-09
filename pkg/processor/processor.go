@@ -255,7 +255,7 @@ func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error 
 	}
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	lastGovState := model.GovernanceStateApplied
@@ -292,7 +292,7 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
 	}
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	lastGovState := model.GovernanceStateChallenged
@@ -329,7 +329,7 @@ func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Ev
 	}
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	lastGovState := model.GovernanceStateAppWhitelisted
@@ -366,7 +366,7 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event)
 	}
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	lastGovState := model.GovernanceStateAppRemoved
@@ -395,7 +395,6 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event)
 }
 
 func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) error {
-
 	var updatedFields []string
 	payload := event.EventPayload()
 	listingAddrInterface, ok := payload["ListingAddress"]
@@ -404,7 +403,7 @@ func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) err
 	}
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	lastGovState := model.GovernanceStateRemoved
@@ -441,7 +440,7 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) e
 	}
 	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return fmt.Errorf("Error retrieving listing by address: err: %v", err)
 	}
 	lastGovState := model.GovernanceStateWithdrawn
@@ -474,7 +473,7 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) e
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return fmt.Errorf("Error retrieving listing by address: err: %v", err)
 	}
 	if listing == nil {
@@ -554,7 +553,7 @@ func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	if listing == nil {
