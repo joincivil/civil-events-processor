@@ -55,3 +55,9 @@ type GovernanceEventPersister interface {
 	// DeleteGovenanceEvent removes a governance event
 	DeleteGovenanceEvent(govEvent *GovernanceEvent) error
 }
+
+// CronPersister persists information needed for the cron to run
+type CronPersister interface {
+	TimestampOfLastEvent() int64
+	SaveTimestamp(timestamp int64)
+}

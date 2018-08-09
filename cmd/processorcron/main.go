@@ -98,11 +98,14 @@ func runProcessor(config *utils.ProcessorConfig) {
 		return
 	}
 
+	cronPersister := persistence.NewCronPersister()
+
 	proc := processor.NewEventProcessor(
 		client,
 		listingPersister(config),
 		contentRevisionPersister(config),
 		governanceEventPersister(config),
+		cronPersister,
 		contentScraper(config),
 		metadataScraper(config),
 		civilMetadataScraper(config),

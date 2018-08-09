@@ -41,13 +41,14 @@ func byte32ToHexString(input [32]byte) string {
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
 	revisionPersister model.ContentRevisionPersister, govEventPersister model.GovernanceEventPersister,
-	contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
+	cronPersister model.CronPersister, contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
 	civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
 	return &EventProcessor{
 		client:               client,
 		listingPersister:     listingPersister,
 		revisionPersister:    revisionPersister,
 		govEventPersister:    govEventPersister,
+		cronPersister:        cronPersister,
 		contentScraper:       contentScraper,
 		metadataScraper:      metadataScraper,
 		civilMetadataScraper: civilMetadataScraper,
@@ -61,17 +62,23 @@ type EventProcessor struct {
 	listingPersister     model.ListingPersister
 	revisionPersister    model.ContentRevisionPersister
 	govEventPersister    model.GovernanceEventPersister
+	cronPersister        model.CronPersister
 	contentScraper       model.ContentScraper
 	metadataScraper      model.MetadataScraper
 	civilMetadataScraper model.CivilMetadataScraper
 }
 
 // Process runs the processor with the given set of raw CivilEvents
-// Returns the last error if one has occurred
+// Returns the last error if one has occurred, saves latest timestamp seen to cron persistence
 func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	var err error
 	var ran bool
 	for _, event := range events {
+		timestamp := int64(event.Timestamp())
+		if timestamp > e.cronPersister.TimestampOfLastEvent() {
+			e.cronPersister.SaveTimestamp(timestamp)
+		}
+
 		ran, err = e.processNewsroomEvent(event)
 		if err != nil {
 			log.Errorf("Error processing newsroom event: err: %v\n", err)
