@@ -73,10 +73,11 @@ type EventProcessor struct {
 func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	var err error
 	var ran bool
+	maxTimestamp := e.cronPersister.TimestampOfLastEvent()
 	for _, event := range events {
 		timestamp := int64(event.Timestamp())
-		if timestamp > e.cronPersister.TimestampOfLastEvent() {
-			e.cronPersister.SaveTimestamp(timestamp)
+		if timestamp > maxTimestamp {
+			maxTimestamp = timestamp
 		}
 
 		ran, err = e.processNewsroomEvent(event)
@@ -95,6 +96,7 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		// }
 		// log.Infof("Unhandled event: %v", event.EventType())
 	}
+	e.cronPersister.SaveTimestamp(maxTimestamp)
 	return err
 }
 
