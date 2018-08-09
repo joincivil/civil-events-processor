@@ -3,6 +3,7 @@ package persistence // import "github.com/joincivil/civil-events-processor/pkg/p
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"math/big"
 	"time"
@@ -75,6 +76,9 @@ func (p *PostgresPersister) ListingsByAddresses(addresses []common.Address) ([]*
 	for _, address := range addresses {
 		listing, err := p.ListingByAddress(address)
 		if err != nil {
+			if err == sql.ErrNoRows {
+				err = model.ErrPersisterNoResults
+			}
 			return listings, err
 		}
 		listings = append(listings, listing)
@@ -87,6 +91,9 @@ func (p *PostgresPersister) ListingByAddress(address common.Address) (*model.Lis
 	queryString := p.listingByAddressQuery(listingTableName)
 	dbListing, err := p.listingFromTableByAddress(queryString, address.Hex())
 	if err != nil {
+		if err == sql.ErrNoRows {
+			err = model.ErrPersisterNoResults
+		}
 		return nil, fmt.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
 	listing := dbListing.DbToListingData()
@@ -136,6 +143,9 @@ func (p *PostgresPersister) ContentRevision(address common.Address, contentID *b
 	queryString := p.contentRevisionQuery(contRevTableName)
 	dbContRev, err := p.contentRevisionFromTable(queryString, address.Hex(), contentID.Int64(), revisionID.Int64())
 	if err != nil {
+		if err == sql.ErrNoRows {
+			err = model.ErrPersisterNoResults
+		}
 		return contRev, fmt.Errorf("Wasn't able to get ContentRevision from postgres table: %v", err)
 	}
 	contRev = dbContRev.DbToContentRevisionData()
@@ -148,6 +158,9 @@ func (p *PostgresPersister) ContentRevisions(address common.Address, contentID *
 	queryString := p.contentRevisionsQuery(contRevTableName)
 	dbContRevs, err := p.contentRevisionsFromTable(queryString, address.Hex(), contentID.Int64())
 	if err != nil {
+		if err == sql.ErrNoRows {
+			err = model.ErrPersisterNoResults
+		}
 		return contRevs, fmt.Errorf("Wasn't able to get ContentRevisions from postgres table: %v", err)
 	}
 	for _, dbContRev := range dbContRevs {
@@ -186,6 +199,9 @@ func (p *PostgresPersister) GovernanceEventsByListingAddress(address common.Addr
 	govEvents := []*model.GovernanceEvent{}
 	queryString := p.govEventsQuery(govEventTableName)
 	dbGovEvents, err := p.govEventsFromTable(queryString, address.Hex())
+	if err == sql.ErrNoRows {
+		err = model.ErrPersisterNoResults
+	}
 	for i, dbGovEvent := range dbGovEvents {
 		govEvents[i] = dbGovEvent.DbToGovernanceData()
 	}

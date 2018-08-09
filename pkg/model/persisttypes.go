@@ -2,8 +2,17 @@
 package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	"errors"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+)
+
+var (
+	// ErrPersisterNoResults is an error that represents no results from
+	// the persister on queries.  Should be returned by the persisters
+	// on event of no results in retrieval queries
+	ErrPersisterNoResults = errors.New("No results from persister")
 )
 
 // errors must not be returned in valid conditions, such as when there is no
