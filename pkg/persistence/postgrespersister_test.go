@@ -834,7 +834,7 @@ func TestTypeExistsInCronTable(t *testing.T) {
 
 	err = deleteTestTable(persister, tableName)
 	if err != nil {
-		t.Errorf("Could not delete governance_event_test table: %v", err)
+		t.Errorf("Could not delete %s table: %v", tableName, err)
 	}
 }
 
@@ -857,7 +857,7 @@ func TestTimestampOfLastEventForCron(t *testing.T) {
 
 	err = deleteTestTable(persister, tableName)
 	if err != nil {
-		t.Errorf("Could not delete governance_event_test table: %v", err)
+		t.Errorf("Could not delete %s table: %v", tableName, err)
 	}
 }
 
@@ -904,6 +904,6 @@ func TestUpdateTimestampForCron(t *testing.T) {
 
 	err = deleteTestTable(persister, tableName)
 	if err != nil {
-		t.Errorf("Could not delete governance_event_test table: %v", err)
+		t.Errorf("Could not delete %s table: %v", tableName, err)
 	}
 }
