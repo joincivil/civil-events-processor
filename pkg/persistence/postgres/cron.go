@@ -31,8 +31,8 @@ type CronData struct {
 	DataType      string `db:"data_type"`
 }
 
-// NewCron creates a CronData model for DB with data to save
-func NewCron(dataPersisted string, dataType string) *CronData {
+// NewCronData creates a CronData model for DB with data to save
+func NewCronData(dataPersisted string, dataType string) *CronData {
 	return &CronData{DataPersisted: dataPersisted, DataType: dataType}
 }
 

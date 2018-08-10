@@ -803,7 +803,6 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 
 /*
 All tests for cron table:
-- test to see that
 */
 
 func TestTypeExistsInCronTable(t *testing.T) {

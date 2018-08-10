@@ -445,7 +445,7 @@ func (p *PostgresPersister) lastCronTimestampFromTable(tableName string) (int64,
 func (p *PostgresPersister) updateCronTimestampInTable(timestamp int64, tableName string) error {
 	// Check if timestamp row exists
 	timestampExists := true
-	cronData := postgres.NewCron(postgres.TimestampToString(timestamp), postgres.TimestampDataType)
+	cronData := postgres.NewCronData(postgres.TimestampToString(timestamp), postgres.TimestampDataType)
 
 	_, err := p.typeExistsInCronTable(tableName, cronData.DataType)
 	if err != nil {
