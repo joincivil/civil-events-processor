@@ -2,6 +2,7 @@ package processor_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -32,6 +33,7 @@ type TestPersister struct {
 	listings  map[string]*model.Listing
 	revisions map[string][]*model.ContentRevision
 	govEvents map[string][]*model.GovernanceEvent
+	timestamp int64
 }
 
 // GetListingsByAddress returns a slice of Listings based on addresses
@@ -226,12 +228,13 @@ func (t *TestPersister) DeleteGovenanceEvent(govEvent *model.GovernanceEvent) er
 	return nil
 }
 
-func (t *TestPersister) TimestampOfLastEvent() int64 {
-	return int64(0)
+func (t *TestPersister) TimestampOfLastEventForCron() (int64, error) {
+	return t.timestamp, nil
 }
 
-func (t *TestPersister) SaveTimestamp(timestamp int64) {
-
+func (t *TestPersister) UpdateTimestampForCron(timestamp int64) error {
+	t.timestamp = timestamp
+	return nil
 }
 
 type TestScraper struct{}
@@ -883,6 +886,7 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
+	fmt.Println(err)
 	if err == nil {
 		t.Errorf("Should have failed processing events due to non existent listing")
 	}
@@ -971,6 +975,7 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
+	fmt.Println(err)
 	if err == nil {
 		t.Errorf("Should have failed processing events due to non existent listing")
 	}

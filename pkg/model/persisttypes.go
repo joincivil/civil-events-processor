@@ -67,6 +67,8 @@ type GovernanceEventPersister interface {
 
 // CronPersister persists information needed for the cron to run
 type CronPersister interface {
-	TimestampOfLastEvent() int64
-	SaveTimestamp(timestamp int64)
+	// TimestampOfLastEventForCron returns the timestamp for the last event seen by the processor
+	TimestampOfLastEventForCron() (int64, error)
+	// UpdateTimestampForCron updates the timestamp of the last event seen by the cron
+	UpdateTimestampForCron(timestamp int64) error
 }

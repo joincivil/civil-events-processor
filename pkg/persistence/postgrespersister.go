@@ -21,6 +21,7 @@ const (
 	listingTableName  = "listing"
 	contRevTableName  = "content_revision"
 	govEventTableName = "governance_event"
+	cronTableName     = "cron"
 
 	// Could make this configurable later if needed
 	maxOpenConns    = 20
@@ -108,14 +109,24 @@ func (p *PostgresPersister) CreateGovernanceEvent(govEvent *model.GovernanceEven
 	return p.createGovernanceEventInTable(govEvent, govEventTableName)
 }
 
-// UpdateGovernanceEvent updates fields on an existing governance event based on eventHash
+// UpdateGovernanceEvent updates fields on an existing governance event
 func (p *PostgresPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent, updatedFields []string) error {
 	return p.updateGovernanceEventInTable(govEvent, updatedFields, govEventTableName)
 }
 
-// DeleteGovenanceEvent removes a governance event based on eventHash
+// DeleteGovenanceEvent removes a governance event
 func (p *PostgresPersister) DeleteGovenanceEvent(govEvent *model.GovernanceEvent) error {
 	return p.deleteGovenanceEventFromTable(govEvent, govEventTableName)
+}
+
+// TimestampOfLastEventForCron returns the last timestamp from cron
+func (p *PostgresPersister) TimestampOfLastEventForCron() (int64, error) {
+	return p.lastCronTimestampFromTable(cronTableName)
+}
+
+// UpdateTimestampForCron updates the timestamp saved in cron table
+func (p *PostgresPersister) UpdateTimestampForCron(timestamp int64) error {
+	return p.updateCronTimestampInTable(timestamp, cronTableName)
 }
 
 // CreateTables creates the tables for processor if they don't exist
@@ -124,6 +135,7 @@ func (p *PostgresPersister) CreateTables() error {
 	contRevTableQuery := postgres.CreateContentRevisionTableQuery()
 	govEventTableQuery := postgres.CreateGovernanceEventTableQuery()
 	listingTableQuery := postgres.CreateListingTableQuery()
+	cronTableQuery := postgres.CreateCronTableQuery()
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -134,6 +146,10 @@ func (p *PostgresPersister) CreateTables() error {
 		return fmt.Errorf("Error creating governance_event table in postgres: %v", err)
 	}
 	_, err = p.db.Exec(listingTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating listing table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(cronTableQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating listing table in postgres: %v", err)
 	}
@@ -405,4 +421,67 @@ func (p *PostgresPersister) deleteGovenanceEventFromTable(govEvent *model.Govern
 func (p *PostgresPersister) deleteGovEventQuery(tableName string) string {
 	queryString := fmt.Sprintf("DELETE FROM %s WHERE event_hash=:event_hash;", tableName) // nolint: gosec
 	return queryString
+}
+
+func (p *PostgresPersister) lastCronTimestampFromTable(tableName string) (int64, error) {
+	// First make sure that the database has one row:
+	numRowsb, err := p.countNumRows(tableName)
+	if err != nil {
+		return 0, fmt.Errorf("Error counting rows in cron table before update: %v", err)
+	}
+
+	cronData := postgres.CronData{}
+	if numRowsb == 0 {
+		queryStringInit := fmt.Sprintf("INSERT into %s(timestamp) values(0)", tableName) // nolint: gosec
+		_, err = p.db.Exec(queryStringInit)
+		if err != nil {
+			return cronData.Timestamp, fmt.Errorf("Error saving timestamp to table: %v", err)
+		}
+	}
+	queryString := fmt.Sprintf("SELECT * from %s", tableName) // nolint: gosec
+	err = p.db.Get(&cronData, queryString)
+	if err != nil {
+		return cronData.Timestamp, err
+	}
+	return cronData.Timestamp, nil
+}
+
+func (p *PostgresPersister) updateCronTimestampInTable(timestamp int64, tableName string) error {
+	// First make sure that the database has one row:
+	numRowsb, err := p.countNumRows(tableName)
+	if err != nil {
+		return fmt.Errorf("Error counting rows in cron table before update: %v", err)
+	}
+
+	cronData := postgres.NewCron(timestamp)
+	if numRowsb == 0 {
+		queryString := fmt.Sprintf("INSERT INTO %s(timestamp) values (:timestamp);", tableName) // nolint: gosec
+		_, err := p.db.NamedExec(queryString, cronData)
+		if err != nil {
+			return fmt.Errorf("Error saving listing to table: %v", err)
+		}
+	} else {
+		updatedFields := []string{"timestamp"}
+		queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, cronData)
+		if err != nil {
+			return err
+		}
+		_, err = p.db.NamedExec(queryString.String(), cronData)
+		if err != nil {
+			return fmt.Errorf("Error updating fields in db: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func (p *PostgresPersister) countNumRows(tableName string) (int, error) {
+	var numRowsb int
+	queryString := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, tableName) // nolint: gosec
+	// NOTE: connection is closed upon Scan
+	err := p.db.QueryRow(queryString).Scan(&numRowsb)
+	if err != nil {
+		return 0, fmt.Errorf("Problem getting count from table: %v", err)
+	}
+	return numRowsb, err
 }

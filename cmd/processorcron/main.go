@@ -64,6 +64,11 @@ func governanceEventPersister(config *utils.ProcessorConfig) model.GovernanceEve
 	return p.(model.GovernanceEventPersister)
 }
 
+func cronPersister(config *utils.ProcessorConfig) model.CronPersister {
+	p := persister(config)
+	return p.(model.CronPersister)
+}
+
 func persister(config *utils.ProcessorConfig) interface{} {
 	if config.PersisterType == utils.PersisterTypePostgresql {
 		return postgresPersister(config)
@@ -119,14 +124,12 @@ func runProcessor(config *utils.ProcessorConfig) {
 		return
 	}
 
-	cronPersister := persistence.NewCronPersister()
-
 	proc := processor.NewEventProcessor(
 		client,
 		listingPersister(config),
 		contentRevisionPersister(config),
 		governanceEventPersister(config),
-		cronPersister,
+		cronPersister(config),
 		contentScraper(config),
 		metadataScraper(config),
 		civilMetadataScraper(config),

@@ -38,6 +38,10 @@ func randomHex(n int) (string, error) {
 
 func setupDBConnection() (*PostgresPersister, error) {
 	postgresPersister, err := NewPostgresPersister(postgresHost, postgresPort, postgresUser, postgresPswd, postgresDBName)
+	err = postgresPersister.CreateTables()
+	if err != nil {
+		fmt.Errorf("Error setting up tables in db: %v", err)
+	}
 	return postgresPersister, err
 }
 
@@ -54,6 +58,8 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreateContentRevisionTableQueryString(tableName)
 	case "governance_event_test":
 		queryString = postgres.CreateGovernanceEventTableQueryString(tableName)
+	case "cron_test":
+		queryString = postgres.CreateCronTableQueryString(tableName)
 	}
 	_, err = persister.db.Query(queryString)
 	if err != nil {
@@ -71,6 +77,8 @@ func deleteTestTable(persister *PostgresPersister, tableName string) error {
 		_, err = persister.db.Query("DROP TABLE content_revision_test;")
 	case "governance_event_test":
 		_, err = persister.db.Query("DROP TABLE governance_event_test;")
+	case "cron_test":
+		_, err = persister.db.Query("DROP TABLE cron_test;")
 	}
 	if err != nil {
 		return fmt.Errorf("Couldn't delete test table %s: %v", tableName, err)
@@ -134,6 +142,10 @@ func TestTableSetup(t *testing.T) {
 		t.Error(err)
 	}
 	err = checkTableExists("governance_event", persister)
+	if err != nil {
+		t.Error(err)
+	}
+	err = checkTableExists("cron", persister)
 	if err != nil {
 		t.Error(err)
 	}
@@ -786,5 +798,101 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	}
 	if numRows != 0 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRows)
+	}
+}
+
+/*
+All tests for cron table:
+*/
+
+// Test that only one row can be saved in this DB
+func TestOnlyOneRowInDB(t *testing.T) {
+	tableName := "cron_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// check how many rows in db
+	var numRowsb int
+	err = persister.db.QueryRow(`SELECT COUNT(*) FROM cron_test`).Scan(&numRowsb)
+	if err != nil {
+		t.Errorf("Problem getting count from table: %v", err)
+	}
+	if numRowsb != 0 {
+		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
+	}
+
+	// try to insert something
+	queryString := "INSERT into cron_test(timestamp) values(1)"
+	_, err = persister.db.Exec(queryString)
+	// fmt.Println(err)
+	if err != nil {
+		t.Errorf("Inserting into the cron table should have worked but it didn't, %v", err)
+	}
+
+	_, err = persister.db.Exec(queryString)
+	if err == nil {
+		t.Errorf("Inserting into the cron table again should have raised an error but it didn't, %v", err)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete cron_test table: %v", err)
+	}
+}
+
+func TestTimestampOfLastEventForCron(t *testing.T) {
+	tableName := "cron_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// There should be no rows in the table. In this case lastCronTimestamp should insert a nil value.
+	timestamp, err := persister.lastCronTimestampFromTable(tableName)
+	if err != nil {
+		t.Errorf("Error retrieving from cron table: %v", err)
+	}
+
+	if timestamp != int64(0) {
+		t.Errorf("Timestamp should be 0 but it is %v", timestamp)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete governance_event_test table: %v", err)
+	}
+}
+
+func TestUpdateTimestampForCron(t *testing.T) {
+	tableName := "cron_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	newTimestamp := int64(1212121212)
+	err = persister.updateCronTimestampInTable(newTimestamp, tableName)
+	if err != nil {
+		t.Errorf("Error updating cron table, %v", err)
+	}
+
+	// retrieve timestamp to make sure it was updated
+	timestamp, err := persister.lastCronTimestampFromTable(tableName)
+	if err != nil {
+		t.Errorf("Error retrieving from cron table: %v", err)
+	}
+
+	if timestamp != newTimestamp {
+		t.Errorf("Timestamp should be %v but it is %v", newTimestamp, timestamp)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete governance_event_test table: %v", err)
 	}
 }

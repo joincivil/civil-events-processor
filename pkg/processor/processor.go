@@ -73,7 +73,10 @@ type EventProcessor struct {
 func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	var err error
 	var ran bool
-	maxTimestamp := e.cronPersister.TimestampOfLastEvent()
+	maxTimestamp, errCron := e.cronPersister.TimestampOfLastEventForCron()
+	if errCron != nil {
+		return fmt.Errorf("Error getting timestamp from cron persister: %v", errCron)
+	}
 	for _, event := range events {
 		timestamp := int64(event.Timestamp())
 		if timestamp > maxTimestamp {
@@ -96,8 +99,11 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		// }
 		// log.Infof("Unhandled event: %v", event.EventType())
 	}
-	e.cronPersister.SaveTimestamp(maxTimestamp)
-	return err
+	if err != nil {
+		return err
+	}
+	errCron = e.cronPersister.UpdateTimestampForCron(maxTimestamp)
+	return errCron
 }
 
 func (e *EventProcessor) isValidNewsroomContractEventName(name string) bool {
