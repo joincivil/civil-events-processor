@@ -424,64 +424,72 @@ func (p *PostgresPersister) deleteGovEventQuery(tableName string) string {
 }
 
 func (p *PostgresPersister) lastCronTimestampFromTable(tableName string) (int64, error) {
-	// First make sure that the database has one row:
-	numRowsb, err := p.countNumRows(tableName)
+	var timestampInt int64
+	// See if row with type timestamp exists
+	timestampString, err := p.typeExistsInCronTable(tableName, postgres.TimestampDataType)
 	if err != nil {
-		return 0, fmt.Errorf("Error counting rows in cron table before update: %v", err)
-	}
-
-	cronData := postgres.CronData{}
-	if numRowsb == 0 {
-		queryStringInit := fmt.Sprintf("INSERT into %s(timestamp) values(0)", tableName) // nolint: gosec
-		_, err = p.db.Exec(queryStringInit)
-		if err != nil {
-			return cronData.Timestamp, fmt.Errorf("Error saving timestamp to table: %v", err)
+		if err == sql.ErrNoRows {
+			// If there are no rows in DB, call updateCronTimestampInTable to do an insert of 0
+			err = p.updateCronTimestampInTable(timestampInt, tableName) // nolint: gosec
+			if err != nil {
+				return timestampInt, fmt.Errorf("No row in %s with timestamp. Error updating table, %v", tableName, err)
+			}
+			return timestampInt, nil
 		}
+		return timestampInt, fmt.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
-	queryString := fmt.Sprintf("SELECT * from %s", tableName) // nolint: gosec
-	err = p.db.Get(&cronData, queryString)
-	if err != nil {
-		return cronData.Timestamp, err
-	}
-	return cronData.Timestamp, nil
+	timestampInt, err = postgres.StringToTimestamp(timestampString)
+	return timestampInt, err
 }
 
 func (p *PostgresPersister) updateCronTimestampInTable(timestamp int64, tableName string) error {
-	// First make sure that the database has one row:
-	numRowsb, err := p.countNumRows(tableName)
+	// Check if timestamp row exists
+	timestampExists := true
+	cronData := postgres.NewCron(postgres.TimestampToString(timestamp), postgres.TimestampDataType)
+
+	_, err := p.typeExistsInCronTable(tableName, cronData.DataType)
 	if err != nil {
-		return fmt.Errorf("Error counting rows in cron table before update: %v", err)
+		if err == sql.ErrNoRows {
+			timestampExists = false
+		} else {
+			return fmt.Errorf("Error checking DB for cron row, %v", err)
+		}
 	}
 
-	cronData := postgres.NewCron(timestamp)
-	if numRowsb == 0 {
-		queryString := fmt.Sprintf("INSERT INTO %s(timestamp) values (:timestamp);", tableName) // nolint: gosec
-		_, err := p.db.NamedExec(queryString, cronData)
-		if err != nil {
-			return fmt.Errorf("Error saving listing to table: %v", err)
-		}
-	} else {
-		updatedFields := []string{"timestamp"}
-		queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, cronData)
-		if err != nil {
+	var queryString string
+	if timestampExists {
+		// update query
+		updatedFields := []string{postgres.DataPersistedModelName}
+		queryBuff, errBuff := p.updateDBQueryBuffer(updatedFields, tableName, postgres.CronData{})
+		if errBuff != nil {
 			return err
 		}
-		_, err = p.db.NamedExec(queryString.String(), cronData)
-		if err != nil {
-			return fmt.Errorf("Error updating fields in db: %v", err)
-		}
+		queryString = queryBuff.String()
+	} else {
+		//insert query
+		queryString = p.insertIntoDBQueryString(tableName, postgres.CronData{})
+	}
+
+	_, err = p.db.NamedExec(queryString, cronData)
+	if err != nil {
+		return fmt.Errorf("Error updating fields in db: %v", err)
 	}
 
 	return nil
 }
 
-func (p *PostgresPersister) countNumRows(tableName string) (int, error) {
-	var numRowsb int
-	queryString := fmt.Sprintf(`SELECT COUNT(*) FROM %s`, tableName) // nolint: gosec
-	// NOTE: connection is closed upon Scan
-	err := p.db.QueryRow(queryString).Scan(&numRowsb)
+func (p *PostgresPersister) typeExistsInCronTable(tableName string, dataType string) (string, error) {
+	dbCronData := []postgres.CronData{}
+	queryString := fmt.Sprintf(`SELECT * FROM %s WHERE data_type=$1;`, tableName) // nolint: gosec
+	err := p.db.Select(&dbCronData, queryString, dataType)
 	if err != nil {
-		return 0, fmt.Errorf("Problem getting count from table: %v", err)
+		return "", err
 	}
-	return numRowsb, err
+	if len(dbCronData) == 0 {
+		return "", sql.ErrNoRows
+	}
+	if len(dbCronData) > 1 {
+		return "", fmt.Errorf("There should not be more than 1 row with type %s in %s table", dataType, tableName)
+	}
+	return dbCronData[0].DataPersisted, nil
 }
