@@ -45,6 +45,7 @@ func NewGovernanceEvent(governanceEvent *model.GovernanceEvent) *GovernanceEvent
 }
 
 // GovernanceEvent is postgres definition of model.GovernanceEvent
+/// TODO (IS) : update with metadata params that are newly defined in processor
 type GovernanceEvent struct {
 	ListingAddress string `db:"listing_address"`
 

@@ -38,6 +38,10 @@ func randomHex(n int) (string, error) {
 
 func setupDBConnection() (*PostgresPersister, error) {
 	postgresPersister, err := NewPostgresPersister(postgresHost, postgresPort, postgresUser, postgresPswd, postgresDBName)
+	err = postgresPersister.CreateTables()
+	if err != nil {
+		fmt.Errorf("Error setting up tables in db: %v", err)
+	}
 	return postgresPersister, err
 }
 
@@ -54,6 +58,8 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreateContentRevisionTableQueryString(tableName)
 	case "governance_event_test":
 		queryString = postgres.CreateGovernanceEventTableQueryString(tableName)
+	case "cron_test":
+		queryString = postgres.CreateCronTableQueryString(tableName)
 	}
 	_, err = persister.db.Query(queryString)
 	if err != nil {
@@ -71,6 +77,8 @@ func deleteTestTable(persister *PostgresPersister, tableName string) error {
 		_, err = persister.db.Query("DROP TABLE content_revision_test;")
 	case "governance_event_test":
 		_, err = persister.db.Query("DROP TABLE governance_event_test;")
+	case "cron_test":
+		_, err = persister.db.Query("DROP TABLE cron_test;")
 	}
 	if err != nil {
 		return fmt.Errorf("Couldn't delete test table %s: %v", tableName, err)
@@ -137,6 +145,10 @@ func TestTableSetup(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	err = checkTableExists("cron", persister)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 /*
@@ -180,8 +192,7 @@ func TestCreateListing(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 	modelListing, _ := setupSampleListing()
 	// save to test table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.Listing{})
-	err = persister.saveListingToTable(queryStringCreate, modelListing)
+	err = persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -210,15 +221,14 @@ func TestListingByAddress(t *testing.T) {
 	modelListing, modelListingAddress := setupSampleListing()
 
 	// save to test table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.Listing{})
-	err = persister.saveListingToTable(queryStringCreate, modelListing)
+	err = persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
 
 	// retrieve from test table
-	queryStringRetrieve := persister.listingByAddressQuery("listing_test")
-	_, err = persister.listingFromTableByAddress(queryStringRetrieve, modelListingAddress.Hex())
+	_, err = persister.listingByAddressFromTable(modelListingAddress, tableName)
+
 	if err != nil {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
@@ -242,21 +252,16 @@ func TestDBListingToModelListing(t *testing.T) {
 	modelListing, modelListingAddress := setupSampleListing()
 
 	// save to test table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.Listing{})
-	err = persister.saveListingToTable(queryStringCreate, modelListing)
+	err = persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
 
 	// retrieve from test table
-	dbListing := &postgres.Listing{}
-	queryStringRetrieve := persister.listingByAddressQuery("listing_test")
-	dbListing, err = persister.listingFromTableByAddress(queryStringRetrieve, modelListingAddress.Hex())
+	modelListingFromDB, err := persister.listingByAddressFromTable(modelListingAddress, tableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
-
-	modelListingFromDB := dbListing.DbToListingData()
 	// check that retrieved fields match with inserted listing
 	if !reflect.DeepEqual(modelListing, modelListingFromDB) {
 		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelListingFromDB, modelListing)
@@ -275,7 +280,7 @@ func TestListingsByAddresses(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	// defer deleteTestTable(persister, tableName)
 
 	// create fake listings in listing_test
 	numListings := 3
@@ -283,22 +288,16 @@ func TestListingsByAddresses(t *testing.T) {
 
 	// Insert
 	for _, list := range modelListings {
-		err := persister.CreateListing(list)
+		err := persister.createListingForTable(list, tableName)
 		if err != nil {
 			t.Errorf("Couldn't save listing to table: %v", err)
 		}
 	}
-
 	//retrieve listings
-	dbListings := []*model.Listing{}
-	for _, modelListingAddress := range modelListingAddresses {
-		dbListing, err := persister.ListingByAddress(modelListingAddress)
-		if err != nil {
-			t.Errorf("Error getting listing by address: %v", err)
-		}
-		dbListings = append(dbListings, dbListing)
+	dbListings, err := persister.listingsByAddressesFromTable(modelListingAddresses, tableName)
+	if err != nil {
+		t.Errorf("Error retrieving multiple listings: %v", err)
 	}
-
 	if len(dbListings) != numListings {
 		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbListings), numListings)
 	}
@@ -322,8 +321,7 @@ func TestUpdateListing(t *testing.T) {
 	modelListing, modelListingAddress := setupSampleListing()
 
 	// save this to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.Listing{})
-	err = persister.saveListingToTable(queryStringCreate, modelListing)
+	err = persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -334,29 +332,21 @@ func TestUpdateListing(t *testing.T) {
 	modelListing.SetWhitelisted(false)
 
 	// test update
-	queryString, err := persister.updateListingQuery(updatedFields, tableName)
-	if err != nil {
-		t.Errorf("Error generating update listing query: %v", err)
-	}
-
-	dbListing := postgres.NewListing(modelListing)
-	_, err = persister.db.NamedQuery(queryString, dbListing)
+	err = persister.updateListingInTable(modelListing, updatedFields, tableName)
 	if err != nil {
 		t.Errorf("Error updating fields: %v", err)
 	}
 
 	//check here that update happened
-	updatedDbListing := &postgres.Listing{}
-	queryStringRetrieve := persister.listingByAddressQuery("listing_test")
-	updatedDbListing, err = persister.listingFromTableByAddress(queryStringRetrieve, modelListingAddress.Hex())
+	updatedDbListing, err := persister.listingByAddressFromTable(modelListingAddress, tableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
-	if updatedDbListing.Name != "New Name" {
-		t.Errorf("Name field was not updated correctly. %v", updatedDbListing.Name)
+	if updatedDbListing.Name() != "New Name" {
+		t.Errorf("Name field was not updated correctly. %v", updatedDbListing.Name())
 	}
-	if updatedDbListing.Whitelisted != false {
-		t.Errorf("Whitelisted field was not updated correctly. %v", updatedDbListing.Whitelisted)
+	if updatedDbListing.Whitelisted() != false {
+		t.Errorf("Whitelisted field was not updated correctly. %v", updatedDbListing.Whitelisted())
 	}
 
 	err = deleteTestTable(persister, tableName)
@@ -378,8 +368,7 @@ func TestDeleteListing(t *testing.T) {
 	modelListing, _ := setupSampleListing()
 
 	// save this to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.Listing{})
-	err = persister.saveListingToTable(queryStringCreate, modelListing)
+	err = persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -394,9 +383,10 @@ func TestDeleteListing(t *testing.T) {
 	}
 
 	//delete rows
-	queryString := persister.deleteListingQuery(tableName)
-	dbListing := postgres.NewListing(modelListing)
-	_, err = persister.db.NamedQuery(queryString, dbListing)
+	err = persister.deleteListingFromTable(modelListing, tableName)
+	if err != nil {
+		t.Errorf("Error deleting listing: %v", err)
+	}
 
 	var numRows int
 	err = persister.db.QueryRow(`SELECT COUNT(*) FROM listing_test`).Scan(&numRows)
@@ -464,10 +454,9 @@ func TestCreateContentRevision(t *testing.T) {
 	modelContentRevision, _, _, _ := setupRandomSampleContentRevision()
 
 	// insert to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
-	err = persister.saveContentRevisionToTable(queryStringCreate, modelContentRevision)
+	err = persister.createContentRevisionForTable(modelContentRevision, tableName)
 	if err != nil {
-		t.Errorf("error saving listing: %v", err)
+		t.Errorf("error saving content revision: %v", err)
 	}
 	// check row is there
 	var numRowsb int
@@ -495,15 +484,13 @@ func TestContentRevision(t *testing.T) {
 	modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
 
 	// insert to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
-	err = persister.saveContentRevisionToTable(queryStringCreate, modelContentRevision)
+	err = persister.createContentRevisionForTable(modelContentRevision, tableName)
 	if err != nil {
-		t.Errorf("error saving listing: %v", err)
+		t.Errorf("error saving content revision: %v", err)
 	}
 
 	// retrieve from table
-	queryString := persister.contentRevisionQuery("content_revision_test")
-	_, err = persister.contentRevisionFromTable(queryString, listingAddr.Hex(), contentID.Int64(), revisionID.Int64())
+	_, err = persister.contentRevisionFromTable(listingAddr, contentID, revisionID, tableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get content revision from postgres table: %v", err)
 	}
@@ -527,21 +514,18 @@ func TestDBCRToModelCR(t *testing.T) {
 	modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
 
 	// insert to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
-	err = persister.saveContentRevisionToTable(queryStringCreate, modelContentRevision)
+	err = persister.createContentRevisionForTable(modelContentRevision, tableName)
 	if err != nil {
-		t.Errorf("error saving listing: %v", err)
+		t.Errorf("error saving content revision: %v", err)
 	}
 
 	// retrieve from table
-	queryString := persister.contentRevisionQuery("content_revision_test")
-	dbContRev, err := persister.contentRevisionFromTable(queryString, listingAddr.Hex(), contentID.Int64(), revisionID.Int64())
+	modelCRFromDB, err := persister.contentRevisionFromTable(listingAddr, contentID, revisionID, tableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get content revision from postgres table: %v", err)
 	}
 
 	// do a deep equal
-	modelCRFromDB := dbContRev.DbToContentRevisionData()
 	// check that retrieved fields match with inserted listing
 	if !reflect.DeepEqual(modelContentRevision, modelCRFromDB) {
 		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelCRFromDB, modelContentRevision)
@@ -568,17 +552,18 @@ func TestContentRevisions(t *testing.T) {
 
 	// save all to table
 	for _, contRev := range testContentRevisions {
-		err := persister.CreateContentRevision(contRev)
+		err = persister.createContentRevisionForTable(contRev, tableName)
 		if err != nil {
 			t.Errorf("Couldn't save content revision to table: %v", err)
 		}
 	}
 
 	// retrieve from table
-	dbContentRevisions, err := persister.ContentRevisions(listingAddr, contractContentID)
+	dbContentRevisions, err := persister.contentRevisionsFromTable(listingAddr, contractContentID, tableName)
 	if err != nil {
 		t.Errorf("Error with persister.ContentRevisions(): %v", err)
 	}
+
 	// test various things
 	// test length of both
 	if len(dbContentRevisions) != numRevisions {
@@ -600,58 +585,6 @@ func TestContentRevisions(t *testing.T) {
 
 // Test update content revision -- TODO(IS) create an update where address, contentid, revisionid don't change
 func TestUpdateContentRevision(t *testing.T) {
-	tableName := "content_revision_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(persister, tableName)
-
-	// // Setup sample content revision
-	// modelContentRevision, listingAddrOld, contentIDOld, revisionIDOld := setupRandomSampleContentRevision()
-
-	// // insert to table
-	// queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
-	// err = persister.saveContentRevisionToTable(queryStringCreate, modelContentRevision)
-	// if err != nil {
-	// 	t.Errorf("error saving contentRevision: %v", err)
-	// }
-
-	// // cannot modify fields so just create a new sample content revision
-	// modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
-	// updatedFields := []string{"ListingAddress", "ContractContentID", "ContractRevisionID"}
-
-	// // test update
-	// queryString, err := persister.UpdateContentRevision(updatedFields, tableName)
-	// if err != nil {
-	// 	t.Errorf("Error generating update contentRevision query: %v", err)
-	// }
-
-	// dbContentRevision := postgres.NewContentRevision(modelContentRevision)
-	// _, err = persister.db.NamedQuery(queryString, dbContentRevision)
-	// if err != nil {
-	// 	t.Errorf("Error updating fields: %v", err)
-	// }
-
-	// //check here that update happened
-	// updatedDbContentRevision := &postgres.ContentRevision{}
-	// queryString := persister.contentRevisionQuery("content_revision_test")
-	// updatedDbContentRevision, err = persister.getContentRevisionFromTable(queryString, listingAddr.Hex(), contentID.Int64(), revisionID.Int64())
-
-	// if err != nil {
-	// 	t.Errorf("Wasn't able to get listing from postgres table: %v", err)
-	// }
-	// if updatedDbListing.Name != "New Name" {
-	// 	t.Errorf("Name field was not updated correctly. %v", updatedDbListing.Name)
-	// }
-	// if updatedDbListing.Whitelisted != false {
-	// 	t.Errorf("Whitelisted field was not updated correctly. %v", updatedDbListing.Whitelisted)
-	// }
-
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
 }
 
 // TestDeleteContentRevision tests that the deleting the ContentRevision works
@@ -667,10 +600,9 @@ func TestDeleteContentRevision(t *testing.T) {
 	modelContentRevision, _, _, _ := setupRandomSampleContentRevision()
 
 	// insert to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.ContentRevision{})
-	err = persister.saveContentRevisionToTable(queryStringCreate, modelContentRevision)
+	err = persister.createContentRevisionForTable(modelContentRevision, tableName)
 	if err != nil {
-		t.Errorf("error saving listing: %v", err)
+		t.Errorf("error saving content revision: %v", err)
 	}
 
 	var numRowsb int
@@ -683,9 +615,10 @@ func TestDeleteContentRevision(t *testing.T) {
 	}
 
 	//delete rows
-	queryString := persister.deleteContentRevisionQuery(tableName)
-	dbContentRevision := postgres.NewContentRevision(modelContentRevision)
-	_, err = persister.db.NamedQuery(queryString, dbContentRevision)
+	err = persister.deleteContentRevisionFromTable(modelContentRevision, tableName)
+	if err != nil {
+		t.Errorf("Coud not delete content revision: %v", err)
+	}
 
 	var numRows int
 	err = persister.db.QueryRow(`SELECT COUNT(*) FROM content_revision_test`).Scan(&numRows)
@@ -733,8 +666,7 @@ func TestCreateGovernanceEvent(t *testing.T) {
 	modelGovernanceEvent, _, _ := setupSampleGovernanceEvent()
 
 	// insert to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.GovernanceEvent{})
-	err = persister.saveGovEventToTable(queryStringCreate, modelGovernanceEvent)
+	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
 	if err != nil {
 		t.Errorf("error saving GovernanceEvent: %v", err)
 	}
@@ -764,15 +696,13 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 	modelGovernanceEvent, listingAddr, _ := setupSampleGovernanceEvent()
 
 	// insert to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.GovernanceEvent{})
-	err = persister.saveGovEventToTable(queryStringCreate, modelGovernanceEvent)
+	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
 	if err != nil {
 		t.Errorf("error saving GovernanceEvent: %v", err)
 	}
 
 	// retrieve from table
-	queryString := persister.govEventsQuery(tableName)
-	dbGovEvents, err := persister.govEventsFromTable(queryString, listingAddr.Hex())
+	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, tableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
 	}
@@ -800,22 +730,19 @@ func TestDBGovEventToModelGovEvent(t *testing.T) {
 	modelGovernanceEvent, listingAddr, _ := setupSampleGovernanceEvent()
 
 	// insert to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.GovernanceEvent{})
-	err = persister.saveGovEventToTable(queryStringCreate, modelGovernanceEvent)
+	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
 	if err != nil {
 		t.Errorf("error saving GovernanceEvent: %v", err)
 	}
 
 	// retrieve from table
-	queryString := persister.govEventsQuery(tableName)
-	dbGovEvents, err := persister.govEventsFromTable(queryString, listingAddr.Hex())
+	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, tableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
 	}
-	dbGovEvent := dbGovEvents[0]
+	modelGovEventFromDB := dbGovEvents[0]
 
 	// do a deep equal
-	modelGovEventFromDB := dbGovEvent.DbToGovernanceData()
 	// check that retrieved fields match with inserted listing
 	if !reflect.DeepEqual(modelGovernanceEvent, modelGovEventFromDB) {
 		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelGovEventFromDB, modelGovernanceEvent)
@@ -844,10 +771,9 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	modelGovernanceEvent, _, _ := setupSampleGovernanceEvent()
 
 	// insert to table
-	queryStringCreate := persister.insertIntoDBQueryString(tableName, postgres.GovernanceEvent{})
-	err = persister.saveGovEventToTable(queryStringCreate, modelGovernanceEvent)
+	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
 	if err != nil {
-		t.Errorf("error saving governance event: %v", err)
+		t.Errorf("error saving GovernanceEvent: %v", err)
 	}
 
 	var numRowsb int
@@ -860,9 +786,10 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	}
 
 	//delete rows
-	queryString := persister.deleteGovEventQuery(tableName)
-	dbGovernanceEvent := postgres.NewGovernanceEvent(modelGovernanceEvent)
-	_, err = persister.db.NamedQuery(queryString, dbGovernanceEvent)
+	err = persister.deleteGovenanceEventFromTable(modelGovernanceEvent, tableName)
+	if err != nil {
+		t.Errorf("Error deleting governance event: %v", err)
+	}
 
 	var numRows int
 	err = persister.db.QueryRow(`SELECT COUNT(*) FROM governance_event_test`).Scan(&numRows)
@@ -871,5 +798,111 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	}
 	if numRows != 0 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRows)
+	}
+}
+
+/*
+All tests for cron table:
+*/
+
+func TestTypeExistsInCronTable(t *testing.T) {
+	tableName := "cron_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// insert something
+	queryString := fmt.Sprintf("INSERT INTO %s(data_persisted, data_type) VALUES(0, 'timestamp')", tableName)
+	_, err = persister.db.Exec(queryString)
+	// fmt.Println(err)
+	if err != nil {
+		t.Errorf("Inserting into the cron table should have worked but it didn't, %v", err)
+	}
+
+	// test that we can confirm this exists:
+	exists, err := persister.typeExistsInCronTable(tableName, "timestamp")
+	if err != nil {
+		t.Errorf("Error getting type exists in table, %v", err)
+	}
+
+	if exists != postgres.TimestampToString(0) {
+		t.Errorf("Value returned should be 0 but it is %v", err)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete %s table: %v", tableName, err)
+	}
+}
+
+func TestTimestampOfLastEventForCron(t *testing.T) {
+	tableName := "cron_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(persister, tableName)
+
+	// There should be no rows in the table. In this case lastCronTimestamp should insert a nil value.
+	timestamp, err := persister.lastCronTimestampFromTable(tableName)
+	if err != nil {
+		t.Errorf("Error retrieving from cron table: %v", err)
+	}
+	if timestamp != int64(0) {
+		t.Errorf("Timestamp should be 0 but it is %v", timestamp)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete %s table: %v", tableName, err)
+	}
+}
+
+func TestUpdateTimestampForCron(t *testing.T) {
+	tableName := "cron_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	// defer deleteTestTable(persister, tableName)
+
+	newTimestamp := int64(1212121212)
+	err = persister.updateCronTimestampInTable(newTimestamp, tableName)
+	if err != nil {
+		t.Errorf("Error updating cron table, %v", err)
+	}
+
+	// retrieve timestamp to make sure it was updated
+	timestamp, err := persister.lastCronTimestampFromTable(tableName)
+	if err != nil {
+		t.Errorf("Error retrieving from cron table: %v", err)
+	}
+
+	if timestamp != newTimestamp {
+		t.Errorf("Timestamp should be %v but it is %v", newTimestamp, timestamp)
+	}
+
+	// Update again, make sure it works NOTE THIS DOESN'T WORK!
+	newTimestamp2 := int64(121212121233)
+	err = persister.updateCronTimestampInTable(newTimestamp2, tableName)
+	if err != nil {
+		t.Errorf("Error updating cron table, %v", err)
+	}
+
+	// retrieve timestamp to make sure it was updated
+	timestamp2, err := persister.lastCronTimestampFromTable(tableName)
+	if err != nil {
+		t.Errorf("Error retrieving from cron table: %v", err)
+	}
+
+	if timestamp2 != newTimestamp2 {
+		t.Errorf("Timestamp should be %v but it is %v", newTimestamp2, timestamp2)
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete %s table: %v", tableName, err)
 	}
 }
