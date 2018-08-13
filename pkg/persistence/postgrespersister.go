@@ -186,7 +186,7 @@ func (p *PostgresPersister) listingsByAddressesFromTable(addresses []common.Addr
 		listing, err := p.listingByAddressFromTable(address, tableName)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				err = model.ErrPersisterNoResults
+				return listings, model.ErrPersisterNoResults
 			}
 			return listings, err
 		}
@@ -201,7 +201,7 @@ func (p *PostgresPersister) listingByAddressFromTable(address common.Address, ta
 	err := p.db.Get(&dbListing, queryString, address.Hex())
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrPersisterNoResults
+			return nil, model.ErrPersisterNoResults
 		}
 		return nil, fmt.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
@@ -273,17 +273,16 @@ func (p *PostgresPersister) createContentRevisionForTable(revision *model.Conten
 }
 
 func (p *PostgresPersister) contentRevisionFromTable(address common.Address, contentID *big.Int, revisionID *big.Int, tableName string) (*model.ContentRevision, error) {
-	contRev := &model.ContentRevision{}
 	dbContRev := postgres.ContentRevision{}
 	queryString := p.contentRevisionQuery(tableName)
 	err := p.db.Get(&dbContRev, queryString, address.Hex(), contentID.Int64(), revisionID.Int64())
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrPersisterNoResults
+			return nil, model.ErrPersisterNoResults
 		}
-		return contRev, fmt.Errorf("Wasn't able to get ContentRevision from postgres table: %v", err)
+		return nil, fmt.Errorf("Wasn't able to get ContentRevision from postgres table: %v", err)
 	}
-	contRev = dbContRev.DbToContentRevisionData()
+	contRev := dbContRev.DbToContentRevisionData()
 	return contRev, err
 }
 
@@ -300,7 +299,7 @@ func (p *PostgresPersister) contentRevisionsFromTable(address common.Address, co
 	err := p.db.Select(&dbContRevs, queryString, address.Hex(), contentID.Int64())
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrPersisterNoResults
+			return contRevs, model.ErrPersisterNoResults
 		}
 		return contRevs, fmt.Errorf("Wasn't able to get ContentRevisions from postgres table: %v", err)
 	}
