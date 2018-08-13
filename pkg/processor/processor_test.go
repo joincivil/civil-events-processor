@@ -263,7 +263,7 @@ func TestEventProcessor(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
@@ -326,7 +326,8 @@ func TestEventProcessor(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		applied1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 	event2, _ := crawlermodel.NewEventFromContractEvent(
@@ -334,7 +335,8 @@ func TestEventProcessor(t *testing.T) {
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		revision1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Watcher,
 	)
 	events = append(events, event2)
 	event3, _ := crawlermodel.NewEventFromContractEvent(
@@ -342,7 +344,8 @@ func TestEventProcessor(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		applied2,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event3)
 	err = proc.Process(events)
@@ -383,7 +386,7 @@ func TestEventProcessorChallenge(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
@@ -430,7 +433,8 @@ func TestEventProcessorChallenge(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 
@@ -467,7 +471,8 @@ func TestEventProcessorChallenge(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		applied1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event2)
 	event3, _ := crawlermodel.NewEventFromContractEvent(
@@ -475,7 +480,8 @@ func TestEventProcessorChallenge(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event3)
 
@@ -514,7 +520,7 @@ func TestEventProcessorAppWhitelisted(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	whitelisted1 := &contract.CivilTCRContractApplicationWhitelisted{
@@ -538,7 +544,8 @@ func TestEventProcessorAppWhitelisted(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		whitelisted1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Watcher,
 	)
 	events = append(events, event1)
 
@@ -575,7 +582,8 @@ func TestEventProcessorAppWhitelisted(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		whitelisted1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Watcher,
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
@@ -595,7 +603,7 @@ func TestEventProcessorApplicationRemoved(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractApplicationRemoved{
@@ -619,7 +627,8 @@ func TestEventProcessorApplicationRemoved(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		removed1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 
@@ -656,7 +665,8 @@ func TestEventProcessorApplicationRemoved(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		removed1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Watcher,
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
@@ -676,7 +686,7 @@ func TestEventProcessorListingRemoved(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractListingRemoved{
@@ -700,7 +710,8 @@ func TestEventProcessorListingRemoved(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		removed1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 
@@ -737,7 +748,8 @@ func TestEventProcessorListingRemoved(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		removed1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
@@ -757,7 +769,7 @@ func TestEventProcessorListingWithdrawn(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractListingWithdrawn{
@@ -781,7 +793,8 @@ func TestEventProcessorListingWithdrawn(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		removed1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 
@@ -818,7 +831,8 @@ func TestEventProcessorListingWithdrawn(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		removed1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
@@ -838,7 +852,7 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
@@ -882,7 +896,8 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		namechanged1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
@@ -897,7 +912,8 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		applied1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event)
 	event1, _ = crawlermodel.NewEventFromContractEvent(
@@ -905,7 +921,8 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		namechanged1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 
@@ -929,7 +946,7 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
@@ -971,7 +988,8 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		ownership1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
@@ -986,7 +1004,8 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		applied1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Filterer,
 	)
 	events = append(events, event)
 	event1, _ = crawlermodel.NewEventFromContractEvent(
@@ -994,7 +1013,8 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		ownership1,
-		utils.CurrentEpochSecsInInt(),
+		utils.CurrentEpochNanoSecsInInt64(),
+		crawlermodel.Watcher,
 	)
 	events = append(events, event1)
 
