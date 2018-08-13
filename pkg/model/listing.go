@@ -5,27 +5,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// GovernanceState specifies the current state of a listing
-type GovernanceState int
-
-const (
-	// GovernanceStateNone is an invalid/empty governance state
-	GovernanceStateNone GovernanceState = iota
-	// GovernanceStateApplied is when a listing has just applied
-	GovernanceStateApplied
-	// GovernanceStateChallenged is when a listing has been challenged
-	GovernanceStateChallenged
-	// GovernanceStateAppWhitelisted is when a listing has been whitelisted
-	GovernanceStateAppWhitelisted
-	// GovernanceStateAppRemoved is when a listing's application has been removed
-	GovernanceStateAppRemoved
-	// GovernanceStateRemoved is when a listing has been removed
-	GovernanceStateRemoved
-	// GovernanceStateWithdrawn is when a listing has been withdrawn before it
-	// has been whitelisted
-	GovernanceStateWithdrawn
-)
-
 // NewListing is a convenience function to initialize a new Listing struct
 func NewListing(name string, contractAddress common.Address, whitelisted bool,
 	lastState GovernanceState, url string, charterURI string, ownerAddresses []common.Address,
@@ -93,6 +72,11 @@ func (l *Listing) Whitelisted() bool {
 // SetWhitelisted sets the value for whitelisted field
 func (l *Listing) SetWhitelisted(whitelisted bool) {
 	l.whitelisted = whitelisted
+}
+
+// LastGovernanceStateString returns the last governance event on this newsroom
+func (l *Listing) LastGovernanceStateString() string {
+	return l.lastGovernanceState.String()
 }
 
 // LastGovernanceState returns the last governance event on this newsroom
