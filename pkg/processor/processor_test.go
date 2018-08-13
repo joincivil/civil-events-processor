@@ -2,6 +2,7 @@ package processor_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -32,6 +33,7 @@ type TestPersister struct {
 	listings  map[string]*model.Listing
 	revisions map[string][]*model.ContentRevision
 	govEvents map[string][]*model.GovernanceEvent
+	timestamp int64
 }
 
 // GetListingsByAddress returns a slice of Listings based on addresses
@@ -226,6 +228,15 @@ func (t *TestPersister) DeleteGovenanceEvent(govEvent *model.GovernanceEvent) er
 	return nil
 }
 
+func (t *TestPersister) TimestampOfLastEventForCron() (int64, error) {
+	return t.timestamp, nil
+}
+
+func (t *TestPersister) UpdateTimestampForCron(timestamp int64) error {
+	t.timestamp = timestamp
+	return nil
+}
+
 type TestScraper struct{}
 
 func (t *TestScraper) ScrapeContent(uri string) (*model.ScraperContent, error) {
@@ -252,7 +263,7 @@ func TestEventProcessor(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
@@ -334,7 +345,6 @@ func TestEventProcessor(t *testing.T) {
 		utils.CurrentEpochSecsInInt(),
 	)
 	events = append(events, event3)
-
 	err = proc.Process(events)
 	if err != nil {
 		t.Errorf("Should not have failed processing events: err: %v", err)
@@ -373,7 +383,7 @@ func TestEventProcessorChallenge(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
@@ -504,7 +514,7 @@ func TestEventProcessorAppWhitelisted(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	whitelisted1 := &contract.CivilTCRContractApplicationWhitelisted{
@@ -585,7 +595,7 @@ func TestEventProcessorApplicationRemoved(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractApplicationRemoved{
@@ -666,7 +676,7 @@ func TestEventProcessorListingRemoved(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractListingRemoved{
@@ -747,7 +757,7 @@ func TestEventProcessorListingWithdrawn(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractListingWithdrawn{
@@ -828,7 +838,7 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
@@ -876,6 +886,7 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
+	fmt.Println(err)
 	if err == nil {
 		t.Errorf("Should have failed processing events due to non existent listing")
 	}
@@ -918,7 +929,7 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
-	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
 		scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
@@ -964,6 +975,7 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
+	fmt.Println(err)
 	if err == nil {
 		t.Errorf("Should have failed processing events due to non existent listing")
 	}
