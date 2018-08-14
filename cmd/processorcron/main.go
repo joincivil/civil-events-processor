@@ -110,6 +110,22 @@ func metadataScraper(config *utils.ProcessorConfig) model.MetadataScraper {
 	return &scraper.NullScraper{}
 }
 
+func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermodel.Event,
+	lastTs int64) error {
+	updated := false
+	for _, event := range events {
+		timestamp := event.Timestamp()
+		if timestamp > lastTs {
+			lastTs = timestamp
+			updated = true
+		}
+	}
+	if updated {
+		return persister.UpdateTimestampForCron(lastTs)
+	}
+	return nil
+}
+
 func runProcessor(config *utils.ProcessorConfig) {
 	client, err := ethclient.Dial(config.EthAPIURL)
 	if err != nil {
@@ -117,8 +133,19 @@ func runProcessor(config *utils.ProcessorConfig) {
 		return
 	}
 
+	cronPersister := cronPersister(config)
+	lastTs, err := cronPersister.TimestampOfLastEventForCron()
+	if err != nil {
+		log.Errorf("Error getting last event timestamp: %v", err)
+		return
+	}
+
 	eventPersister := eventPersister(config)
-	events, err := eventPersister.RetrieveEvents(&crawlermodel.RetrieveEventsCriteria{})
+	events, err := eventPersister.RetrieveEvents(
+		&crawlermodel.RetrieveEventsCriteria{
+			FromTs: lastTs,
+		},
+	)
 	if err != nil {
 		log.Errorf("Error retrieving events: err: %v", err)
 		return
@@ -129,7 +156,6 @@ func runProcessor(config *utils.ProcessorConfig) {
 		listingPersister(config),
 		contentRevisionPersister(config),
 		governanceEventPersister(config),
-		cronPersister(config),
 		contentScraper(config),
 		metadataScraper(config),
 		civilMetadataScraper(config),
@@ -139,6 +165,13 @@ func runProcessor(config *utils.ProcessorConfig) {
 		log.Errorf("Error retrieving events: err: %v", err)
 		return
 	}
+
+	err = saveLastEventTimestamp(cronPersister, events, lastTs)
+	if err != nil {
+		log.Errorf("Error saving last timestamp %v: err: %v", lastTs, err)
+		return
+	}
+
 	log.Info("Done running processor")
 }
 
