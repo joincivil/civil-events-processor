@@ -25,6 +25,15 @@ const (
 	ownerAddDBModelName    = "OwnerAddresses"
 )
 
+type whitelistedStatus int
+
+const (
+	whitelistedNoChange whitelistedStatus = iota
+	whitelistedTrue
+	whitelistedFalse
+	whitelistedFlip
+)
+
 func isStringInSlice(slice []string, target string) bool {
 	for _, str := range slice {
 		if target == str {
@@ -41,14 +50,13 @@ func byte32ToHexString(input [32]byte) string {
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
 	revisionPersister model.ContentRevisionPersister, govEventPersister model.GovernanceEventPersister,
-	cronPersister model.CronPersister, contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
+	contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
 	civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
 	return &EventProcessor{
 		client:               client,
 		listingPersister:     listingPersister,
 		revisionPersister:    revisionPersister,
 		govEventPersister:    govEventPersister,
-		cronPersister:        cronPersister,
 		contentScraper:       contentScraper,
 		metadataScraper:      metadataScraper,
 		civilMetadataScraper: civilMetadataScraper,
@@ -62,7 +70,6 @@ type EventProcessor struct {
 	listingPersister     model.ListingPersister
 	revisionPersister    model.ContentRevisionPersister
 	govEventPersister    model.GovernanceEventPersister
-	cronPersister        model.CronPersister
 	contentScraper       model.ContentScraper
 	metadataScraper      model.MetadataScraper
 	civilMetadataScraper model.CivilMetadataScraper
@@ -73,16 +80,7 @@ type EventProcessor struct {
 func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	var err error
 	var ran bool
-	maxTimestamp, errCron := e.cronPersister.TimestampOfLastEventForCron()
-	if errCron != nil {
-		return fmt.Errorf("Error getting timestamp from cron persister: %v", errCron)
-	}
 	for _, event := range events {
-		timestamp := int64(event.Timestamp())
-		if timestamp > maxTimestamp {
-			maxTimestamp = timestamp
-		}
-
 		ran, err = e.processNewsroomEvent(event)
 		if err != nil {
 			log.Errorf("Error processing newsroom event: err: %v\n", err)
@@ -95,11 +93,7 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
 	}
-	if err != nil {
-		return err
-	}
-	errCron = e.cronPersister.UpdateTimestampForCron(maxTimestamp)
-	return errCron
+	return err
 }
 
 func (e *EventProcessor) isValidNewsroomContractEventName(name string) bool {
@@ -155,48 +149,182 @@ func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, 
 	ran := true
 	eventName := strings.Trim(event.EventType(), " _")
 
-	var listingAddress common.Address
-	addr := event.EventPayload()["ListingAddress"]
-	if addr != nil {
-		listingAddress = addr.(common.Address)
+	ran, err = e.processCivilTCRApplicationListingEvent(event, eventName)
+	if !ran {
+		ran, err = e.processCivilTCRChallengeEvent(event, eventName)
+	}
+	if !ran {
+		ran, err = e.processCivilTCRAppealEvent(event, eventName)
 	}
 
-	// Handling all the actionable events from the TCR
-	switch eventName {
-	// When a listing has applied
-	case "Application":
-		log.Infof("Handling Application for %v\n", listingAddress.Hex())
-		err = e.processTCRApplication(event)
+	govErr := e.persistGovernanceEvent(event)
+	if err != nil {
+		return ran, err
+	}
+	return ran, govErr
+}
 
-	// When a listing has been challenged at any point
+func (e *EventProcessor) processCivilTCRChallengeEvent(event *crawlermodel.Event,
+	eventName string) (bool, error) {
+	var err error
+	ran := true
+
+	listingAddress, listingErr := e.listingAddressFromEvent(event)
+
+	switch eventName {
 	case "Challenge":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
 		log.Infof("Handling Challenge for %v\n", listingAddress.Hex())
 		err = e.processTCRChallenge(event)
 
-	// When a listing gets whitelisted
+	case "ChallengeFailed":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling ChallengeFailed for %v\n", listingAddress.Hex())
+		err = e.processTCRChallengeFailed(event)
+
+	case "ChallengeSucceeded":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling ChallengeSucceeded for %v\n", listingAddress.Hex())
+		err = e.processTCRChallengeSucceeded(event)
+
+	case "FailedChallengeOverturned":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling FailedChallengeOverturned for %v\n", listingAddress.Hex())
+		err = e.processTCRChallengeFailedOverturned(event)
+
+	case "SuccessfulChallengeOverturned":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling SuccessfulChallengeOverturned for %v\n", listingAddress.Hex())
+		err = e.processTCRChallengeSuccessfulOverturned(event)
+
+	default:
+		ran = false
+	}
+
+	return ran, err
+}
+
+func (e *EventProcessor) processCivilTCRAppealEvent(event *crawlermodel.Event,
+	eventName string) (bool, error) {
+	var err error
+	ran := true
+
+	listingAddress, listingErr := e.listingAddressFromEvent(event)
+
+	switch eventName {
+	case "AppealGranted":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling AppealGranted for %v\n", listingAddress.Hex())
+		err = e.processTCRAppealGranted(event)
+
+	case "AppealRequested":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling AppealRequested for %v\n", listingAddress.Hex())
+		err = e.processTCRAppealRequested(event)
+
+	case "GrantedAppealChallenged":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling GrantedAppealChallenged for %v\n", listingAddress.Hex())
+		err = e.processTCRGrantedAppealChallenged(event)
+
+	case "GrantedAppealConfirmed":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling GrantedAppealConfirmed for %v\n", listingAddress.Hex())
+		err = e.processTCRGrantedAppealConfirmed(event)
+
+	case "GrantedAppealOverturned":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling GrantedAppealOverturned for %v\n", listingAddress.Hex())
+		err = e.processTCRGrantedAppealOverturned(event)
+
+	default:
+		ran = false
+	}
+
+	return ran, err
+}
+
+func (e *EventProcessor) processCivilTCRApplicationListingEvent(event *crawlermodel.Event,
+	eventName string) (bool, error) {
+	var err error
+	ran := true
+
+	listingAddress, listingErr := e.listingAddressFromEvent(event)
+
+	switch eventName {
+	case "Application":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
+		log.Infof("Handling Application for %v\n", listingAddress.Hex())
+		err = e.processTCRApplication(event)
+
 	case "ApplicationWhitelisted":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
 		log.Infof("Handling ApplicationWhitelisted for %v\n", listingAddress.Hex())
 		err = e.processTCRApplicationWhitelisted(event)
 
-	// When an application for a listing has been removed
 	case "ApplicationRemoved":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
 		log.Infof("Handling ApplicationRemoved for %v\n", listingAddress.Hex())
 		err = e.processTCRApplicationRemoved(event)
 
-	// When a listing is de-listed
 	case "ListingRemoved":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
 		log.Infof("Handling ListingRemoved for %v\n", listingAddress.Hex())
 		err = e.processTCRListingRemoved(event)
 
-	// When a listing applicaiton has been withdrawn
 	case "ListingWithdrawn":
+		if listingErr != nil {
+			log.Infof("Error retrieving listingAddress: err: %v", listingErr)
+			break
+		}
 		log.Infof("Handling ListingWithdrawn for %v\n", listingAddress.Hex())
 		err = e.processTCRListingWithdrawn(event)
 
 	default:
 		ran = false
 	}
-
 	return ran, err
 }
 
@@ -258,68 +386,121 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 }
 
 func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateApplied, false)
+	return e.processTCREvent(event, model.GovernanceStateApplied, whitelistedFalse)
 }
 
 func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateChallenged, false)
+	return e.processTCREvent(event, model.GovernanceStateChallenged, whitelistedNoChange)
+}
+
+func (e *EventProcessor) processTCRChallengeFailed(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateChallengeFailed, whitelistedNoChange)
+}
+
+func (e *EventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateChallengeSucceeded, whitelistedFalse)
+}
+
+func (e *EventProcessor) processTCRChallengeFailedOverturned(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateFailedChallengeOverturned, whitelistedNoChange)
+}
+
+func (e *EventProcessor) processTCRChallengeSuccessfulOverturned(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateSuccessfulChallengeOverturned, whitelistedFalse)
 }
 
 func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateAppWhitelisted, true)
+	return e.processTCREvent(event, model.GovernanceStateAppWhitelisted, whitelistedTrue)
 }
 
 func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateAppRemoved, false)
+	return e.processTCREvent(event, model.GovernanceStateAppRemoved, whitelistedFalse)
 }
 
 func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateRemoved, false)
+	return e.processTCREvent(event, model.GovernanceStateRemoved, whitelistedFalse)
 }
 
 func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateWithdrawn, false)
+	return e.processTCREvent(event, model.GovernanceStateWithdrawn, whitelistedFalse)
+}
+
+func (e *EventProcessor) processTCRAppealGranted(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateAppealGranted, whitelistedNoChange)
+}
+
+func (e *EventProcessor) processTCRAppealRequested(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateAppealRequested, whitelistedNoChange)
+}
+
+func (e *EventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateGrantedAppealChallenged, whitelistedNoChange)
+}
+
+func (e *EventProcessor) processTCRGrantedAppealConfirmed(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateGrantedAppealConfirmed, whitelistedNoChange)
+}
+
+func (e *EventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.Event) error {
+	return e.processTCREvent(event, model.GovernanceStateGrantedAppealOverturned, whitelistedNoChange)
 }
 
 func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState model.GovernanceState,
-	whitelisted bool) error {
-	payload := event.EventPayload()
-	listingAddrInterface, ok := payload["ListingAddress"]
-	if !ok {
-		return errors.New("Unable to find the listing address in the payload")
+	whitelisted whitelistedStatus) error {
+	listingAddress, err := e.listingAddressFromEvent(event)
+	if err != nil {
+		return err
 	}
-
-	listingAddress := listingAddrInterface.(common.Address)
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 
+	wlisting := false
+	if listing != nil {
+		wlisting = listing.Whitelisted()
+	}
+	if whitelisted == whitelistedTrue {
+		wlisting = true
+	} else if whitelisted == whitelistedFalse {
+		wlisting = false
+	} else if whitelisted == whitelistedFlip {
+		wlisting = !wlisting
+	}
 	if listing == nil {
-		err = e.persistNewListing(listingAddress, whitelisted, govState)
+		err = e.persistNewListing(listingAddress, wlisting, govState)
 	} else {
 		var updatedFields []string
 		listing.SetLastGovernanceState(govState)
 		updatedFields = append(updatedFields, govStateDBModelName)
-		listing.SetWhitelisted(whitelisted)
-		updatedFields = append(updatedFields, whitelistedDBModelName)
+		if whitelisted != whitelistedNoChange {
+			listing.SetWhitelisted(wlisting)
+			updatedFields = append(updatedFields, whitelistedDBModelName)
+		}
 		err = e.listingPersister.UpdateListing(listing, updatedFields)
 	}
+	return err
+}
 
-	metadata := map[string]interface{}{}
-	govErr := e.persistNewGovernanceEvent(
+func (e *EventProcessor) listingAddressFromEvent(event *crawlermodel.Event) (common.Address, error) {
+	payload := event.EventPayload()
+	listingAddrInterface, ok := payload["ListingAddress"]
+	if !ok {
+		return common.Address{}, errors.New("Unable to find the listing address in the payload")
+	}
+	return listingAddrInterface.(common.Address), nil
+}
+
+func (e *EventProcessor) persistGovernanceEvent(event *crawlermodel.Event) error {
+	listingAddress, _ := e.listingAddressFromEvent(event) // nolint: gosec
+	err := e.persistNewGovernanceEvent(
 		listingAddress,
 		event.ContractAddress(),
-		metadata,
+		event.EventPayload(),
 		event.EventType(),
 		event.Hash(),
 	)
-
-	if err != nil {
-		return err
-	}
-	return govErr
-
+	return err
 }
 
 func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) error {
