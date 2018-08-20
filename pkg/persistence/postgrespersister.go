@@ -13,6 +13,8 @@ import (
 	// driver for postgresql
 	_ "github.com/lib/pq"
 
+	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 )
@@ -22,6 +24,8 @@ const (
 	contRevTableName  = "content_revision"
 	govEventTableName = "governance_event"
 	cronTableName     = "cron"
+
+	lastUpdatedDateDBModelName = "LastUpdatedDateTs"
 
 	// Could make this configurable later if needed
 	maxOpenConns    = 20
@@ -226,6 +230,10 @@ func (p *PostgresPersister) createListingForTable(listing *model.Listing, tableN
 }
 
 func (p *PostgresPersister) updateListingInTable(listing *model.Listing, updatedFields []string, tableName string) error {
+	// Update the last updated timestamp
+	listing.SetLastUpdatedDateTs(crawlerutils.CurrentEpochNanoSecsInInt64())
+	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
+
 	queryString, err := p.updateListingQuery(updatedFields, tableName)
 	if err != nil {
 		return fmt.Errorf("Error creating query string for update: %v ", err)
@@ -386,6 +394,10 @@ func (p *PostgresPersister) createGovernanceEventInTable(govEvent *model.Governa
 }
 
 func (p *PostgresPersister) updateGovernanceEventInTable(govEvent *model.GovernanceEvent, updatedFields []string, tableName string) error {
+	// Update the last updated timestamp
+	govEvent.SetLastUpdatedDateTs(crawlerutils.CurrentEpochNanoSecsInInt64())
+	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
+
 	queryString, err := p.updateGovEventsQuery(updatedFields, tableName)
 	if err != nil {
 		return fmt.Errorf("Error creating query string for update: %v ", err)

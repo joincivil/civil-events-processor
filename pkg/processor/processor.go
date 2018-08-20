@@ -335,8 +335,8 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 		senderAddr,
 		metadata,
 		eventType,
-		crawlerutils.CurrentEpochSecsInInt64(),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
 		eventHash,
 	)
 	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
@@ -376,10 +376,10 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		charterURI,
 		ownerAddresses,
 		contributorAddresses,
-		crawlerutils.CurrentEpochSecsInInt64(),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
 		int64(0),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
 	)
 	err = e.listingPersister.CreateListing(listing)
 	return err
@@ -577,7 +577,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		contentID.(*big.Int),
 		revisionID.(*big.Int),
 		revisionURI.(string),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
 	)
 	err = e.revisionPersister.CreateContentRevision(revision)
 	return err
