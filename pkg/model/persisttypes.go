@@ -19,10 +19,22 @@ var (
 // record for a query.  In this case, return the empty value for the return
 // type. errors must be reserved for actual internal errors.
 
+// ListingCriteria contains the retrieval criteria for the Listings
+// query.
+type ListingCriteria struct {
+	Offset          int   `db:"offset"`
+	Count           int   `db:"count"`
+	WhitelistedOnly bool  `db:"whitelisted_only"`
+	CreatedFromTs   int64 `db:"created_fromts"`
+	CreatedBeforeTs int64 `db:"created_beforets"`
+}
+
 // ListingPersister is the interface to store the listings data related to the processor
 // and the aggregated data from the events.  Potentially to be used to service
 // the APIs to pull data.
 type ListingPersister interface {
+	// Listings returns all listings by ListingCriteria
+	ListingsByCriteria(criteria *ListingCriteria) ([]*Listing, error)
 	// ListingsByAddress returns a slice of Listings based on addresses
 	ListingsByAddresses(addresses []common.Address) ([]*Listing, error)
 	// ListingByAddress retrieves listings based on addresses
@@ -35,10 +47,23 @@ type ListingPersister interface {
 	DeleteListing(listing *Listing) error
 }
 
+// ContentRevisionCriteria contains the retrieval criteria for a LatestContentRevisions
+// query.
+type ContentRevisionCriteria struct {
+	ListingAddress string `db:"listing_address"`
+	Offset         int    `db:"offset"`
+	Count          int    `db:"count"`
+	LatestOnly     bool   `db:"latest_only"`
+	FromTs         int64  `db:"fromts"`
+	BeforeTs       int64  `db:"beforets"`
+}
+
 // ContentRevisionPersister is the interface to store the content data related to the processor
 // and the aggregated data from the events.  Potentially to be used to service
 // the APIs to pull data.
 type ContentRevisionPersister interface {
+	// ContentRevisionsByCriteria returns all content revisions by ContentRevisionCriteria
+	ContentRevisionsByCriteria(criteria *ContentRevisionCriteria) ([]*ContentRevision, error)
 	// ContentRevisions retrieves the revisions for content on a listing
 	ContentRevisions(address common.Address, contentID *big.Int) ([]*ContentRevision, error)
 	// ContentRevision retrieves a specific content revision for newsroom content

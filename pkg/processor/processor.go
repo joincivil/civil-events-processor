@@ -563,7 +563,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		log.Errorf("Error scraping data: err: %v", err)
 	}
 
-	var articlePayload model.ArticlePayload
+	articlePayload := model.ArticlePayload{}
 	if metadata != nil {
 		articlePayload = e.scraperDataToPayload(metadata, scraperContent)
 	}
@@ -620,6 +620,16 @@ func (e *EventProcessor) scrapeData(metadataURL string) (
 		if err != nil {
 			return nil, nil, err
 		}
+		// TODO(PN): Hack to fix bad URLs received for metadata
+		// Remove this later after testing
+		if civilMetadata.Title() == "" && civilMetadata.RevisionContentHash() == "" {
+			metadataURL = strings.Replace(metadataURL, "/wp-json", "/crawler-pod/wp-json", -1)
+			civilMetadata, err = e.civilMetadataScraper.ScrapeCivilMetadata(metadataURL)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		log.Infof("metadata url = %v", metadataURL)
 	}
 
 	// TODO(PN): Use canonical URL or the revision URL here?

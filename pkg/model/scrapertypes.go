@@ -202,30 +202,62 @@ type ScraperCivilMetadataCredibility struct {
 
 // OriginalReporting returns the value in the original reporting field for
 // credibility
-func (c *ScraperCivilMetadataCredibility) OriginalReporting() string {
-	return c.cred.OriginalReporting
+func (c *ScraperCivilMetadataCredibility) OriginalReporting() bool {
+	switch t := c.cred.OriginalReporting.(type) {
+	case string:
+		if t == "true" || t == "1" {
+			return true
+		}
+	case bool:
+		return t
+	}
+	return false
 }
 
 // OnTheGround returns the value of the on the ground field for credibility
 func (c *ScraperCivilMetadataCredibility) OnTheGround() bool {
-	return c.cred.OnTheGround
+	switch t := c.cred.OnTheGround.(type) {
+	case string:
+		if t == "true" || t == "1" {
+			return true
+		}
+	case bool:
+		return t
+	}
+	return false
 }
 
 // SourcesCited returns the value of the sources cited field for credibility
-func (c *ScraperCivilMetadataCredibility) SourcesCited() string {
-	return c.cred.SourcesCited
+func (c *ScraperCivilMetadataCredibility) SourcesCited() bool {
+	switch t := c.cred.SourcesCited.(type) {
+	case string:
+		if t == "true" || t == "1" {
+			return true
+		}
+	case bool:
+		return t
+	}
+	return false
 }
 
 // SubjectSpecialist returns the value of the subject specialist field for credibility
 func (c *ScraperCivilMetadataCredibility) SubjectSpecialist() bool {
-	return c.cred.SubjectSpecialist
+	switch t := c.cred.SubjectSpecialist.(type) {
+	case string:
+		if t == "true" || t == "1" {
+			return true
+		}
+	case bool:
+		return t
+	}
+	return false
 }
 
 type scraperCivilMetadataCredibility struct {
-	OriginalReporting string `json:"original_reporting"`
-	OnTheGround       bool   `json:"on_the_ground"`
-	SourcesCited      string `json:"sources_cited"`
-	SubjectSpecialist bool   `json:"subject_specialist"`
+	OriginalReporting interface{} `json:"original_reporting"`
+	OnTheGround       interface{} `json:"on_the_ground"`
+	SourcesCited      interface{} `json:"sources_cited"`
+	SubjectSpecialist interface{} `json:"subject_specialist"`
 }
 
 // NewScraperContent is a convenience function to init a new ScraperContent struct

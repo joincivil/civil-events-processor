@@ -36,7 +36,18 @@ type TestPersister struct {
 	timestamp int64
 }
 
-// GetListingsByAddress returns a slice of Listings based on addresses
+// ListingsByCriteria returns a slice of Listings based on ListingCriteria
+func (t *TestPersister) ListingsByCriteria(criteria *model.ListingCriteria) ([]*model.Listing, error) {
+	listings := make([]*model.Listing, len(t.listings))
+	index := 0
+	for _, listing := range t.listings {
+		listings[index] = listing
+		index++
+	}
+	return listings, nil
+}
+
+// istingsByAddresses returns a slice of Listings based on addresses
 func (t *TestPersister) ListingsByAddresses(addresses []common.Address) ([]*model.Listing, error) {
 	results := []*model.Listing{}
 	for _, address := range addresses {
@@ -48,7 +59,7 @@ func (t *TestPersister) ListingsByAddresses(addresses []common.Address) ([]*mode
 	return results, nil
 }
 
-// GetListingByAddress retrieves listings based on addresses
+// ListingByAddress retrieves a listing based on address
 func (t *TestPersister) ListingByAddress(address common.Address) (*model.Listing, error) {
 	listing := t.listings[address.Hex()]
 	return listing, nil
@@ -84,7 +95,19 @@ func (t *TestPersister) DeleteListing(listing *model.Listing) error {
 	return nil
 }
 
-// GetContentRevisions retrieves content revisions
+// ContentRevisionsByCriteria retrieves content revisions by ContentRevisionCriteria
+func (t *TestPersister) ContentRevisionsByCriteria(criteria *model.ContentRevisionCriteria) (
+	[]*model.ContentRevision, error) {
+	revisions := make([]*model.ContentRevision, len(t.revisions))
+	index := 0
+	for _, contentRevisions := range t.revisions {
+		revisions[index] = contentRevisions[len(contentRevisions)-1]
+		index++
+	}
+	return revisions, nil
+}
+
+// ContentRevisions retrieves content revisions
 func (t *TestPersister) ContentRevisions(address common.Address,
 	contentID *big.Int) ([]*model.ContentRevision, error) {
 	addressHex := address.Hex()
