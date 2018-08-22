@@ -192,6 +192,18 @@ func (t *TestPersister) DeleteContentRevision(revision *model.ContentRevision) e
 	return nil
 }
 
+// GovernanceEventsByCriteria retrieves content revisions by GovernanceEventCriteria
+func (t *TestPersister) GovernanceEventsByCriteria(criteria *model.GovernanceEventCriteria) (
+	[]*model.GovernanceEvent, error) {
+	events := make([]*model.GovernanceEvent, len(t.govEvents))
+	index := 0
+	for _, event := range t.govEvents {
+		events[index] = event[len(event)-1]
+		index++
+	}
+	return events, nil
+}
+
 // GetGovernanceEventsByListingAddress retrieves governance events based on criteria
 func (t *TestPersister) GovernanceEventsByListingAddress(address common.Address) ([]*model.GovernanceEvent, error) {
 	addressHex := address.Hex()

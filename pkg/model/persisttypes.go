@@ -19,7 +19,7 @@ var (
 // record for a query.  In this case, return the empty value for the return
 // type. errors must be reserved for actual internal errors.
 
-// ListingCriteria contains the retrieval criteria for the Listings
+// ListingCriteria contains the retrieval criteria for the ListingsByCriteria
 // query.
 type ListingCriteria struct {
 	Offset          int   `db:"offset"`
@@ -47,7 +47,7 @@ type ListingPersister interface {
 	DeleteListing(listing *Listing) error
 }
 
-// ContentRevisionCriteria contains the retrieval criteria for a LatestContentRevisions
+// ContentRevisionCriteria contains the retrieval criteria for a ContentRevisionsByCriteria
 // query.
 type ContentRevisionCriteria struct {
 	ListingAddress string `db:"listing_address"`
@@ -76,11 +76,23 @@ type ContentRevisionPersister interface {
 	DeleteContentRevision(revision *ContentRevision) error
 }
 
+// GovernanceEventCriteria contains the retrieval criteria for a GovernanceEventsByCriteria
+// query.
+type GovernanceEventCriteria struct {
+	ListingAddress  string `db:"listing_address"`
+	Offset          int    `db:"offset"`
+	Count           int    `db:"count"`
+	CreatedFromTs   int64  `db:"created_fromts"`
+	CreatedBeforeTs int64  `db:"created_beforets"`
+}
+
 // GovernanceEventPersister is the interface to store the governance event data related to the processor
 // and the aggregated data from the events.  Potentially to be used to service
 // the APIs to pull data.
 type GovernanceEventPersister interface {
-	// GovernanceEventsByListingAddress retrieves governance events based on criteria
+	// GovernanceEventsByCriteria retrieves governance events based on criteria
+	GovernanceEventsByCriteria(criteria *GovernanceEventCriteria) ([]*GovernanceEvent, error)
+	// GovernanceEventsByListingAddress retrieves governance events based on listing address
 	GovernanceEventsByListingAddress(address common.Address) ([]*GovernanceEvent, error)
 	// CreateGovernanceEvent creates a new governance event
 	CreateGovernanceEvent(govEvent *GovernanceEvent) error

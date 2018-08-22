@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	// log "github.com/golang/glog"
 	"math/big"
 	"strings"
 	"time"
@@ -115,7 +116,12 @@ func (p *PostgresPersister) DeleteContentRevision(revision *model.ContentRevisio
 	return p.deleteContentRevisionFromTable(revision, contRevTableName)
 }
 
-// GovernanceEventsByListingAddress retrieves governance events based on criteria
+// GovernanceEventsByCriteria retrieves governance events based on criteria
+func (p *PostgresPersister) GovernanceEventsByCriteria(criteria *model.GovernanceEventCriteria) ([]*model.GovernanceEvent, error) {
+	return p.governanceEventsByCriteriaFromTable(criteria, govEventTableName)
+}
+
+// GovernanceEventsByListingAddress retrieves governance events based on listing address
 func (p *PostgresPersister) GovernanceEventsByListingAddress(address common.Address) ([]*model.GovernanceEvent, error) {
 	return p.governanceEventsByListingAddressFromTable(address, govEventTableName)
 }
@@ -509,6 +515,56 @@ func (p *PostgresPersister) createGovernanceEventInTable(govEvent *model.Governa
 		return fmt.Errorf("Error saving GovernanceEvent to table: %v", err)
 	}
 	return nil
+}
+
+func (p *PostgresPersister) governanceEventsByCriteriaFromTable(criteria *model.GovernanceEventCriteria,
+	tableName string) ([]*model.GovernanceEvent, error) {
+	dbGovEvents := []postgres.GovernanceEvent{}
+	queryString := p.governanceEventsByCriteriaQuery(criteria, tableName)
+
+	nstmt, err := p.db.PrepareNamed(queryString)
+	if err != nil {
+		return nil, fmt.Errorf("Error preparing query with sqlx: %v", err)
+	}
+	err = nstmt.Select(&dbGovEvents, criteria)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving gov events from table: %v", err)
+	}
+	events := make([]*model.GovernanceEvent, len(dbGovEvents))
+	for index, event := range dbGovEvents {
+		modelEvent := event.DbToGovernanceData()
+		events[index] = modelEvent
+	}
+	return events, err
+}
+
+func (p *PostgresPersister) governanceEventsByCriteriaQuery(criteria *model.GovernanceEventCriteria,
+	tableName string) string {
+	queryBuf := bytes.NewBufferString("SELECT ")
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
+	queryBuf.WriteString(fieldNames) // nolint: gosec
+	queryBuf.WriteString(" FROM ")   // nolint: gosec
+	queryBuf.WriteString(tableName)  // nolint: gosec
+	queryBuf.WriteString(" r1 ")     // nolint: gosec
+
+	if criteria.ListingAddress != "" {
+		queryBuf.WriteString(" WHERE r1.listing_address = :listing_address") // nolint: gosec
+	}
+	if criteria.CreatedFromTs > 0 {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" r1.creation_date > :created_fromts") // nolint: gosec
+	}
+	if criteria.CreatedBeforeTs > 0 {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" r1.creation_date < :created_beforets") // nolint: gosec
+	}
+	if criteria.Offset > 0 {
+		queryBuf.WriteString(" OFFSET :offset") // nolint: gosec
+	}
+	if criteria.Count > 0 {
+		queryBuf.WriteString(" LIMIT :count") // nolint: gosec
+	}
+	return queryBuf.String()
 }
 
 func (p *PostgresPersister) updateGovernanceEventInTable(govEvent *model.GovernanceEvent, updatedFields []string, tableName string) error {
