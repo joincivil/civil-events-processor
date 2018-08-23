@@ -74,6 +74,11 @@ func (g *GovernanceEvent) LastUpdatedDateTs() int64 {
 	return g.lastUpdatedDateTs
 }
 
+// SetLastUpdatedDateTs sets the value of the last time this governance event was updated
+func (g *GovernanceEvent) SetLastUpdatedDateTs(date int64) {
+	g.lastUpdatedDateTs = date
+}
+
 // EventHash is the hash from the event
 func (g *GovernanceEvent) EventHash() string {
 	return g.eventHash

@@ -5,13 +5,17 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	// log "github.com/golang/glog"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	// driver for postgresql
 	_ "github.com/lib/pq"
+
+	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
@@ -22,6 +26,8 @@ const (
 	contRevTableName  = "content_revision"
 	govEventTableName = "governance_event"
 	cronTableName     = "cron"
+
+	lastUpdatedDateDBModelName = "LastUpdatedDateTs"
 
 	// Could make this configurable later if needed
 	maxOpenConns    = 20
@@ -47,6 +53,11 @@ func NewPostgresPersister(host string, port int, user string, password string, d
 // PostgresPersister holds the DB connection and persistence
 type PostgresPersister struct {
 	db *sqlx.DB
+}
+
+// ListingsByCriteria returns a slice of Listings by ListingCriteria
+func (p *PostgresPersister) ListingsByCriteria(criteria *model.ListingCriteria) ([]*model.Listing, error) {
+	return p.listingsByCriteriaFromTable(criteria, listingTableName)
 }
 
 // ListingsByAddresses returns a slice of Listings based on addresses
@@ -84,6 +95,12 @@ func (p *PostgresPersister) ContentRevision(address common.Address, contentID *b
 	return p.contentRevisionFromTable(address, contentID, revisionID, contRevTableName)
 }
 
+// ContentRevisionsByCriteria returns a list of ContentRevision by ContentRevisionCriteria
+func (p *PostgresPersister) ContentRevisionsByCriteria(criteria *model.ContentRevisionCriteria) (
+	[]*model.ContentRevision, error) {
+	return p.contentRevisionsByCriteriaFromTable(criteria, contRevTableName)
+}
+
 // ContentRevisions retrieves the revisions for content on a listing
 func (p *PostgresPersister) ContentRevisions(address common.Address, contentID *big.Int) ([]*model.ContentRevision, error) {
 	return p.contentRevisionsFromTable(address, contentID, contRevTableName)
@@ -99,7 +116,12 @@ func (p *PostgresPersister) DeleteContentRevision(revision *model.ContentRevisio
 	return p.deleteContentRevisionFromTable(revision, contRevTableName)
 }
 
-// GovernanceEventsByListingAddress retrieves governance events based on criteria
+// GovernanceEventsByCriteria retrieves governance events based on criteria
+func (p *PostgresPersister) GovernanceEventsByCriteria(criteria *model.GovernanceEventCriteria) ([]*model.GovernanceEvent, error) {
+	return p.governanceEventsByCriteriaFromTable(criteria, govEventTableName)
+}
+
+// GovernanceEventsByListingAddress retrieves governance events based on listing address
 func (p *PostgresPersister) GovernanceEventsByListingAddress(address common.Address) ([]*model.GovernanceEvent, error) {
 	return p.governanceEventsByListingAddressFromTable(address, govEventTableName)
 }
@@ -180,6 +202,26 @@ func (p *PostgresPersister) updateDBQueryBuffer(updatedFields []string, tableNam
 	return queryBuf, nil
 }
 
+func (p *PostgresPersister) listingsByCriteriaFromTable(criteria *model.ListingCriteria,
+	tableName string) ([]*model.Listing, error) {
+	dbListings := []postgres.Listing{}
+	queryString := p.listingsByCriteriaQuery(criteria, tableName)
+	nstmt, err := p.db.PrepareNamed(queryString)
+	if err != nil {
+		return nil, fmt.Errorf("Error preparing query with sqlx: %v", err)
+	}
+	err = nstmt.Select(&dbListings, criteria)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving listings from table: %v", err)
+	}
+	listings := make([]*model.Listing, len(dbListings))
+	for index, dbListing := range dbListings {
+		modelListing := dbListing.DbToListingData()
+		listings[index] = modelListing
+	}
+	return listings, nil
+}
+
 func (p *PostgresPersister) listingsByAddressesFromTable(addresses []common.Address, tableName string) ([]*model.Listing, error) {
 	listings := []*model.Listing{}
 	for _, address := range addresses {
@@ -209,6 +251,33 @@ func (p *PostgresPersister) listingByAddressFromTable(address common.Address, ta
 	return listing, err
 }
 
+func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCriteria,
+	tableName string) string {
+	queryBuf := bytes.NewBufferString("SELECT ")
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Listing{}, false)
+	queryBuf.WriteString(fieldNames) // nolint: gosec
+	queryBuf.WriteString(" FROM ")   // nolint: gosec
+	queryBuf.WriteString(tableName)  // nolint: gosec
+	if criteria.CreatedFromTs > 0 {
+		queryBuf.WriteString(" WHERE creation_timestamp > :created_fromts") // nolint: gosec
+	}
+	if criteria.WhitelistedOnly {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" whitelisted = true") // nolint: gosec
+	}
+	if criteria.CreatedBeforeTs > 0 {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" creation_timestamp < :created_beforets") // nolint: gosec
+	}
+	if criteria.Offset > 0 {
+		queryBuf.WriteString(" OFFSET :offset") // nolint: gosec
+	}
+	if criteria.Count > 0 {
+		queryBuf.WriteString(" LIMIT :count") // nolint: gosec
+	}
+	return queryBuf.String()
+}
+
 func (p *PostgresPersister) listingByAddressQuery(tableName string) string {
 	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Listing{}, false)
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE contract_address=$1;", fieldNames, tableName) // nolint: gosec
@@ -226,6 +295,10 @@ func (p *PostgresPersister) createListingForTable(listing *model.Listing, tableN
 }
 
 func (p *PostgresPersister) updateListingInTable(listing *model.Listing, updatedFields []string, tableName string) error {
+	// Update the last updated timestamp
+	listing.SetLastUpdatedDateTs(crawlerutils.CurrentEpochNanoSecsInInt64())
+	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
+
 	queryString, err := p.updateListingQuery(updatedFields, tableName)
 	if err != nil {
 		return fmt.Errorf("Error creating query string for update: %v ", err)
@@ -315,6 +388,65 @@ func (p *PostgresPersister) contentRevisionsQuery(tableName string) string {
 	return queryString
 }
 
+func (p *PostgresPersister) contentRevisionsByCriteriaFromTable(criteria *model.ContentRevisionCriteria,
+	tableName string) ([]*model.ContentRevision, error) {
+	dbContRevs := []postgres.ContentRevision{}
+	queryString := p.contentRevisionsByCriteriaQuery(criteria, tableName)
+
+	nstmt, err := p.db.PrepareNamed(queryString)
+	if err != nil {
+		return nil, fmt.Errorf("Error preparing query with sqlx: %v", err)
+	}
+	err = nstmt.Select(&dbContRevs, criteria)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving content revisions from table: %v", err)
+	}
+	revisions := make([]*model.ContentRevision, len(dbContRevs))
+	for index, dbContRev := range dbContRevs {
+		modelRev := dbContRev.DbToContentRevisionData()
+		revisions[index] = modelRev
+	}
+	return revisions, err
+}
+
+func (p *PostgresPersister) contentRevisionsByCriteriaQuery(criteria *model.ContentRevisionCriteria,
+	tableName string) string {
+	queryBuf := bytes.NewBufferString("SELECT ")
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false)
+	queryBuf.WriteString(fieldNames) // nolint: gosec
+	queryBuf.WriteString(" FROM ")   // nolint: gosec
+	queryBuf.WriteString(tableName)  // nolint: gosec
+	queryBuf.WriteString(" r1 ")     // nolint: gosec
+
+	if criteria.ListingAddress != "" {
+		queryBuf.WriteString(" WHERE r1.listing_address = :listing_address") // nolint: gosec
+	}
+	if criteria.LatestOnly {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" r1.revision_timestamp =")                              // nolint: gosec
+		queryBuf.WriteString(" (SELECT max(revision_timestamp) FROM ")                // nolint: gosec
+		queryBuf.WriteString(tableName)                                               // nolint: gosec
+		queryBuf.WriteString(" r2 WHERE r1.listing_address = r2.listing_address AND") // nolint: gosec
+		queryBuf.WriteString(" r1.contract_content_id = r2.contract_content_id)")     // nolint: gosec
+	} else {
+		if criteria.FromTs > 0 {
+			p.addWhereAnd(queryBuf)
+			queryBuf.WriteString(" r1.revision_timestamp > :fromts") // nolint: gosec
+		}
+		if criteria.BeforeTs > 0 {
+			p.addWhereAnd(queryBuf)
+			queryBuf.WriteString(" r1.revision_timestamp < :beforets") // nolint: gosec
+		}
+	}
+	if criteria.Offset > 0 {
+		queryBuf.WriteString(" OFFSET :offset") // nolint: gosec
+	}
+	if criteria.Count > 0 {
+		queryBuf.WriteString(" LIMIT :count") // nolint: gosec
+	}
+	return queryBuf.String()
+}
+
 func (p *PostgresPersister) updateContentRevisionInTable(revision *model.ContentRevision, updatedFields []string, tableName string) error {
 	queryString, err := p.updateContentRevisionQuery(updatedFields, tableName)
 	if err != nil {
@@ -385,7 +517,61 @@ func (p *PostgresPersister) createGovernanceEventInTable(govEvent *model.Governa
 	return nil
 }
 
+func (p *PostgresPersister) governanceEventsByCriteriaFromTable(criteria *model.GovernanceEventCriteria,
+	tableName string) ([]*model.GovernanceEvent, error) {
+	dbGovEvents := []postgres.GovernanceEvent{}
+	queryString := p.governanceEventsByCriteriaQuery(criteria, tableName)
+
+	nstmt, err := p.db.PrepareNamed(queryString)
+	if err != nil {
+		return nil, fmt.Errorf("Error preparing query with sqlx: %v", err)
+	}
+	err = nstmt.Select(&dbGovEvents, criteria)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving gov events from table: %v", err)
+	}
+	events := make([]*model.GovernanceEvent, len(dbGovEvents))
+	for index, event := range dbGovEvents {
+		modelEvent := event.DbToGovernanceData()
+		events[index] = modelEvent
+	}
+	return events, err
+}
+
+func (p *PostgresPersister) governanceEventsByCriteriaQuery(criteria *model.GovernanceEventCriteria,
+	tableName string) string {
+	queryBuf := bytes.NewBufferString("SELECT ")
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
+	queryBuf.WriteString(fieldNames) // nolint: gosec
+	queryBuf.WriteString(" FROM ")   // nolint: gosec
+	queryBuf.WriteString(tableName)  // nolint: gosec
+	queryBuf.WriteString(" r1 ")     // nolint: gosec
+
+	if criteria.ListingAddress != "" {
+		queryBuf.WriteString(" WHERE r1.listing_address = :listing_address") // nolint: gosec
+	}
+	if criteria.CreatedFromTs > 0 {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" r1.creation_date > :created_fromts") // nolint: gosec
+	}
+	if criteria.CreatedBeforeTs > 0 {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" r1.creation_date < :created_beforets") // nolint: gosec
+	}
+	if criteria.Offset > 0 {
+		queryBuf.WriteString(" OFFSET :offset") // nolint: gosec
+	}
+	if criteria.Count > 0 {
+		queryBuf.WriteString(" LIMIT :count") // nolint: gosec
+	}
+	return queryBuf.String()
+}
+
 func (p *PostgresPersister) updateGovernanceEventInTable(govEvent *model.GovernanceEvent, updatedFields []string, tableName string) error {
+	// Update the last updated timestamp
+	govEvent.SetLastUpdatedDateTs(crawlerutils.CurrentEpochNanoSecsInInt64())
+	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
+
 	queryString, err := p.updateGovEventsQuery(updatedFields, tableName)
 	if err != nil {
 		return fmt.Errorf("Error creating query string for update: %v ", err)
@@ -491,4 +677,12 @@ func (p *PostgresPersister) typeExistsInCronTable(tableName string, dataType str
 		return "", fmt.Errorf("There should not be more than 1 row with type %s in %s table", dataType, tableName)
 	}
 	return dbCronData[0].DataPersisted, nil
+}
+
+func (p *PostgresPersister) addWhereAnd(buf *bytes.Buffer) {
+	if !strings.Contains(buf.String(), "WHERE") {
+		buf.WriteString(" WHERE") // nolint: gosec
+	} else {
+		buf.WriteString(" AND") // nolint: gosec
+	}
 }

@@ -2,9 +2,13 @@
 package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 import (
+	"encoding/json"
 	"fmt"
+	log "github.com/golang/glog"
+	"io"
 	"math/big"
 	"sort"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -31,6 +35,53 @@ func (a ArticlePayload) Hash() string {
 	eventBytes, _ := rlp.EncodeToBytes(toEncode) // nolint: gosec
 	h := crypto.Keccak256Hash(eventBytes)
 	return h.Hex()
+}
+
+// ArticlePayloadValue is for serializing to either a string or
+// a map of values for GraphQL.  Used as a scalar for GraphQL
+type ArticlePayloadValue struct {
+	Value interface{}
+}
+
+// UnmarshalGQL implements the graphql.Unmarshaler interface
+func (a *ArticlePayloadValue) UnmarshalGQL(v interface{}) error {
+	a.Value = v
+	return nil
+}
+
+// MarshalGQL implements the graphql.Marshaler interface
+func (a ArticlePayloadValue) MarshalGQL(w io.Writer) {
+	switch val := a.Value.(type) {
+	case bool:
+		_, err := fmt.Fprintf(w, "%v", strconv.FormatBool(val))
+		if err != nil {
+			log.Errorf("Error writing gql int: err %v", err)
+		}
+	case float64:
+		_, err := fmt.Fprintf(w, "%v", val)
+		if err != nil {
+			log.Errorf("Error writing gql float: err %v", err)
+		}
+	case int:
+		_, err := fmt.Fprintf(w, "%v", val)
+		if err != nil {
+			log.Errorf("Error writing gql int: err %v", err)
+		}
+	case string:
+		_, err := fmt.Fprintf(w, "\"%v\"", val)
+		if err != nil {
+			log.Errorf("Error writing gql string: err %v", err)
+		}
+	default:
+		bytes, err := json.Marshal(val)
+		if err != nil {
+			log.Errorf("Error marshaling map: err %v", err)
+		}
+		_, err = fmt.Fprintf(w, "%v", string(bytes))
+		if err != nil {
+			log.Errorf("Error writing gql map: err %v", err)
+		}
+	}
 }
 
 // NewContentRevision is a convenience function to init a ContentRevision

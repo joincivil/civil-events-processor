@@ -335,8 +335,8 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 		senderAddr,
 		metadata,
 		eventType,
-		crawlerutils.CurrentEpochSecsInInt64(),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
 		eventHash,
 	)
 	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
@@ -376,10 +376,10 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		charterURI,
 		ownerAddresses,
 		contributorAddresses,
-		crawlerutils.CurrentEpochSecsInInt64(),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
 		int64(0),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
 	)
 	err = e.listingPersister.CreateListing(listing)
 	return err
@@ -563,7 +563,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		log.Errorf("Error scraping data: err: %v", err)
 	}
 
-	var articlePayload model.ArticlePayload
+	articlePayload := model.ArticlePayload{}
 	if metadata != nil {
 		articlePayload = e.scraperDataToPayload(metadata, scraperContent)
 	}
@@ -577,7 +577,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		contentID.(*big.Int),
 		revisionID.(*big.Int),
 		revisionURI.(string),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		crawlerutils.CurrentEpochNanoSecsInInt64(),
 	)
 	err = e.revisionPersister.CreateContentRevision(revision)
 	return err
@@ -620,6 +620,16 @@ func (e *EventProcessor) scrapeData(metadataURL string) (
 		if err != nil {
 			return nil, nil, err
 		}
+		// TODO(PN): Hack to fix bad URLs received for metadata
+		// Remove this later after testing
+		if civilMetadata.Title() == "" && civilMetadata.RevisionContentHash() == "" {
+			metadataURL = strings.Replace(metadataURL, "/wp-json", "/crawler-pod/wp-json", -1)
+			civilMetadata, err = e.civilMetadataScraper.ScrapeCivilMetadata(metadataURL)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		log.Infof("metadata url = %v", metadataURL)
 	}
 
 	// TODO(PN): Use canonical URL or the revision URL here?

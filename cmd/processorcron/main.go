@@ -4,18 +4,17 @@ import (
 	"flag"
 	log "github.com/golang/glog"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/robfig/cron"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerpersist "github.com/joincivil/civil-events-crawler/pkg/persistence"
 
+	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/persistence"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
-	"github.com/joincivil/civil-events-processor/pkg/scraper"
 	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
@@ -28,86 +27,6 @@ func checkCron(cr *cron.Cron) {
 	for _, entry := range entries {
 		log.Infof("Proc run times: prev: %v, next: %v\n", entry.Prev, entry.Next)
 	}
-}
-
-func eventPersister(config *utils.ProcessorConfig) crawlermodel.EventDataPersister {
-	if config.PersisterType == utils.PersisterTypePostgresql {
-		persister, err := crawlerpersist.NewPostgresPersister(
-			config.PersisterPostgresAddress,
-			config.PersisterPostgresPort,
-			config.PersisterPostgresUser,
-			config.PersisterPostgresPw,
-			config.PersisterPostgresDbname,
-		)
-		if err != nil {
-			log.Errorf("Error connecting to Postgresql, stopping...; err: %v", err)
-			os.Exit(1)
-		}
-		return persister
-	}
-	nullPersister := &crawlerpersist.NullPersister{}
-	return nullPersister
-}
-
-func listingPersister(config *utils.ProcessorConfig) model.ListingPersister {
-	p := persister(config)
-	return p.(model.ListingPersister)
-}
-
-func contentRevisionPersister(config *utils.ProcessorConfig) model.ContentRevisionPersister {
-	p := persister(config)
-	return p.(model.ContentRevisionPersister)
-}
-
-func governanceEventPersister(config *utils.ProcessorConfig) model.GovernanceEventPersister {
-	p := persister(config)
-	return p.(model.GovernanceEventPersister)
-}
-
-func cronPersister(config *utils.ProcessorConfig) model.CronPersister {
-	p := persister(config)
-	return p.(model.CronPersister)
-}
-
-func persister(config *utils.ProcessorConfig) interface{} {
-	if config.PersisterType == utils.PersisterTypePostgresql {
-		return postgresPersister(config)
-	}
-	// Default to the NullPersister
-	return &persistence.NullPersister{}
-}
-
-func postgresPersister(config *utils.ProcessorConfig) *persistence.PostgresPersister {
-	persister, err := persistence.NewPostgresPersister(
-		config.PersisterPostgresAddress,
-		config.PersisterPostgresPort,
-		config.PersisterPostgresUser,
-		config.PersisterPostgresPw,
-		config.PersisterPostgresDbname,
-	)
-	if err != nil {
-		log.Errorf("Error connecting to Postgresql, stopping...; err: %v", err)
-		os.Exit(1)
-	}
-	// Attempts to create all the necessary tables here
-	err = persister.CreateTables()
-	if err != nil {
-		log.Errorf("Error creating tables, stopping...; err: %v", err)
-		os.Exit(1)
-	}
-	return persister
-}
-
-func civilMetadataScraper(config *utils.ProcessorConfig) model.CivilMetadataScraper {
-	return &scraper.CivilMetadataScraper{}
-}
-
-func contentScraper(config *utils.ProcessorConfig) model.ContentScraper {
-	return &scraper.NullScraper{}
-}
-
-func metadataScraper(config *utils.ProcessorConfig) model.MetadataScraper {
-	return &scraper.NullScraper{}
 }
 
 func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermodel.Event,
@@ -126,22 +45,57 @@ func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermode
 	return nil
 }
 
-func runProcessor(config *utils.ProcessorConfig) {
-	client, err := ethclient.Dial(config.EthAPIURL)
-	if err != nil {
-		log.Errorf("Error connecting to eth API: err: %v", err)
-		return
-	}
+type initializedPersisters struct {
+	cron            model.CronPersister
+	event           crawlermodel.EventDataPersister
+	listing         model.ListingPersister
+	contentRevision model.ContentRevisionPersister
+	governanceEvent model.GovernanceEventPersister
+}
 
-	cronPersister := cronPersister(config)
-	lastTs, err := cronPersister.TimestampOfLastEventForCron()
+func initPersisters(config *utils.ProcessorConfig) (*initializedPersisters, error) {
+	cronPersister, err := helpers.CronPersister(config)
+	if err != nil {
+		log.Errorf("Error getting the cron persister: %v", err)
+		return nil, err
+	}
+	eventPersister, err := helpers.EventPersister(config)
+	if err != nil {
+		log.Errorf("Error getting the event persister: %v", err)
+		return nil, err
+	}
+	listingPersister, err := helpers.ListingPersister(config)
+	if err != nil {
+		log.Errorf("Error w listingPersister: err: %v", err)
+		return nil, err
+	}
+	contentRevisionPersister, err := helpers.ContentRevisionPersister(config)
+	if err != nil {
+		log.Errorf("Error w contentRevisionPersister: err: %v", err)
+		return nil, err
+	}
+	governanceEventPersister, err := helpers.GovernanceEventPersister(config)
+	if err != nil {
+		log.Errorf("Error w governanceEventPersister: err: %v", err)
+		return nil, err
+	}
+	return &initializedPersisters{
+		cron:            cronPersister,
+		event:           eventPersister,
+		listing:         listingPersister,
+		contentRevision: contentRevisionPersister,
+		governanceEvent: governanceEventPersister,
+	}, nil
+}
+
+func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersisters) {
+	lastTs, err := persisters.cron.TimestampOfLastEventForCron()
 	if err != nil {
 		log.Errorf("Error getting last event timestamp: %v", err)
 		return
 	}
 
-	eventPersister := eventPersister(config)
-	events, err := eventPersister.RetrieveEvents(
+	events, err := persisters.event.RetrieveEvents(
 		&crawlermodel.RetrieveEventsCriteria{
 			FromTs: lastTs,
 		},
@@ -151,28 +105,37 @@ func runProcessor(config *utils.ProcessorConfig) {
 		return
 	}
 
-	proc := processor.NewEventProcessor(
-		client,
-		listingPersister(config),
-		contentRevisionPersister(config),
-		governanceEventPersister(config),
-		contentScraper(config),
-		metadataScraper(config),
-		civilMetadataScraper(config),
-	)
-	err = proc.Process(events)
-	if err != nil {
-		log.Errorf("Error retrieving events: err: %v", err)
-		return
+	if len(events) > 0 {
+		client, err := ethclient.Dial(config.EthAPIURL)
+		if err != nil {
+			log.Errorf("Error connecting to eth API: err: %v", err)
+			return
+		}
+		defer client.Close()
+
+		proc := processor.NewEventProcessor(
+			client,
+			persisters.listing,
+			persisters.contentRevision,
+			persisters.governanceEvent,
+			helpers.ContentScraper(config),
+			helpers.MetadataScraper(config),
+			helpers.CivilMetadataScraper(config),
+		)
+		err = proc.Process(events)
+		if err != nil {
+			log.Errorf("Error retrieving events: err: %v", err)
+			return
+		}
+
+		err = saveLastEventTimestamp(persisters.cron, events, lastTs)
+		if err != nil {
+			log.Errorf("Error saving last timestamp %v: err: %v", lastTs, err)
+			return
+		}
 	}
 
-	err = saveLastEventTimestamp(cronPersister, events, lastTs)
-	if err != nil {
-		log.Errorf("Error saving last timestamp %v: err: %v", lastTs, err)
-		return
-	}
-
-	log.Info("Done running processor")
+	log.Infof("Done running processor: %v", runtime.NumGoroutine())
 }
 
 func main() {
@@ -186,12 +149,18 @@ func main() {
 	err := config.PopulateFromEnv()
 	if err != nil {
 		config.OutputUsage()
-		log.Errorf("Invalid crawler config: err: %v\n", err)
+		log.Errorf("Invalid processor config: err: %v\n", err)
+		os.Exit(2)
+	}
+
+	persisters, err := initPersisters(config)
+	if err != nil {
+		log.Errorf("Error initializing persister: err: %v", err)
 		os.Exit(2)
 	}
 
 	cr := cron.New()
-	err = cr.AddFunc(config.CronConfig, func() { runProcessor(config) })
+	err = cr.AddFunc(config.CronConfig, func() { runProcessor(config, persisters) })
 	if err != nil {
 		log.Errorf("Error starting: err: %v", err)
 		os.Exit(1)

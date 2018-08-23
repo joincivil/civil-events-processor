@@ -3,6 +3,7 @@ package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 // Use golang.org/x/tools/cmd/stringer to generate the
 // governancestate_string.go stringer method.
+// stringer -type=GovernanceState
 
 // GovernanceState specifies the current state of a listing
 type GovernanceState int

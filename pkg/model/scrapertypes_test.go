@@ -85,13 +85,13 @@ func checkMetadataValues(t *testing.T, metadata *model.ScraperCivilMetadata) {
 		t.Error("Did not find credibility indicators")
 	} else {
 		creds := metadata.CredibilityIndicators()
-		if creds.OriginalReporting() != "1" {
+		if !creds.OriginalReporting() {
 			t.Errorf("Did not find correct original reporting: %v", creds.OriginalReporting())
 		}
 		if creds.OnTheGround() {
 			t.Errorf("Did not find correct on the ground value: %v", creds.OnTheGround())
 		}
-		if creds.SourcesCited() != "1" {
+		if !creds.SourcesCited() {
 			t.Errorf("Did not find correct sources cited value: %v", creds.SourcesCited())
 		}
 		if creds.SubjectSpecialist() {
