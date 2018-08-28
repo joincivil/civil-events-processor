@@ -296,7 +296,7 @@ func (p *PostgresPersister) createListingForTable(listing *model.Listing, tableN
 
 func (p *PostgresPersister) updateListingInTable(listing *model.Listing, updatedFields []string, tableName string) error {
 	// Update the last updated timestamp
-	listing.SetLastUpdatedDateTs(crawlerutils.CurrentEpochNanoSecsInInt64())
+	listing.SetLastUpdatedDateTs(crawlerutils.CurrentEpochSecsInInt64())
 	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
 
 	queryString, err := p.updateListingQuery(updatedFields, tableName)
@@ -569,7 +569,7 @@ func (p *PostgresPersister) governanceEventsByCriteriaQuery(criteria *model.Gove
 
 func (p *PostgresPersister) updateGovernanceEventInTable(govEvent *model.GovernanceEvent, updatedFields []string, tableName string) error {
 	// Update the last updated timestamp
-	govEvent.SetLastUpdatedDateTs(crawlerutils.CurrentEpochNanoSecsInInt64())
+	govEvent.SetLastUpdatedDateTs(crawlerutils.CurrentEpochSecsInInt64())
 	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
 
 	queryString, err := p.updateGovEventsQuery(updatedFields, tableName)

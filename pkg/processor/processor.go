@@ -337,7 +337,7 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 		metadata,
 		eventType,
 		creationDate,
-		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		crawlerutils.CurrentEpochSecsInInt64(),
 		eventHash,
 	)
 	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
@@ -381,7 +381,7 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		creationDate,
 		applicationDate,
 		int64(0),
-		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 	err = e.listingPersister.CreateListing(listing)
 	return err
