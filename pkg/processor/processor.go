@@ -329,14 +329,15 @@ func (e *EventProcessor) processCivilTCRApplicationListingEvent(event *crawlermo
 }
 
 func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
-	senderAddr common.Address, metadata model.Metadata, eventType string, eventHash string) error {
+	senderAddr common.Address, metadata model.Metadata, creationDate int64, eventType string,
+	eventHash string) error {
 	govEvent := model.NewGovernanceEvent(
 		listingAddr,
 		senderAddr,
 		metadata,
 		eventType,
-		crawlerutils.CurrentEpochNanoSecsInInt64(),
-		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		creationDate,
+		crawlerutils.CurrentEpochSecsInInt64(),
 		eventHash,
 	)
 	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
@@ -344,7 +345,8 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 }
 
 func (e *EventProcessor) persistNewListing(listingAddress common.Address,
-	whitelisted bool, lastGovernanceState model.GovernanceState) error {
+	whitelisted bool, lastGovernanceState model.GovernanceState, creationDate int64,
+	applicationDate int64) error {
 	// TODO(PN): How do I get the URL of the site?
 	url := ""
 	newsroom, err := contract.NewNewsroomContract(listingAddress, e.client)
@@ -376,10 +378,10 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		charterURI,
 		ownerAddresses,
 		contributorAddresses,
-		crawlerutils.CurrentEpochNanoSecsInInt64(),
-		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		creationDate,
+		applicationDate,
 		int64(0),
-		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 	err = e.listingPersister.CreateListing(listing)
 	return err
@@ -468,7 +470,13 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 		wlisting = !wlisting
 	}
 	if listing == nil {
-		err = e.persistNewListing(listingAddress, wlisting, govState)
+		err = e.persistNewListing(
+			listingAddress,
+			wlisting,
+			govState,
+			event.Timestamp(),
+			event.Timestamp(),
+		)
 	} else {
 		var updatedFields []string
 		listing.SetLastGovernanceState(govState)
@@ -497,6 +505,7 @@ func (e *EventProcessor) persistGovernanceEvent(event *crawlermodel.Event) error
 		listingAddress,
 		event.ContractAddress(),
 		event.EventPayload(),
+		event.Timestamp(),
 		event.EventType(),
 		event.Hash(),
 	)
@@ -577,7 +586,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		contentID.(*big.Int),
 		revisionID.(*big.Int),
 		revisionURI.(string),
-		crawlerutils.CurrentEpochNanoSecsInInt64(),
+		event.Timestamp(),
 	)
 	err = e.revisionPersister.CreateContentRevision(revision)
 	return err
