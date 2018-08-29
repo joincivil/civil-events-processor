@@ -9,7 +9,6 @@
     "codegen",
     "codegen/templates",
     "graphql",
-    "graphql/introspection",
     "handler"
   ]
   revision = "3575c289486fce174c941b63749b9bbb88c3ca90"
@@ -310,6 +309,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "328cb9833cd3d5982e6f02f6ebf75654c5c7e58a87b2aec40ebd6384e9ca28ca"
+  inputs-digest = "030fc09c7092d99dbbdd1433ddf96b658cbbcfcf0e314065e2ce0670523f662a"
   solver-name = "gps-cdcl"
   solver-version = 1
