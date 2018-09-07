@@ -7,9 +7,7 @@
     ".",
     "cmd",
     "codegen",
-    "codegen/templates",
-    "graphql",
-    "handler"
+    "codegen/templates"
   ]
   revision = "3575c289486fce174c941b63749b9bbb88c3ca90"
   version = "0.4.3"
@@ -90,15 +88,6 @@
   version = "v1.0"
 
 [[projects]]
-  name = "github.com/go-chi/chi"
-  packages = [
-    ".",
-    "middleware"
-  ]
-  revision = "e83ac2304db3c50cf03d96a2fcd39009d458bc35"
-  version = "v3.3.2"
-
-[[projects]]
   name = "github.com/go-stack/stack"
   packages = ["."]
   revision = "259ab82a6cad3992b4e21ff5cac294ccb06474bc"
@@ -115,12 +104,6 @@
   name = "github.com/golang/snappy"
   packages = ["."]
   revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
-
-[[projects]]
-  name = "github.com/gorilla/websocket"
-  packages = ["."]
-  revision = "ea4d1f681babbce9545c9c5f3d5194a789c89f5b"
-  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -146,18 +129,17 @@
   revision = "0dae4fefe7c0e190f7b5a78dac28a1c82cc8d849"
 
 [[projects]]
-  branch = "master"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
+    "pkg/generated/common",
     "pkg/generated/contract",
-    "pkg/generated/filterer",
     "pkg/model",
     "pkg/persistence",
     "pkg/persistence/postgres",
     "pkg/utils"
   ]
-  revision = "6b752b402a318e5f1fbaf8171fec919e61e15108"
+  revision = "e315432844572405d21f232db27dc6c2e37838b0"
 
 [[projects]]
   name = "github.com/kelseyhightower/envconfig"
@@ -202,6 +184,22 @@
   packages = ["."]
   revision = "ca016a06a5753f8ba03029c0aa5e54afb1bf713f"
   version = "v1.4.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shurcooL/go"
+  packages = ["ctxhttp"]
+  revision = "9e1955d9fb6e1ee2345ba1f5e71669263e719e27"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shurcooL/graphql"
+  packages = [
+    ".",
+    "ident",
+    "internal/jsonutil"
+  ]
+  revision = "62c9ce094e75302d560f7adcdf16c06d05aaa958"
 
 [[projects]]
   name = "github.com/spf13/cobra"
@@ -309,6 +307,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "030fc09c7092d99dbbdd1433ddf96b658cbbcfcf0e314065e2ce0670523f662a"
+  inputs-digest = "ec9e4a852f0b00ab0fd401492c786cdb519b27405937d50ff294b342356b62f9"
   solver-name = "gps-cdcl"
   solver-version = 1
