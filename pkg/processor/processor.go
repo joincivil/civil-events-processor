@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	govStateDBModelName    = "LastGovernanceState"
-	whitelistedDBModelName = "Whitelisted"
-	listingNameDBModelName = "Name"
-	ownerAddDBModelName    = "OwnerAddresses"
+	govStateDBModelName     = "LastGovernanceState"
+	whitelistedDBModelName  = "Whitelisted"
+	approvalDateDBModelName = "ApprovalDateTs"
+	listingNameDBModelName  = "Name"
+	ownerAddDBModelName     = "OwnerAddresses"
 )
 
 type whitelistedStatus int
@@ -32,6 +33,11 @@ const (
 	whitelistedTrue
 	whitelistedFalse
 	whitelistedFlip
+)
+
+const (
+	approvalDateNoUpdate   = int64(-1)
+	approvalDateEmptyValue = int64(0)
 )
 
 func isStringInSlice(slice []string, target string) bool {
@@ -346,7 +352,7 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 
 func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	whitelisted bool, lastGovernanceState model.GovernanceState, creationDate int64,
-	applicationDate int64) error {
+	applicationDate int64, approvalDate int64) error {
 	// TODO(PN): How do I get the URL of the site?
 	url := ""
 	newsroom, err := contract.NewNewsroomContract(listingAddress, e.client)
@@ -380,7 +386,7 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		contributorAddresses,
 		creationDate,
 		applicationDate,
-		int64(0),
+		approvalDate,
 		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 	err = e.listingPersister.CreateListing(listing)
@@ -388,67 +394,82 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 }
 
 func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateApplied, whitelistedFalse)
+	return e.processTCREvent(event, model.GovernanceStateApplied, whitelistedFalse,
+		approvalDateEmptyValue)
 }
 
 func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateChallenged, whitelistedNoChange)
+	return e.processTCREvent(event, model.GovernanceStateChallenged, whitelistedNoChange,
+		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRChallengeFailed(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateChallengeFailed, whitelistedNoChange)
+	return e.processTCREvent(event, model.GovernanceStateChallengeFailed, whitelistedNoChange,
+		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateChallengeSucceeded, whitelistedFalse)
+	return e.processTCREvent(event, model.GovernanceStateChallengeSucceeded, whitelistedFalse,
+		approvalDateEmptyValue)
 }
 
 func (e *EventProcessor) processTCRChallengeFailedOverturned(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateFailedChallengeOverturned, whitelistedNoChange)
+	return e.processTCREvent(event, model.GovernanceStateFailedChallengeOverturned, whitelistedNoChange,
+		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRChallengeSuccessfulOverturned(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateSuccessfulChallengeOverturned, whitelistedFalse)
+	return e.processTCREvent(event, model.GovernanceStateSuccessfulChallengeOverturned, whitelistedFalse,
+		approvalDateEmptyValue)
 }
 
 func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateAppWhitelisted, whitelistedTrue)
+	approvalDate := crawlerutils.CurrentEpochSecsInInt64()
+	return e.processTCREvent(event, model.GovernanceStateAppWhitelisted, whitelistedTrue, approvalDate)
 }
 
 func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateAppRemoved, whitelistedFalse)
+	return e.processTCREvent(event, model.GovernanceStateAppRemoved, whitelistedFalse,
+		approvalDateEmptyValue)
 }
 
 func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateRemoved, whitelistedFalse)
+	return e.processTCREvent(event, model.GovernanceStateRemoved, whitelistedFalse,
+		approvalDateEmptyValue)
 }
 
 func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateWithdrawn, whitelistedFalse)
+	return e.processTCREvent(event, model.GovernanceStateWithdrawn, whitelistedFalse,
+		approvalDateEmptyValue)
 }
 
 func (e *EventProcessor) processTCRAppealGranted(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateAppealGranted, whitelistedNoChange)
+	return e.processTCREvent(event, model.GovernanceStateAppealGranted, whitelistedNoChange,
+		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRAppealRequested(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateAppealRequested, whitelistedNoChange)
+	return e.processTCREvent(event, model.GovernanceStateAppealRequested, whitelistedNoChange,
+		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateGrantedAppealChallenged, whitelistedNoChange)
+	return e.processTCREvent(event, model.GovernanceStateGrantedAppealChallenged, whitelistedNoChange,
+		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRGrantedAppealConfirmed(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateGrantedAppealConfirmed, whitelistedNoChange)
+	return e.processTCREvent(event, model.GovernanceStateGrantedAppealConfirmed, whitelistedNoChange,
+		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateGrantedAppealOverturned, whitelistedNoChange)
+	return e.processTCREvent(event, model.GovernanceStateGrantedAppealOverturned, whitelistedNoChange,
+		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState model.GovernanceState,
-	whitelisted whitelistedStatus) error {
+	whitelisted whitelistedStatus, approvalDate int64) error {
 	listingAddress, err := e.listingAddressFromEvent(event)
 	if err != nil {
 		return err
@@ -470,12 +491,16 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 		wlisting = !wlisting
 	}
 	if listing == nil {
+		if approvalDate == approvalDateNoUpdate {
+			approvalDate = approvalDateEmptyValue
+		}
 		err = e.persistNewListing(
 			listingAddress,
 			wlisting,
 			govState,
 			event.Timestamp(),
 			event.Timestamp(),
+			approvalDate,
 		)
 	} else {
 		var updatedFields []string
@@ -484,6 +509,10 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 		if whitelisted != whitelistedNoChange {
 			listing.SetWhitelisted(wlisting)
 			updatedFields = append(updatedFields, whitelistedDBModelName)
+		}
+		if approvalDate != approvalDateNoUpdate {
+			listing.SetApprovalDateTs(approvalDate)
+			updatedFields = append(updatedFields, approvalDateDBModelName)
 		}
 		err = e.listingPersister.UpdateListing(listing, updatedFields)
 	}
@@ -638,7 +667,6 @@ func (e *EventProcessor) scrapeData(metadataURL string) (
 				return nil, nil, err
 			}
 		}
-		log.Infof("metadata url = %v", metadataURL)
 	}
 
 	// TODO(PN): Use canonical URL or the revision URL here?
