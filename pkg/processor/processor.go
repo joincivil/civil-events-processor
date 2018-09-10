@@ -10,8 +10,8 @@ import (
 	"math/big"
 	"strings"
 
+	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
-	"github.com/joincivil/civil-events-crawler/pkg/generated/filterer"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
@@ -98,13 +98,13 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 
 func (e *EventProcessor) isValidNewsroomContractEventName(name string) bool {
 	name = strings.Trim(name, " _")
-	eventNames := filterer.EventTypesNewsroomContract()
+	eventNames := commongen.EventTypesNewsroomContract()
 	return isStringInSlice(eventNames, name)
 }
 
 func (e *EventProcessor) isValidCivilTCRContractEventName(name string) bool {
 	name = strings.Trim(name, " _")
-	eventNames := filterer.EventTypesCivilTCRContract()
+	eventNames := commongen.EventTypesCivilTCRContract()
 	return isStringInSlice(eventNames, name)
 }
 
