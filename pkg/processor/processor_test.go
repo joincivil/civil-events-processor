@@ -937,8 +937,8 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 	events = append(events, event1)
 	err = proc.Process(events)
 	fmt.Println(err)
-	if err == nil {
-		t.Errorf("Should have failed processing events due to non existent listing")
+	if err != nil {
+		t.Errorf("Should have processed events for non existent listing")
 	}
 
 	events = []*crawlermodel.Event{}
@@ -1029,8 +1029,8 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	events = append(events, event1)
 	err = proc.Process(events)
 	fmt.Println(err)
-	if err == nil {
-		t.Errorf("Should have failed processing events due to non existent listing")
+	if err != nil {
+		t.Errorf("Should have processed events for non existent listing")
 	}
 
 	events = []*crawlermodel.Event{}
