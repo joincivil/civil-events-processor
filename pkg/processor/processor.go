@@ -541,16 +541,42 @@ func (e *EventProcessor) persistGovernanceEvent(event *crawlermodel.Event) error
 	return err
 }
 
-func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) error {
-	var updatedFields []string
-	payload := event.EventPayload()
+func (e *EventProcessor) retrieveOrCreateListing(event *crawlermodel.Event) (*model.Listing, error) {
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != model.ErrPersisterNoResults {
-		return fmt.Errorf("Error retrieving listing by address: err: %v", err)
+		return nil, err
+	}
+	if listing != nil {
+		return listing, nil
+	}
+	err = e.persistNewListing(
+		listingAddress,
+		false,
+		model.GovernanceStateNone,
+		event.Timestamp(),
+		event.Timestamp(),
+		approvalDateEmptyValue,
+	)
+	if err != nil {
+		return nil, err
+	}
+	listing, err = e.listingPersister.ListingByAddress(listingAddress)
+	if err != nil && err != model.ErrPersisterNoResults {
+		return nil, err
 	}
 	if listing == nil {
-		return errors.New("No listing found to update with new name")
+		return nil, errors.New("Failed to create a listing")
+	}
+	return listing, nil
+}
+
+func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) error {
+	var updatedFields []string
+	payload := event.EventPayload()
+	listing, err := e.retrieveOrCreateListing(event)
+	if err != nil && err != model.ErrPersisterNoResults {
+		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
 	}
 	name, ok := payload["NewName"]
 	if !ok {
@@ -563,6 +589,12 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) e
 }
 
 func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Event) error {
+	// Create a new listing if none exists for the address in the event
+	_, err := e.retrieveOrCreateListing(event)
+	if err != nil && err != model.ErrPersisterNoResults {
+		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
+	}
+
 	payload := event.EventPayload()
 	listingAddress := event.ContractAddress()
 
@@ -624,13 +656,9 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
-	listingAddress := event.ContractAddress()
-	listing, err := e.listingPersister.ListingByAddress(listingAddress)
+	listing, err := e.retrieveOrCreateListing(event)
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
-	}
-	if listing == nil {
-		return errors.New("No listing found to update owners")
 	}
 	previousOwner, ok := payload["PreviousOwner"]
 	if !ok {
