@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	log "github.com/golang/glog"
 	"math/big"
 	"strings"
@@ -336,7 +337,7 @@ func (e *EventProcessor) processCivilTCRApplicationListingEvent(event *crawlermo
 
 func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 	senderAddr common.Address, metadata model.Metadata, creationDate int64, eventType string,
-	eventHash string) error {
+	eventHash string, logPayload *types.Log) error {
 	govEvent := model.NewGovernanceEvent(
 		listingAddr,
 		senderAddr,
@@ -345,6 +346,11 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 		creationDate,
 		crawlerutils.CurrentEpochSecsInInt64(),
 		eventHash,
+		logPayload.BlockNumber,
+		logPayload.TxHash,
+		logPayload.TxIndex,
+		logPayload.BlockHash,
+		logPayload.Index,
 	)
 	err := e.govEventPersister.CreateGovernanceEvent(govEvent)
 	return err
@@ -537,6 +543,7 @@ func (e *EventProcessor) persistGovernanceEvent(event *crawlermodel.Event) error
 		event.Timestamp(),
 		event.EventType(),
 		event.Hash(),
+		event.LogPayload(),
 	)
 	return err
 }

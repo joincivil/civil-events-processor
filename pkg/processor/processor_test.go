@@ -2,7 +2,6 @@ package processor_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -204,6 +203,13 @@ func (t *TestPersister) GovernanceEventsByCriteria(criteria *model.GovernanceEve
 	return events, nil
 }
 
+// GovernanceEventsByTxHash gets governance events based on txhash
+func (t *TestPersister) GovernanceEventsByTxHash(txHash common.Hash) ([]*model.GovernanceEvent, error) {
+	txHashHex := txHash.Hex()
+	govEvents := t.govEvents[txHashHex]
+	return govEvents, nil
+}
+
 // GetGovernanceEventsByListingAddress retrieves governance events based on criteria
 func (t *TestPersister) GovernanceEventsByListingAddress(address common.Address) ([]*model.GovernanceEvent, error) {
 	addressHex := address.Hex()
@@ -244,7 +250,7 @@ func (t *TestPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent, u
 }
 
 // DeleteGovenanceEvent removes a governance event
-func (t *TestPersister) DeleteGovenanceEvent(govEvent *model.GovernanceEvent) error {
+func (t *TestPersister) DeleteGovernanceEvent(govEvent *model.GovernanceEvent) error {
 	addressHex := govEvent.ListingAddress().Hex()
 	events, ok := t.govEvents[addressHex]
 	if !ok {
@@ -936,7 +942,6 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
-	fmt.Println(err)
 	if err != nil {
 		t.Errorf("Should have processed events for non existent listing")
 	}
@@ -1028,7 +1033,6 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	)
 	events = append(events, event1)
 	err = proc.Process(events)
-	fmt.Println(err)
 	if err != nil {
 		t.Errorf("Should have processed events for non existent listing")
 	}

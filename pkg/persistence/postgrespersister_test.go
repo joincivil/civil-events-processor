@@ -634,7 +634,7 @@ func TestDeleteContentRevision(t *testing.T) {
 Helpers for governance_event table tests:
 */
 
-func setupSampleGovernanceEvent() (*model.GovernanceEvent, common.Address, string) {
+func setupSampleGovernanceEvent() (*model.GovernanceEvent, common.Address, string, common.Hash) {
 	address1, _ := randomHex(32)
 	address2, _ := randomHex(32)
 	listingAddr := common.HexToAddress(address1)
@@ -644,9 +644,15 @@ func setupSampleGovernanceEvent() (*model.GovernanceEvent, common.Address, strin
 	creationDateTs := crawlerutils.CurrentEpochSecsInInt64()
 	lastUpdatedDateTs := crawlerutils.CurrentEpochSecsInInt64() + 1
 	eventHash, _ := randomHex(5)
+	blockNumber := uint64(88888)
+	tHash, _ := randomHex(5)
+	txHash := common.HexToHash(tHash)
+	txIndex := uint(4)
+	blockHash := common.Hash{}
+	index := uint(2)
 	testGovernanceEvent := model.NewGovernanceEvent(listingAddr, senderAddress, metadata, governanceEventType,
-		creationDateTs, lastUpdatedDateTs, eventHash)
-	return testGovernanceEvent, listingAddr, eventHash
+		creationDateTs, lastUpdatedDateTs, eventHash, blockNumber, txHash, txIndex, blockHash, index)
+	return testGovernanceEvent, listingAddr, eventHash, txHash
 }
 
 /*
@@ -663,7 +669,7 @@ func TestCreateGovernanceEvent(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelGovernanceEvent, _, _ := setupSampleGovernanceEvent()
+	modelGovernanceEvent, _, _, _ := setupSampleGovernanceEvent()
 
 	// insert to table
 	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
@@ -692,8 +698,8 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 	}
 	defer deleteTestTable(persister, tableName)
 
-	// sample contentRevision
-	modelGovernanceEvent, listingAddr, _ := setupSampleGovernanceEvent()
+	// sample govEvent
+	modelGovernanceEvent, listingAddr, _, _ := setupSampleGovernanceEvent()
 
 	// insert to table
 	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
@@ -727,7 +733,7 @@ func TestDBGovEventToModelGovEvent(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelGovernanceEvent, listingAddr, _ := setupSampleGovernanceEvent()
+	modelGovernanceEvent, listingAddr, _, _ := setupSampleGovernanceEvent()
 
 	// insert to table
 	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
@@ -757,7 +763,7 @@ func TestDBGovEventToModelGovEvent(t *testing.T) {
 
 // TODO(IS): test update gov event -- test update that's not by listing
 
-// TestDeleteContentRevision tests that the deleting the ContentRevision works
+// TestDeleteGovernanceEvent tests that the deleting the Governance Event works
 // TODO(IS) : this will delete more than you want. need to put some kind of hash for the gov event.
 func TestDeleteGovernanceEvent(t *testing.T) {
 	tableName := "governance_event_test"
@@ -768,7 +774,7 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	defer deleteTestTable(persister, tableName)
 
 	// sample contentRevision
-	modelGovernanceEvent, _, _ := setupSampleGovernanceEvent()
+	modelGovernanceEvent, _, _, _ := setupSampleGovernanceEvent()
 
 	// insert to table
 	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
@@ -786,7 +792,7 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	}
 
 	//delete rows
-	err = persister.deleteGovenanceEventFromTable(modelGovernanceEvent, tableName)
+	err = persister.deleteGovernanceEventFromTable(modelGovernanceEvent, tableName)
 	if err != nil {
 		t.Errorf("Error deleting governance event: %v", err)
 	}
@@ -798,6 +804,48 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	}
 	if numRows != 0 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRows)
+	}
+}
+
+// TestGovEventsByCriteria tests GovernanceEvent by criteria query
+func TestGovEventsByCriteria(t *testing.T) {
+	tableName := "governance_event_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	// defer deleteTestTable(persister, tableName)
+
+	// sample contentRevision
+	modelGovernanceEvent, _, _, txHash := setupSampleGovernanceEvent()
+	modelGovernanceEvent2, _, _, _ := setupSampleGovernanceEvent()
+
+	// insert to table
+	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
+	if err != nil {
+		t.Errorf("error saving GovernanceEvent: %v", err)
+	}
+
+	err = persister.createGovernanceEventInTable(modelGovernanceEvent2, tableName)
+	if err != nil {
+		t.Errorf("error saving GovernanceEvent: %v", err)
+	}
+
+	govEvents, err := persister.governanceEventsByTxHashFromTable(txHash, tableName)
+
+	// confirm txHash from query result
+	if len(govEvents) != 1 {
+		t.Errorf("Should have only received 1 governance event from txHash query but received %v", len(govEvents))
+	}
+
+	blockData := govEvents[0].BlockData()
+	if blockData.TxHash() != txHash.Hex() {
+		t.Errorf("Hash should be %v but is %v", txHash, blockData.TxHash())
+	}
+
+	err = deleteTestTable(persister, tableName)
+	if err != nil {
+		t.Errorf("Could not delete governance_event_test table: %v", err)
 	}
 }
 
