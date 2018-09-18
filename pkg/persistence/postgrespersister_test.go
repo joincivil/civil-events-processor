@@ -17,14 +17,16 @@ import (
 	mathrand "math/rand"
 	"reflect"
 	"testing"
+	"time"
 )
 
 const (
-	postgresPort   = 5432
-	postgresDBName = "civil_crawler"
-	postgresUser   = "docker"
-	postgresPswd   = "docker"
-	postgresHost   = "localhost"
+	postgresPort     = 5432
+	postgresDBName   = "civil_crawler"
+	postgresUser     = "docker"
+	postgresPswd     = "docker"
+	postgresHost     = "localhost"
+	govTestTableName = "governance_event_test"
 )
 
 // randomHex generates a random hex string
@@ -68,7 +70,7 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 	return persister, nil
 }
 
-func deleteTestTable(persister *PostgresPersister, tableName string) error {
+func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName string) {
 	var err error
 	switch tableName {
 	case "listing_test":
@@ -81,9 +83,8 @@ func deleteTestTable(persister *PostgresPersister, tableName string) error {
 		_, err = persister.db.Query("DROP TABLE cron_test;")
 	}
 	if err != nil {
-		return fmt.Errorf("Couldn't delete test table %s: %v", tableName, err)
+		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
 	}
-	return nil
 }
 
 func checkTableExists(tableName string, persister *PostgresPersister) error {
@@ -189,7 +190,7 @@ func TestCreateListing(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 	modelListing, _ := setupSampleListing()
 	// save to test table
 	err = persister.createListingForTable(modelListing, tableName)
@@ -202,11 +203,6 @@ func TestCreateListing(t *testing.T) {
 	if numRowsb != 1 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
 	}
-
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
 }
 
 // TestListingByAddress tests that the query we are using to get Listing works
@@ -216,7 +212,7 @@ func TestListingByAddress(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 	// create fake listing in listing_test
 	modelListing, modelListingAddress := setupSampleListing()
 
@@ -233,10 +229,6 @@ func TestListingByAddress(t *testing.T) {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
 }
 
 // TestDBListingToModelListing tests that the db listing can be properly converted to model listing
@@ -246,7 +238,7 @@ func TestDBListingToModelListing(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// create fake listing in listing_test
 	modelListing, modelListingAddress := setupSampleListing()
@@ -267,10 +259,6 @@ func TestDBListingToModelListing(t *testing.T) {
 		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelListingFromDB, modelListing)
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
 }
 
 // Test retrieving multiple listings
@@ -280,7 +268,7 @@ func TestListingsByAddresses(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	// defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// create fake listings in listing_test
 	numListings := 3
@@ -302,11 +290,6 @@ func TestListingsByAddresses(t *testing.T) {
 		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbListings), numListings)
 	}
 
-	//delete test table
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
 }
 
 // TestUpdateListing tests that updating the Listing works
@@ -316,7 +299,7 @@ func TestUpdateListing(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	modelListing, modelListingAddress := setupSampleListing()
 
@@ -349,11 +332,6 @@ func TestUpdateListing(t *testing.T) {
 		t.Errorf("Whitelisted field was not updated correctly. %v", updatedDbListing.Whitelisted())
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
-
 }
 
 // TestDeleteListing tests that the deleting the Listing works
@@ -363,7 +341,7 @@ func TestDeleteListing(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	modelListing, _ := setupSampleListing()
 
@@ -448,7 +426,7 @@ func TestCreateContentRevision(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
 	modelContentRevision, _, _, _ := setupRandomSampleContentRevision()
@@ -464,11 +442,6 @@ func TestCreateContentRevision(t *testing.T) {
 	if numRowsb != 1 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
 	}
-
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
 }
 
 // TestContentRevision tests that a content revision can be retrieved
@@ -478,7 +451,7 @@ func TestContentRevision(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
 	modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
@@ -495,10 +468,6 @@ func TestContentRevision(t *testing.T) {
 		t.Errorf("Wasn't able to get content revision from postgres table: %v", err)
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
 }
 
 // TestDBCRToModelCR tests that the db listing can be properly converted to model listing
@@ -508,7 +477,7 @@ func TestDBCRToModelCR(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
 	modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
@@ -530,11 +499,6 @@ func TestDBCRToModelCR(t *testing.T) {
 	if !reflect.DeepEqual(modelContentRevision, modelCRFromDB) {
 		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelCRFromDB, modelContentRevision)
 	}
-
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
 }
 
 // TestContentRevision tests that multiple content revisions can be retrieved
@@ -544,7 +508,7 @@ func TestContentRevisions(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// create multiple contentRevisions
 	numRevisions := 10
@@ -576,11 +540,6 @@ func TestContentRevisions(t *testing.T) {
 	}
 	reflect.DeepEqual(contractRevisionIDsFromDB, testContractRevisionIDs)
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
-	}
-
 }
 
 // Test update content revision -- TODO(IS) create an update where address, contentid, revisionid don't change
@@ -594,7 +553,7 @@ func TestDeleteContentRevision(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
 	modelContentRevision, _, _, _ := setupRandomSampleContentRevision()
@@ -634,10 +593,17 @@ func TestDeleteContentRevision(t *testing.T) {
 Helpers for governance_event table tests:
 */
 
-func setupSampleGovernanceEvent() (*model.GovernanceEvent, common.Address, string, common.Hash) {
-	address1, _ := randomHex(32)
+func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, common.Address, string, common.Hash) {
+	var listingAddr common.Address
 	address2, _ := randomHex(32)
-	listingAddr := common.HexToAddress(address1)
+	if randListing {
+		address1, _ := randomHex(32)
+		listingAddr = common.HexToAddress(address1)
+	} else {
+		// keep listingAddress constant
+		listingAddr = common.HexToAddress("0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d")
+	}
+
 	senderAddress := common.HexToAddress(address2)
 	metadata := model.Metadata{}
 	governanceEventType := "governanceeventtypehere"
@@ -655,60 +621,57 @@ func setupSampleGovernanceEvent() (*model.GovernanceEvent, common.Address, strin
 	return testGovernanceEvent, listingAddr, eventHash, txHash
 }
 
+func setupGovEventTable(t *testing.T) *PostgresPersister {
+	persister, err := setupTestTable(govTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	return persister
+}
+
+func createAndSaveTestGovEvent(t *testing.T, persister *PostgresPersister, randListing bool) (*model.GovernanceEvent, common.Address, string, common.Hash) {
+	// sample govEvent
+	modelGovernanceEvent, listingAddr, eventHash, txHash := setupSampleGovernanceEvent(false)
+
+	// insert to table
+	err := persister.createGovernanceEventInTable(modelGovernanceEvent, govTestTableName)
+	if err != nil {
+		t.Errorf("error saving GovernanceEvent: %v", err)
+	}
+	return modelGovernanceEvent, listingAddr, eventHash, txHash
+}
+
 /*
 All tests for governance_event table:
 */
 
 // TestCreateGovernanceEvent tests that a GovernanceEvent is created
 func TestCreateGovernanceEvent(t *testing.T) {
-	tableName := "governance_event_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(persister, tableName)
+	persister := setupGovEventTable(t)
+	defer deleteTestTable(t, persister, govTestTableName)
 
-	// sample contentRevision
-	modelGovernanceEvent, _, _, _ := setupSampleGovernanceEvent()
+	_, _, _, _ = createAndSaveTestGovEvent(t, persister, false)
 
-	// insert to table
-	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
-	if err != nil {
-		t.Errorf("error saving GovernanceEvent: %v", err)
-	}
 	// check row is there
 	var numRowsb int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM governance_event_test`).Scan(&numRowsb)
+	err := persister.db.QueryRow(`SELECT COUNT(*) FROM governance_event_test`).Scan(&numRowsb)
+	if err != nil {
+		t.Errorf("Problem getting count from table: %v", err)
+	}
 	if numRowsb != 1 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
-	}
-
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete test listing table: %v", err)
 	}
 }
 
 // TestGovernanceEventsByListingAddress tests that a GovernanceEvent is properly retrieved
 func TestGovernanceEventsByListingAddress(t *testing.T) {
-	tableName := "governance_event_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(persister, tableName)
+	persister := setupGovEventTable(t)
+	defer deleteTestTable(t, persister, govTestTableName)
 
-	// sample govEvent
-	modelGovernanceEvent, listingAddr, _, _ := setupSampleGovernanceEvent()
-
-	// insert to table
-	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
-	if err != nil {
-		t.Errorf("error saving GovernanceEvent: %v", err)
-	}
+	_, listingAddr, _, _ := createAndSaveTestGovEvent(t, persister, false)
 
 	// retrieve from table
-	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, tableName)
+	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, govTestTableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
 	}
@@ -717,32 +680,17 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 		t.Errorf("length of governance events should be 1 but is: %v", len(dbGovEvents))
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete governance_event_test table: %v", err)
-	}
 }
 
 // TestDBGovEventToModelGovEvent tests that the db listing can be properly converted to model listing
 func TestDBGovEventToModelGovEvent(t *testing.T) {
-	tableName := "governance_event_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(persister, tableName)
+	persister := setupGovEventTable(t)
+	defer deleteTestTable(t, persister, govTestTableName)
 
-	// sample contentRevision
-	modelGovernanceEvent, listingAddr, _, _ := setupSampleGovernanceEvent()
-
-	// insert to table
-	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
-	if err != nil {
-		t.Errorf("error saving GovernanceEvent: %v", err)
-	}
+	modelGovernanceEvent, listingAddr, _, _ := createAndSaveTestGovEvent(t, persister, false)
 
 	// retrieve from table
-	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, tableName)
+	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, govTestTableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
 	}
@@ -754,11 +702,6 @@ func TestDBGovEventToModelGovEvent(t *testing.T) {
 		t.Errorf("listing from DB: %v, doesn't match inserted listing: %v", modelGovEventFromDB, modelGovernanceEvent)
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete governance_event_test table: %v", err)
-	}
-
 }
 
 // TODO(IS): test update gov event -- test update that's not by listing
@@ -766,24 +709,13 @@ func TestDBGovEventToModelGovEvent(t *testing.T) {
 // TestDeleteGovernanceEvent tests that the deleting the Governance Event works
 // TODO(IS) : this will delete more than you want. need to put some kind of hash for the gov event.
 func TestDeleteGovernanceEvent(t *testing.T) {
-	tableName := "governance_event_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(persister, tableName)
+	persister := setupGovEventTable(t)
+	defer deleteTestTable(t, persister, govTestTableName)
 
-	// sample contentRevision
-	modelGovernanceEvent, _, _, _ := setupSampleGovernanceEvent()
-
-	// insert to table
-	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
-	if err != nil {
-		t.Errorf("error saving GovernanceEvent: %v", err)
-	}
+	modelGovernanceEvent, _, _, _ := createAndSaveTestGovEvent(t, persister, false)
 
 	var numRowsb int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM governance_event_test`).Scan(&numRowsb)
+	err := persister.db.QueryRow(`SELECT COUNT(*) FROM governance_event_test`).Scan(&numRowsb)
 	if err != nil {
 		t.Errorf("Problem getting count from table: %v", err)
 	}
@@ -792,7 +724,7 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	}
 
 	//delete rows
-	err = persister.deleteGovernanceEventFromTable(modelGovernanceEvent, tableName)
+	err = persister.deleteGovernanceEventFromTable(modelGovernanceEvent, govTestTableName)
 	if err != nil {
 		t.Errorf("Error deleting governance event: %v", err)
 	}
@@ -809,16 +741,81 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 
 // TestGovEventsByCriteria tests GovernanceEvent by criteria query
 func TestGovEventsByCriteria(t *testing.T) {
+	persister := setupGovEventTable(t)
+	defer deleteTestTable(t, persister, govTestTableName)
+	var listingAddr common.Address
+	var timeMiddle int64
+	var timeStart int64
+	var modelGovernanceEvent *model.GovernanceEvent
+	// create some governance events w constant listing address and save them to DB
+	for i := 1; i <= 30; i++ {
+		// TODO: just set timestamp for event bc there is still a probability these times won't be what you think.
+		if i < 20 {
+			timeStart = crawlerutils.CurrentEpochSecsInInt64()
+		}
+		if i == 20 {
+			time.Sleep(1 * time.Second)
+			timeMiddle = crawlerutils.CurrentEpochSecsInInt64()
+		}
+		modelGovernanceEvent, listingAddr, _, _ = createAndSaveTestGovEvent(t, persister, true)
+	}
+
+	govEvents, err := persister.governanceEventsByCriteriaFromTable(&model.GovernanceEventCriteria{
+		ListingAddress: listingAddr.Hex(),
+		Count:          1,
+	}, govTestTableName)
+
+	if err != nil {
+		t.Errorf("Wasn't able to get governance events from postgres table: %v", err)
+	}
+
+	if len(govEvents) != 1 {
+		t.Errorf("Should have only retrieved one governance event but got %v", len(govEvents))
+	}
+
+	if modelGovernanceEvent.ListingAddress() != listingAddr {
+		t.Errorf("Listing address is %v but should be %v ", modelGovernanceEvent.ListingAddress().Hex(), listingAddr.Hex())
+	}
+
+	govEvents, err = persister.governanceEventsByCriteriaFromTable(&model.GovernanceEventCriteria{
+		ListingAddress: listingAddr.Hex(),
+		CreatedFromTs:  timeStart,
+	}, govTestTableName)
+
+	if err != nil {
+		t.Errorf("Wasn't able to get governance events from postgres table: %v", err)
+	}
+
+	if len(govEvents) != 11 {
+		t.Errorf("Should have retrieved 11 governance events but only got %v", len(govEvents))
+	}
+
+	govEvents, err = persister.governanceEventsByCriteriaFromTable(&model.GovernanceEventCriteria{
+		ListingAddress:  listingAddr.Hex(),
+		CreatedBeforeTs: timeMiddle,
+	}, govTestTableName)
+
+	if err != nil {
+		t.Errorf("Wasn't able to get governance events from postgres table: %v", err)
+	}
+	if len(govEvents) != 19 {
+		t.Errorf("Should have retrieved 19 governance events but only got %v", len(govEvents))
+	}
+
+}
+
+// TestGovEventsByCriteria tests GovernanceEvent by criteria query
+func TestGovEventsByTxHash(t *testing.T) {
 	tableName := "governance_event_test"
 	persister, err := setupTestTable(tableName)
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	// defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
-	// sample contentRevision
-	modelGovernanceEvent, _, _, txHash := setupSampleGovernanceEvent()
-	modelGovernanceEvent2, _, _, _ := setupSampleGovernanceEvent()
+	// sample governanceEvent
+	modelGovernanceEvent, _, _, txHash := setupSampleGovernanceEvent(true)
+	modelGovernanceEvent2, _, _, _ := setupSampleGovernanceEvent(true)
 
 	// insert to table
 	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
@@ -833,6 +830,10 @@ func TestGovEventsByCriteria(t *testing.T) {
 
 	govEvents, err := persister.governanceEventsByTxHashFromTable(txHash, tableName)
 
+	if err != nil {
+		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
+	}
+
 	// confirm txHash from query result
 	if len(govEvents) != 1 {
 		t.Errorf("Should have only received 1 governance event from txHash query but received %v", len(govEvents))
@@ -843,11 +844,9 @@ func TestGovEventsByCriteria(t *testing.T) {
 		t.Errorf("Hash should be %v but is %v", txHash, blockData.TxHash())
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete governance_event_test table: %v", err)
-	}
 }
+
+// also test that you can create multiple queries and cnxn pools are working
 
 /*
 All tests for cron table:
@@ -859,7 +858,7 @@ func TestTypeExistsInCronTable(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// insert something
 	queryString := fmt.Sprintf("INSERT INTO %s(data_persisted, data_type) VALUES(0, 'timestamp')", tableName)
@@ -879,10 +878,6 @@ func TestTypeExistsInCronTable(t *testing.T) {
 		t.Errorf("Value returned should be 0 but it is %v", err)
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete %s table: %v", tableName, err)
-	}
 }
 
 func TestTimestampOfLastEventForCron(t *testing.T) {
@@ -891,7 +886,7 @@ func TestTimestampOfLastEventForCron(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// There should be no rows in the table. In this case lastCronTimestamp should insert a nil value.
 	timestamp, err := persister.lastCronTimestampFromTable(tableName)
@@ -902,10 +897,6 @@ func TestTimestampOfLastEventForCron(t *testing.T) {
 		t.Errorf("Timestamp should be 0 but it is %v", timestamp)
 	}
 
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete %s table: %v", tableName, err)
-	}
 }
 
 func TestUpdateTimestampForCron(t *testing.T) {
@@ -914,7 +905,7 @@ func TestUpdateTimestampForCron(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	// defer deleteTestTable(persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	newTimestamp := int64(1212121212)
 	err = persister.updateCronTimestampInTable(newTimestamp, tableName)
@@ -947,10 +938,5 @@ func TestUpdateTimestampForCron(t *testing.T) {
 
 	if timestamp2 != newTimestamp2 {
 		t.Errorf("Timestamp should be %v but it is %v", newTimestamp2, timestamp2)
-	}
-
-	err = deleteTestTable(persister, tableName)
-	if err != nil {
-		t.Errorf("Could not delete %s table: %v", tableName, err)
 	}
 }
