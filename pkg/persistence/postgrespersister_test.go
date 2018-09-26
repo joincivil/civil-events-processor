@@ -231,6 +231,35 @@ func TestListingByAddress(t *testing.T) {
 
 }
 
+// TestListingByAddress tests that the query we are using to get Listing works
+func TestListingByAddressDoesNotExist(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+	// create fake listing in listing_test
+	modelListing, _ := setupSampleListing()
+
+	// save to test table
+	err = persister.createListingForTable(modelListing, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	bogusAddress := common.Address{}
+	// retrieve from test table
+	nullListing, err := persister.listingByAddressFromTable(bogusAddress, tableName)
+
+	if err != nil {
+		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
+	}
+	if nullListing != nil {
+		t.Errorf("Shouldn't have retrieved a listing at all %v", err)
+	}
+
+}
+
 // TestDBListingToModelListing tests that the db listing can be properly converted to model listing
 func TestDBListingToModelListing(t *testing.T) {
 	tableName := "listing_test"

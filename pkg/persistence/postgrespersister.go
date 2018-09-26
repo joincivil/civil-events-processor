@@ -254,7 +254,11 @@ func (p *PostgresPersister) listingsByAddressesFromTable(addresses []common.Addr
 
 func (p *PostgresPersister) listingByAddressFromTable(address common.Address, tableName string) (*model.Listing, error) {
 	listings, err := p.listingsByAddressesFromTable([]common.Address{address}, tableName)
-	return listings[0], err
+	if len(listings) > 0 {
+		return listings[0], err
+	}
+	return nil, err
+
 }
 
 func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCriteria,
