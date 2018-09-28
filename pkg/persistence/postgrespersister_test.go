@@ -321,6 +321,88 @@ func TestListingsByAddresses(t *testing.T) {
 
 }
 
+//shuffle function
+func shuffleListingAddresses(slice []common.Address) []common.Address {
+	for i := range slice {
+		j := mathrand.Intn(i + 1)
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+	return slice
+}
+
+// Test that orered function for IN query returns results in order:
+func TestListingByAddressesInOrder(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	numListings := 10
+	modelListings, modelListingAddresses := setupSampleListings(numListings)
+	// shuffle array
+	modelListingAddresses = shuffleListingAddresses(modelListingAddresses)
+
+	// Insert
+	for _, list := range modelListings {
+		err := persister.createListingForTable(list, tableName)
+		if err != nil {
+			t.Errorf("Couldn't save listing to table: %v", err)
+		}
+	}
+	//retrieve listings
+	dbListings, err := persister.listingsByAddressesFromTableInOrder(modelListingAddresses, tableName)
+	if err != nil {
+		t.Errorf("Error retrieving multiple listings: %v", err)
+	}
+	for i, listingAddress := range modelListingAddresses {
+		modelListingAddress := dbListings[i].ContractAddress().Hex()
+		if modelListingAddress != listingAddress.Hex() {
+			t.Errorf("Order of addresses don't match up for index %v", i)
+		}
+	}
+
+}
+
+// There are nil addresses that slip through
+func TestListingByAddressesInOrderAddressNotFound(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	numListings := 10
+	modelListings, modelListingAddresses := setupSampleListings(numListings)
+
+	// Insert
+	for _, list := range modelListings {
+		err := persister.createListingForTable(list, tableName)
+		if err != nil {
+			t.Errorf("Couldn't save listing to table: %v", err)
+		}
+	}
+
+	// Add nil listing
+	modelListingAddresses = append(modelListingAddresses, common.Address{})
+
+	//retrieve listings
+	dbListings, err := persister.listingsByAddressesFromTableInOrder(modelListingAddresses, tableName)
+	if err != nil {
+		t.Errorf("Error retrieving multiple listings: %v", err)
+	}
+
+	for i, listingAddress := range modelListingAddresses {
+		modelListingAddress := dbListings[i].ContractAddress().Hex()
+		if modelListingAddress != listingAddress.Hex() {
+			t.Errorf("Order of addresses don't match up for index %v", i)
+		}
+	}
+
+}
+
 // TestUpdateListing tests that updating the Listing works
 func TestUpdateListing(t *testing.T) {
 	tableName := "listing_test"
@@ -892,7 +974,6 @@ func TestTypeExistsInCronTable(t *testing.T) {
 	// insert something
 	queryString := fmt.Sprintf("INSERT INTO %s(data_persisted, data_type) VALUES(0, 'timestamp')", tableName)
 	_, err = persister.db.Exec(queryString)
-	// fmt.Println(err)
 	if err != nil {
 		t.Errorf("Inserting into the cron table should have worked but it didn't, %v", err)
 	}
