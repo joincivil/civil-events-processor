@@ -2,11 +2,10 @@ package processor_test
 
 import (
 	"encoding/json"
-	"math/big"
-	"testing"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"math/big"
+	"testing"
 
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
@@ -968,7 +967,7 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 
 	err = proc.Process(events)
 	if err != nil {
-		t.Errorf("Should not have failed processing events: err: %v", err)
+		t.Errorf("Should not have failed processing events %v", err)
 	}
 	if len(persister.listings) == 0 {
 		t.Error("Should have seen at least 1 listing")
@@ -1034,7 +1033,7 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	events = append(events, event1)
 	err = proc.Process(events)
 	if err != nil {
-		t.Errorf("Should have processed events for non existent listing")
+		t.Errorf("Should have processed events for non existent listing, %v", err)
 	}
 
 	events = []*crawlermodel.Event{}
@@ -1070,6 +1069,238 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	}
 	if listing.OwnerAddresses()[0] != common.HexToAddress(testAddress2) {
 		t.Errorf("Should have updated the listing with new owner")
+	}
+
+}
+
+func TestEventProcessorChallengeUpdate(t *testing.T) {
+	contracts, err := contractutils.SetupAllTestContracts()
+	if err != nil {
+		t.Fatalf("Unable to setup the contracts: %v", err)
+	}
+	persister := &TestPersister{}
+	scraper := &TestScraper{}
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister,
+		scraper, scraper, scraper)
+
+	applied1 := &contract.CivilTCRContractApplication{
+		ListingAddress: contracts.NewsroomAddr,
+		Deposit:        big.NewInt(1000),
+		AppEndDate:     big.NewInt(1653860896),
+		Data:           "DATA",
+		Applicant:      common.HexToAddress(testAddress),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888888,
+			TxHash:      common.Hash{},
+			TxIndex:     2,
+			BlockHash:   common.Hash{},
+			Index:       2,
+			Removed:     false,
+		},
+	}
+
+	challenge1 := &contract.CivilTCRContractChallenge{
+		ListingAddress: contracts.NewsroomAddr,
+		ChallengeID:    big.NewInt(120),
+		Data:           "DATA",
+		CommitEndDate:  big.NewInt(1653860896),
+		RevealEndDate:  big.NewInt(1653860896),
+		Challenger:     common.HexToAddress(testAddress),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888890,
+			TxHash:      common.Hash{},
+			TxIndex:     4,
+			BlockHash:   common.Hash{},
+			Index:       7,
+			Removed:     false,
+		},
+	}
+
+	events := []*crawlermodel.Event{}
+	event1, _ := crawlermodel.NewEventFromContractEvent(
+		"_Application",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		applied1,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	event2, _ := crawlermodel.NewEventFromContractEvent(
+		"_Challenge",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		challenge1,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	events = append(events, event1)
+
+	err = proc.Process(events)
+
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	if len(persister.listings) == 0 {
+		t.Error("Should have seen at least 1 listing")
+	}
+	if len(persister.govEvents) == 0 {
+		t.Error("Should have seen at least 1 governance event")
+	}
+	// check for nil challenge id value
+	listing := persister.listings[contracts.NewsroomAddr.Hex()]
+
+	if listing.ChallengeID().Int64() != 0 {
+		t.Errorf("Challenge ID should have been 0 but it is %v", listing.ChallengeID())
+	}
+
+	events = []*crawlermodel.Event{}
+	events = append(events, event2)
+	err = proc.Process(events)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	if len(persister.listings) == 0 {
+		t.Error("Should have seen at least 1 listing")
+	}
+	if len(persister.govEvents) == 0 {
+		t.Error("Should have seen at least 1 governance event")
+	}
+
+	// check that challenge id value is changed
+	listing = persister.listings[contracts.NewsroomAddr.Hex()]
+	if listing.ChallengeID() != challenge1.ChallengeID {
+		t.Errorf("Challenge ID should have been %v but it is %v", challenge1.ChallengeID, listing.ChallengeID())
+	}
+
+	whitelisted1 := &contract.CivilTCRContractApplicationWhitelisted{
+		ListingAddress: contracts.NewsroomAddr,
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888895,
+			TxHash:      common.Hash{},
+			TxIndex:     8,
+			BlockHash:   common.Hash{},
+			Index:       7,
+			Removed:     false,
+		},
+	}
+
+	event3, _ := crawlermodel.NewEventFromContractEvent(
+		"_ApplicationWhitelisted",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		whitelisted1,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Watcher,
+	)
+
+	events = []*crawlermodel.Event{}
+	events = append(events, event3)
+	err = proc.Process(events)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	if len(persister.listings) == 0 {
+		t.Error("Should have seen at least 1 listing")
+	}
+	if len(persister.govEvents) == 0 {
+		t.Error("Should have seen at least 1 governance event")
+	}
+
+	// check for challengeid reset
+	listing = persister.listings[contracts.NewsroomAddr.Hex()]
+	if listing.ChallengeID().Int64() != 0 {
+		t.Errorf("Challenge ID should have been reset to 0 but it is %v", listing.ChallengeID())
+	}
+
+	// new challenge, then test another reset event
+	events = []*crawlermodel.Event{}
+
+	removed1 := &contract.CivilTCRContractApplicationRemoved{
+		ListingAddress: contracts.NewsroomAddr,
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888895,
+			TxHash:      common.Hash{},
+			TxIndex:     8,
+			BlockHash:   common.Hash{},
+			Index:       7,
+			Removed:     false,
+		},
+	}
+
+	event4, _ := crawlermodel.NewEventFromContractEvent(
+		"_ApplicationRemoved",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		removed1,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	events = append(events, event2, event4)
+	err = proc.Process(events)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	// check for challengeid reset
+	listing = persister.listings[contracts.NewsroomAddr.Hex()]
+	if listing.ChallengeID().Int64() != 0 {
+		t.Errorf("Challenge ID should have been reset to 0 but it is %v", listing.ChallengeID())
+	}
+
+	// new challenge, then test another reset event
+	events = []*crawlermodel.Event{}
+
+	removed2 := &contract.CivilTCRContractListingRemoved{
+		ListingAddress: contracts.NewsroomAddr,
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888897,
+			TxHash:      common.Hash{},
+			TxIndex:     9,
+			BlockHash:   common.Hash{},
+			Index:       8,
+			Removed:     false,
+		},
+	}
+
+	event5, _ := crawlermodel.NewEventFromContractEvent(
+		"_ListingRemoved",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		removed2,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+
+	events = append(events, event2, event5)
+	err = proc.Process(events)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	// check for challengeid reset
+	listing = persister.listings[contracts.NewsroomAddr.Hex()]
+	if listing.ChallengeID().Int64() != 0 {
+		t.Errorf("Challenge ID should have been reset to 0 but it is %v", listing.ChallengeID())
+	}
+}
+
+func TestEmptyContractAddress(t *testing.T) {
+	tcrAddress := common.Address{}
+	if tcrAddress != (common.Address{}) {
+		t.Error("2 blank common.Address types should be equal")
 	}
 
 }
