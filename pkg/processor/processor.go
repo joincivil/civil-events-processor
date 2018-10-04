@@ -25,6 +25,7 @@ const (
 	approvalDateDBModelName = "ApprovalDateTs"
 	listingNameDBModelName  = "Name"
 	ownerAddDBModelName     = "OwnerAddresses"
+	challengeIDDBModelName  = "ChallengeID"
 )
 
 type whitelistedStatus int
@@ -358,21 +359,22 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 
 func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	whitelisted bool, lastGovernanceState model.GovernanceState, creationDate int64,
-	applicationDate int64, approvalDate int64) error {
+	applicationDate int64, approvalDate int64, tcrAddress common.Address) error {
 	// TODO(PN): How do I get the URL of the site?
 	url := ""
-	newsroom, err := contract.NewNewsroomContract(listingAddress, e.client)
-	if err != nil {
-		return err
+	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, e.client)
+	if newsErr != nil {
+		return fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
 	}
-	name, err := newsroom.Name(&bind.CallOpts{})
-	if err != nil {
-		return err
+	name, nameErr := newsroom.Name(&bind.CallOpts{})
+	if nameErr != nil {
+		return fmt.Errorf("Error getting Name from Newsroom contract: %v ", nameErr)
 	}
-	charterContent, err := newsroom.GetContent(&bind.CallOpts{}, big.NewInt(0))
-	if err != nil {
-		return err
+	charterContent, contErr := newsroom.GetContent(&bind.CallOpts{}, big.NewInt(0))
+	if contErr != nil {
+		return fmt.Errorf("Error getting Content from Newsroom contract: %v ", contErr)
 	}
+
 	charterURI := charterContent.Uri
 	charterAuthorAddr := charterContent.Author
 	ownerAddr, err := newsroom.Owner(&bind.CallOpts{})
@@ -381,6 +383,29 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	}
 	ownerAddresses := []common.Address{ownerAddr}
 	contributorAddresses := []common.Address{charterAuthorAddr}
+
+	var appExpiry *big.Int
+	var challengeID *big.Int
+	var unstakedDeposit *big.Int
+
+	if tcrAddress != (common.Address{}) {
+		// NOTE(IS): If this was called for a newsroom event we don't have a TCR address associated
+		// TODO(IS): For now, solution is leaving fields blank, FIX THIS
+
+		tcrcontract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
+		if tcrErr != nil {
+			return fmt.Errorf("Error reading from CivilTCR Contract: %v", err)
+		}
+		listingstcr, listingErr := tcrcontract.Listings(&bind.CallOpts{}, listingAddress)
+		if listingErr != nil {
+			return fmt.Errorf("Error getting Listings from CivilTCRContract: %v", err)
+		}
+
+		appExpiry = listingstcr.ApplicationExpiry
+		challengeID = listingstcr.ChallengeID
+		unstakedDeposit = listingstcr.UnstakedDeposit
+	}
+
 	listing := model.NewListing(
 		name,
 		listingAddress,
@@ -388,12 +413,16 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		lastGovernanceState,
 		url,
 		charterURI,
+		ownerAddr,
 		ownerAddresses,
 		contributorAddresses,
 		creationDate,
 		applicationDate,
 		approvalDate,
 		crawlerutils.CurrentEpochSecsInInt64(),
+		appExpiry,
+		unstakedDeposit,
+		challengeID,
 	)
 	err = e.listingPersister.CreateListing(listing)
 	return err
@@ -484,7 +513,7 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
-
+	tcrAddress := event.ContractAddress()
 	wlisting := false
 	if listing != nil {
 		wlisting = listing.Whitelisted()
@@ -507,6 +536,7 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			event.Timestamp(),
 			event.Timestamp(),
 			approvalDate,
+			tcrAddress,
 		)
 	} else {
 		var updatedFields []string
@@ -520,9 +550,30 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			listing.SetApprovalDateTs(approvalDate)
 			updatedFields = append(updatedFields, approvalDateDBModelName)
 		}
+		// Set challengeID if Challenge occurs
+		if govState == model.GovernanceStateChallenged {
+			challengeID := event.EventPayload()["ChallengeID"].(*big.Int)
+			listing.SetChallengeID(challengeID)
+			updatedFields = append(updatedFields, challengeIDDBModelName)
+		}
+		// On `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved` events, challenge ID goes back to 0
+		if govEventInSlice(govState, model.ResetChallengeIDEvents) {
+			challengeID := big.NewInt(0)
+			listing.SetChallengeID(challengeID)
+			updatedFields = append(updatedFields, challengeIDDBModelName)
+		}
 		err = e.listingPersister.UpdateListing(listing, updatedFields)
 	}
 	return err
+}
+
+func govEventInSlice(govState model.GovernanceState, listGovState []model.GovernanceState) bool {
+	for _, g := range listGovState {
+		if g == govState {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *EventProcessor) listingAddressFromEvent(event *crawlermodel.Event) (common.Address, error) {
@@ -548,7 +599,8 @@ func (e *EventProcessor) persistGovernanceEvent(event *crawlermodel.Event) error
 	return err
 }
 
-func (e *EventProcessor) retrieveOrCreateListing(event *crawlermodel.Event) (*model.Listing, error) {
+// Why is this function called retrieveorcreatelisting? shouldn't we only be creating listings?
+func (e *EventProcessor) retrieveOrCreateListingForNewsroomEvent(event *crawlermodel.Event) (*model.Listing, error) {
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != model.ErrPersisterNoResults {
@@ -557,6 +609,8 @@ func (e *EventProcessor) retrieveOrCreateListing(event *crawlermodel.Event) (*mo
 	if listing != nil {
 		return listing, nil
 	}
+	// NOTE(IS): In this case, we don't have a tcrAddress associated with a newsroom event.
+	tcrAddress := common.Address{}
 	err = e.persistNewListing(
 		listingAddress,
 		false,
@@ -564,6 +618,7 @@ func (e *EventProcessor) retrieveOrCreateListing(event *crawlermodel.Event) (*mo
 		event.Timestamp(),
 		event.Timestamp(),
 		approvalDateEmptyValue,
+		tcrAddress,
 	)
 	if err != nil {
 		return nil, err
@@ -581,7 +636,7 @@ func (e *EventProcessor) retrieveOrCreateListing(event *crawlermodel.Event) (*mo
 func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
-	listing, err := e.retrieveOrCreateListing(event)
+	listing, err := e.retrieveOrCreateListingForNewsroomEvent(event)
 	if err != nil && err != model.ErrPersisterNoResults {
 		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
 	}
@@ -597,7 +652,7 @@ func (e *EventProcessor) processNewsroomNameChanged(event *crawlermodel.Event) e
 
 func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Event) error {
 	// Create a new listing if none exists for the address in the event
-	_, err := e.retrieveOrCreateListing(event)
+	_, err := e.retrieveOrCreateListingForNewsroomEvent(event)
 	if err != nil && err != model.ErrPersisterNoResults {
 		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
 	}
@@ -663,7 +718,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 func (e *EventProcessor) processNewsroomOwnershipTransferred(event *crawlermodel.Event) error {
 	var updatedFields []string
 	payload := event.EventPayload()
-	listing, err := e.retrieveOrCreateListing(event)
+	listing, err := e.retrieveOrCreateListingForNewsroomEvent(event)
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}

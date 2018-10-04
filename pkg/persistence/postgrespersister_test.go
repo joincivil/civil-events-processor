@@ -161,11 +161,17 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	address2, _ := randomHex(32)
 	address3, _ := randomHex(32)
 	contractAddress := common.HexToAddress(address1)
+	ownerAddr := common.HexToAddress(address2)
 	ownerAddresses := []common.Address{common.HexToAddress(address2), common.HexToAddress(address3)}
 	contributorAddresses := ownerAddresses
+	appExpiry := big.NewInt(232424242)
+	unstakedDeposit := new(big.Int)
+	unstakedDeposit.SetString("100000000000000000000", 10)
+	challengeID := big.NewInt(10)
 	testListing := model.NewListing("test_listing", contractAddress, true,
-		model.GovernanceStateAppWhitelisted, "url_string", "charterURI", ownerAddresses,
-		contributorAddresses, 1257894000, 1257894000, 1257894000, 1257894000)
+		model.GovernanceStateAppWhitelisted, "url_string", "charterURI", ownerAddr, ownerAddresses,
+		contributorAddresses, 1257894000, 1257894000, 1257894000, 1257894000, appExpiry, unstakedDeposit,
+		challengeID)
 	return testListing, contractAddress
 }
 
