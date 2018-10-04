@@ -7,7 +7,10 @@ import (
 )
 
 // ResetChallengeIDEvents is the list of governance events that reset challengeID to 0
-var ResetChallengeIDEvents = []GovernanceState{GovernanceStateAppWhitelisted, GovernanceStateRemoved, GovernanceStateAppRemoved}
+var ResetChallengeIDEvents = []GovernanceState{
+	GovernanceStateAppWhitelisted,
+	GovernanceStateRemoved,
+	GovernanceStateAppRemoved}
 
 // NewListing is a convenience function to initialize a new Listing struct
 func NewListing(name string, contractAddress common.Address, whitelisted bool,

@@ -1296,3 +1296,11 @@ func TestEventProcessorChallengeUpdate(t *testing.T) {
 		t.Errorf("Challenge ID should have been reset to 0 but it is %v", listing.ChallengeID())
 	}
 }
+
+func TestEmptyContractAddress(t *testing.T) {
+	tcrAddress := common.Address{}
+	if tcrAddress != (common.Address{}) {
+		t.Error("2 blank common.Address types should be equal")
+	}
+
+}

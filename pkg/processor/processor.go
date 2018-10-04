@@ -404,6 +404,8 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		appExpiry = listingstcr.ApplicationExpiry
 		challengeID = listingstcr.ChallengeID
 		unstakedDeposit = listingstcr.UnstakedDeposit
+	} else {
+		log.Errorf("No existing listing in persistence for listing address: %v", listingAddress.Hex())
 	}
 
 	listing := model.NewListing(
