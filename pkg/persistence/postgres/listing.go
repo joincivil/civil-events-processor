@@ -30,7 +30,6 @@ func CreateListingTableQueryString(tableName string) string {
             application_timestamp INT,
             approval_timestamp INT,
             last_updated_timestamp INT,
-            owner_address TEXT,
             app_expiry INT,
             challenge_id INT,
             unstaked_deposit NUMERIC

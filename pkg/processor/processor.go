@@ -599,7 +599,6 @@ func (e *EventProcessor) persistGovernanceEvent(event *crawlermodel.Event) error
 	return err
 }
 
-// Why is this function called retrieveorcreatelisting? shouldn't we only be creating listings?
 func (e *EventProcessor) retrieveOrCreateListingForNewsroomEvent(event *crawlermodel.Event) (*model.Listing, error) {
 	listingAddress := event.ContractAddress()
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
