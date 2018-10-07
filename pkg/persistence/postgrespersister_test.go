@@ -401,10 +401,13 @@ func TestListingByAddressesInOrderAddressNotFound(t *testing.T) {
 	}
 
 	for i, listingAddress := range modelListingAddresses {
-		modelListingAddress := dbListings[i].ContractAddress().Hex()
-		if modelListingAddress != listingAddress.Hex() {
-			t.Errorf("Order of addresses don't match up for index %v", i)
+		if dbListings[i] != nil {
+			modelListingAddress := dbListings[i].ContractAddress().Hex()
+			if modelListingAddress != listingAddress.Hex() {
+				t.Errorf("Order of addresses don't match up for index %v", i)
+			}
 		}
+
 	}
 
 }
@@ -961,6 +964,204 @@ func TestGovEventsByTxHash(t *testing.T) {
 		t.Errorf("Hash should be %v but is %v", txHash, blockData.TxHash())
 	}
 
+}
+
+func TestChallengeQuery(t *testing.T) {
+	tableName := "governance_event_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	challengeIDs := []int{1, 2, 3}
+	query := persister.challengesByIDsQuery(govTestTableName, challengeIDs)
+	correctQuery := "SELECT listing_address, sender_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1','2','3');"
+	if query != correctQuery {
+		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", query, correctQuery)
+	}
+	challengeIDs2 := []int{1}
+	query2 := persister.challengesByIDsQuery(govTestTableName, challengeIDs2)
+	correctQuery2 := "SELECT listing_address, sender_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1');"
+	if query2 != correctQuery2 {
+		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", query2, correctQuery2)
+	}
+}
+
+func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEvent, int) {
+	var listingAddr common.Address
+	address2, _ := randomHex(32)
+	if randListing {
+		address1, _ := randomHex(32)
+		listingAddr = common.HexToAddress(address1)
+	} else {
+		// keep listingAddress constant
+		listingAddr = common.HexToAddress("0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d")
+	}
+	challengeID := mathrand.Intn(100)
+	senderAddress := common.HexToAddress(address2)
+	metadata := model.Metadata{
+		"Data":           "ipfs://QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH",
+		"Challenger":     "0xe562d05067eded7a722ed73b9ebfaaedc60970a1",
+		"ChallengeID":    challengeID,
+		"CommitEndDate":  1527266803,
+		"RevealEndDate":  1527268603,
+		"ListingAddress": "0xa28ca9c9a7979c33cf73d3f406cd765e2d68c965"}
+	governanceEventType := "Challenge"
+	creationDateTs := crawlerutils.CurrentEpochSecsInInt64()
+	lastUpdatedDateTs := crawlerutils.CurrentEpochSecsInInt64() + 1
+	eventHash, _ := randomHex(5)
+	blockNumber := uint64(88888)
+	tHash, _ := randomHex(5)
+	txHash := common.HexToHash(tHash)
+	txIndex := uint(4)
+	blockHash := common.Hash{}
+	index := uint(2)
+	testGovernanceEvent := model.NewGovernanceEvent(listingAddr, senderAddress, metadata, governanceEventType,
+		creationDateTs, lastUpdatedDateTs, eventHash, blockNumber, txHash, txIndex, blockHash, index)
+	return testGovernanceEvent, challengeID
+}
+
+func TestChallengesByIDs(t *testing.T) {
+	tableName := "governance_event_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	challengeEvent, challengeID := setupSampleGovernanceChallengeEvent(true)
+	// insert to table
+	err = persister.createGovernanceEventInTable(challengeEvent, tableName)
+	if err != nil {
+		t.Errorf("error saving GovernanceEvent: %v", err)
+	}
+
+	// Try with just one ID
+	challengeIDs := []int{challengeID}
+	govEvents, err := persister.challengesByIDsFromTable(challengeIDs, tableName)
+
+	if len(govEvents) != 1 {
+		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
+	}
+	govEvent := govEvents[0]
+	if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeID {
+		t.Errorf("ChallengeID is %v but it should be %v", int(govEvent.Metadata()["ChallengeID"].(float64)),
+			challengeID)
+	}
+
+	// Multiple IDs
+	challengeIDs = []int{}
+	for i := 0; i < 6; i++ {
+		challengeEvent, challengeID := setupSampleGovernanceChallengeEvent(true)
+		challengeIDs = append(challengeIDs, challengeID)
+		// insert to table
+		err = persister.createGovernanceEventInTable(challengeEvent, tableName)
+		if err != nil {
+			t.Errorf("error saving GovernanceEvent: %v", err)
+		}
+	}
+
+	govEvents, err = persister.challengesByIDsFromTable(challengeIDs, tableName)
+	if len(govEvents) != 6 {
+		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
+	}
+
+	// Will be in order that you put it in DB so you can do this
+	for i, govEvent := range govEvents {
+		if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeIDs[i] {
+			t.Errorf("ChallengeID from DB is %v but should be %v",
+				int(govEvent.Metadata()["ChallengeID"].(float64)), challengeID)
+		}
+	}
+
+}
+
+func TestChallengesByIDOrder(t *testing.T) {
+	// check that challenges are in order
+	tableName := "governance_event_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	challengeEvent, challengeID := setupSampleGovernanceChallengeEvent(true)
+	// insert to table
+	err = persister.createGovernanceEventInTable(challengeEvent, tableName)
+	if err != nil {
+		t.Errorf("error saving GovernanceEvent: %v", err)
+	}
+
+	// Try with just one ID
+	challengeIDs := []int{challengeID}
+	govEvents, err := persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+
+	if len(govEvents) != 1 {
+		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
+	}
+	govEvent := govEvents[0]
+	if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeID {
+		t.Errorf("ChallengeID is %v but it should be %v", int(govEvent.Metadata()["ChallengeID"].(float64)),
+			challengeID)
+	}
+
+	// Multiple IDs
+	challengeIDs = []int{}
+	for i := 0; i < 6; i++ {
+		challengeEvent, challengeID := setupSampleGovernanceChallengeEvent(true)
+		challengeIDs = append(challengeIDs, challengeID)
+		// insert to table
+		err = persister.createGovernanceEventInTable(challengeEvent, tableName)
+		if err != nil {
+			t.Errorf("error saving GovernanceEvent: %v", err)
+		}
+	}
+
+	challengeIDs = shuffleInts(challengeIDs)
+	govEvents, err = persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+	if len(govEvents) != 6 {
+		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
+	}
+
+	for i, govEvent := range govEvents {
+		if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeIDs[i] {
+			t.Errorf("ChallengeID from DB is %v but should be %v",
+				int(govEvent.Metadata()["ChallengeID"].(float64)), challengeIDs[i])
+		}
+	}
+
+	// IDs that don't exist
+	nilID := 300
+	challengeIDs = append(challengeIDs, nilID)
+	challengeIDs = shuffleInts(challengeIDs)
+	govEvents, err = persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+	if len(govEvents) != 7 {
+		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
+	}
+	// emptyGovEvent := model.GovernanceEvent{}
+	for i, govEvent := range govEvents {
+		if govEvent != nil {
+			if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeIDs[i] {
+				t.Errorf("ChallengeID from DB is %v but should be %v",
+					int(govEvent.Metadata()["ChallengeID"].(float64)), challengeIDs[i])
+			}
+		} else {
+			if challengeIDs[i] != nilID {
+				t.Errorf("This challenge should be null but it is %v", govEvent)
+			}
+		}
+	}
+
+}
+
+//shuffle function
+func shuffleInts(slice []int) []int {
+	for i := range slice {
+		j := mathrand.Intn(i + 1)
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+	return slice
 }
 
 // also test that you can create multiple queries and cnxn pools are working
