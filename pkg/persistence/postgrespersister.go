@@ -132,8 +132,8 @@ func (p *PostgresPersister) GovernanceEventsByTxHash(txHash common.Hash) ([]*mod
 	return p.governanceEventsByTxHashFromTable(txHash, govEventTableName)
 }
 
-// ChallengesByID retrieves challenges by challengeID
-func (p *PostgresPersister) ChallengesByID(challengeID int) (*model.GovernanceEvent, error) {
+// ChallengeByID retrieves challenge by challengeID
+func (p *PostgresPersister) ChallengeByID(challengeID int) (*model.GovernanceEvent, error) {
 	challengeIDs := []int{challengeID}
 	govEvents, err := p.challengesByIDsFromTable(challengeIDs, govEventTableName)
 	if len(govEvents) > 0 {
@@ -142,7 +142,7 @@ func (p *PostgresPersister) ChallengesByID(challengeID int) (*model.GovernanceEv
 	return nil, err
 }
 
-// ChallengesByIDs retrieves challenges by challengeID
+// ChallengesByIDs retrieves challenges by challengeIDs
 func (p *PostgresPersister) ChallengesByIDs(challengeIDs []int) ([]*model.GovernanceEvent, error) {
 	return p.challengesByIDsFromTableInOrder(challengeIDs, govEventTableName)
 }

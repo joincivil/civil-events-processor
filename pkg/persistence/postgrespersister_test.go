@@ -1022,7 +1022,7 @@ func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEve
 	return testGovernanceEvent, challengeID
 }
 
-func TestChallengesByIDs(t *testing.T) {
+func TestChallengesByID(t *testing.T) {
 	tableName := "governance_event_test"
 	persister, err := setupTestTable(tableName)
 	if err != nil {
@@ -1162,6 +1162,54 @@ func shuffleInts(slice []int) []int {
 		slice[i], slice[j] = slice[j], slice[i]
 	}
 	return slice
+}
+
+func TestNilChallenges(t *testing.T) {
+	// check that challenges are in order
+	tableName := "governance_event_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	challengeEvent, _ := setupSampleGovernanceChallengeEvent(true)
+	// insert to table
+	err = persister.createGovernanceEventInTable(challengeEvent, tableName)
+	if err != nil {
+		t.Errorf("error saving GovernanceEvent: %v", err)
+	}
+
+	// Try with just one ID
+	challengeIDs := []int{0}
+	govEvents, err := persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+
+	if len(govEvents) != 1 {
+		t.Errorf("Should have only returned 1 listing")
+	}
+
+	for _, event := range govEvents {
+		if event != nil {
+			t.Errorf("Should have gotten nil event but got %v", event)
+		}
+
+	}
+
+	// Try with just one ID
+	challengeIDs = []int{0, 300}
+	govEvents, err = persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+
+	if len(govEvents) != 2 {
+		t.Errorf("Should have only returned 1 listing")
+	}
+
+	for _, event := range govEvents {
+		if event != nil {
+			t.Errorf("Should have gotten nil event but got %v", event)
+		}
+
+	}
+
 }
 
 // also test that you can create multiple queries and cnxn pools are working
