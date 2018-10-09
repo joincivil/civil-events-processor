@@ -93,8 +93,8 @@ func (n *NullPersister) GovernanceEventByChallengeID(challengeID int) (*model.Go
 	return &model.GovernanceEvent{}, nil
 }
 
-// ChallengesByIDs retrieves challenges by challengeIDs
-func (n *NullPersister) GovernanceEventsByChallengeID(challengeIDs []int) ([]*model.GovernanceEvent, error) {
+// GovernanceEventsByChallengeIDs retrieves challenges by challengeIDs
+func (n *NullPersister) GovernanceEventsByChallengeIDs(challengeIDs []int) ([]*model.GovernanceEvent, error) {
 	return []*model.GovernanceEvent{}, nil
 }
 

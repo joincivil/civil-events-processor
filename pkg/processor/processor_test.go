@@ -209,8 +209,8 @@ func (t *TestPersister) GovernanceEventByChallengeID(challengeID int) (*model.Go
 	return govEvent, nil
 }
 
-// GovernanceEventsByChallengeID retrieves challenges by challengeIDs
-func (t *TestPersister) GovernanceEventsByChallengeID(challengeIDs []int) ([]*model.GovernanceEvent, error) {
+// GovernanceEventsByChallengeIDs retrieves challenges by challengeIDs
+func (t *TestPersister) GovernanceEventsByChallengeIDs(challengeIDs []int) ([]*model.GovernanceEvent, error) {
 	// NOTE(IS): Placeholder for now
 	govEvents := []*model.GovernanceEvent{}
 	return govEvents, nil

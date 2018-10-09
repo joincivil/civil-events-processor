@@ -1022,7 +1022,7 @@ func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEve
 	return testGovernanceEvent, challengeID
 }
 
-func TestChallengesByID(t *testing.T) {
+func TestGovernanceEventByChallengeID(t *testing.T) {
 	tableName := "governance_event_test"
 	persister, err := setupTestTable(tableName)
 	if err != nil {
@@ -1039,7 +1039,7 @@ func TestChallengesByID(t *testing.T) {
 
 	// Try with just one ID
 	challengeIDs := []int{challengeID}
-	govEvents, err := persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
+	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
 
 	if len(govEvents) != 1 {
 		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
@@ -1062,7 +1062,7 @@ func TestChallengesByID(t *testing.T) {
 		}
 	}
 
-	govEvents, err = persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
+	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
 	if len(govEvents) != 6 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1077,7 +1077,7 @@ func TestChallengesByID(t *testing.T) {
 
 }
 
-func TestChallengesByIDOrder(t *testing.T) {
+func TestGovernanceEventByChallengeIDOrder(t *testing.T) {
 	// check that challenges are in order
 	tableName := "governance_event_test"
 	persister, err := setupTestTable(tableName)
@@ -1095,7 +1095,7 @@ func TestChallengesByIDOrder(t *testing.T) {
 
 	// Try with just one ID
 	challengeIDs := []int{challengeID}
-	govEvents, err := persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
+	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
 
 	if len(govEvents) != 1 {
 		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
@@ -1119,7 +1119,7 @@ func TestChallengesByIDOrder(t *testing.T) {
 	}
 
 	challengeIDs = shuffleInts(challengeIDs)
-	govEvents, err = persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
+	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
 	if len(govEvents) != 6 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1135,7 +1135,7 @@ func TestChallengesByIDOrder(t *testing.T) {
 	nilID := 300
 	challengeIDs = append(challengeIDs, nilID)
 	challengeIDs = shuffleInts(challengeIDs)
-	govEvents, err = persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
+	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
 	if len(govEvents) != 7 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1182,7 +1182,7 @@ func TestNilChallenges(t *testing.T) {
 
 	// Try with just one ID
 	challengeIDs := []int{0}
-	govEvents, err := persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
+	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
 
 	if len(govEvents) != 1 {
 		t.Errorf("Should have only returned 1 listing")
@@ -1197,7 +1197,7 @@ func TestNilChallenges(t *testing.T) {
 
 	// Try with just one ID
 	challengeIDs = []int{0, 300}
-	govEvents, err = persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
+	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
 
 	if len(govEvents) != 2 {
 		t.Errorf("Should have only returned 1 listing")
