@@ -202,15 +202,15 @@ func (t *TestPersister) GovernanceEventsByCriteria(criteria *model.GovernanceEve
 	return events, nil
 }
 
-// ChallengeByID retrieves challenge by challengeID
-func (t *TestPersister) ChallengeByID(challengeID int) (*model.GovernanceEvent, error) {
+// GovernanceEventByChallengeID retrieves challenge by challengeID
+func (t *TestPersister) GovernanceEventByChallengeID(challengeID int) (*model.GovernanceEvent, error) {
 	// NOTE(IS): Placeholder for now
 	govEvent := &model.GovernanceEvent{}
 	return govEvent, nil
 }
 
-// ChallengesByIDs retrieves challenges by challengeIDs
-func (t *TestPersister) ChallengesByIDs(challengeIDs []int) ([]*model.GovernanceEvent, error) {
+// GovernanceEventsByChallengeIDs retrieves challenges by challengeIDs
+func (t *TestPersister) GovernanceEventsByChallengeIDs(challengeIDs []int) ([]*model.GovernanceEvent, error) {
 	// NOTE(IS): Placeholder for now
 	govEvents := []*model.GovernanceEvent{}
 	return govEvents, nil
