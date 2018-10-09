@@ -96,10 +96,10 @@ type GovernanceEventPersister interface {
 	GovernanceEventsByCriteria(criteria *GovernanceEventCriteria) ([]*GovernanceEvent, error)
 	// GovernanceEventsByListingAddress retrieves governance events based on listing address
 	GovernanceEventsByListingAddress(address common.Address) ([]*GovernanceEvent, error)
-	// ChallengeByID retrieves challenge by challengeID
-	ChallengeByID(challengeID int) (*GovernanceEvent, error)
+	// GovernanceEventByChallengeID retrieves challenge by challengeID
+	GovernanceEventByChallengeID(challengeID int) (*GovernanceEvent, error)
 	// ChallengesByIDs retrieves challenges by challengeIDs
-	ChallengesByIDs(challengeIDs []int) ([]*GovernanceEvent, error)
+	GovernanceEventsByChallengeID(challengeIDs []int) ([]*GovernanceEvent, error)
 	// CreateGovernanceEvent creates a new governance event
 	CreateGovernanceEvent(govEvent *GovernanceEvent) error
 	// UpdateGovernanceEvent updates fields on an existing governance event
