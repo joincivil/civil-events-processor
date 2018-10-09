@@ -975,13 +975,13 @@ func TestChallengeQuery(t *testing.T) {
 	defer deleteTestTable(t, persister, tableName)
 
 	challengeIDs := []int{1, 2, 3}
-	query := persister.challengesByIDsQuery(govTestTableName, challengeIDs)
+	query := persister.govEventsByChallengeIDQuery(govTestTableName, challengeIDs)
 	correctQuery := "SELECT listing_address, sender_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1','2','3');"
 	if query != correctQuery {
 		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", query, correctQuery)
 	}
 	challengeIDs2 := []int{1}
-	query2 := persister.challengesByIDsQuery(govTestTableName, challengeIDs2)
+	query2 := persister.govEventsByChallengeIDQuery(govTestTableName, challengeIDs2)
 	correctQuery2 := "SELECT listing_address, sender_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1');"
 	if query2 != correctQuery2 {
 		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", query2, correctQuery2)
@@ -1039,7 +1039,7 @@ func TestChallengesByID(t *testing.T) {
 
 	// Try with just one ID
 	challengeIDs := []int{challengeID}
-	govEvents, err := persister.challengesByIDsFromTable(challengeIDs, tableName)
+	govEvents, err := persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
 
 	if len(govEvents) != 1 {
 		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
@@ -1062,7 +1062,7 @@ func TestChallengesByID(t *testing.T) {
 		}
 	}
 
-	govEvents, err = persister.challengesByIDsFromTable(challengeIDs, tableName)
+	govEvents, err = persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
 	if len(govEvents) != 6 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1095,7 +1095,7 @@ func TestChallengesByIDOrder(t *testing.T) {
 
 	// Try with just one ID
 	challengeIDs := []int{challengeID}
-	govEvents, err := persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+	govEvents, err := persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
 
 	if len(govEvents) != 1 {
 		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
@@ -1119,7 +1119,7 @@ func TestChallengesByIDOrder(t *testing.T) {
 	}
 
 	challengeIDs = shuffleInts(challengeIDs)
-	govEvents, err = persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+	govEvents, err = persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
 	if len(govEvents) != 6 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1135,7 +1135,7 @@ func TestChallengesByIDOrder(t *testing.T) {
 	nilID := 300
 	challengeIDs = append(challengeIDs, nilID)
 	challengeIDs = shuffleInts(challengeIDs)
-	govEvents, err = persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+	govEvents, err = persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
 	if len(govEvents) != 7 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1182,7 +1182,7 @@ func TestNilChallenges(t *testing.T) {
 
 	// Try with just one ID
 	challengeIDs := []int{0}
-	govEvents, err := persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+	govEvents, err := persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
 
 	if len(govEvents) != 1 {
 		t.Errorf("Should have only returned 1 listing")
@@ -1197,7 +1197,7 @@ func TestNilChallenges(t *testing.T) {
 
 	// Try with just one ID
 	challengeIDs = []int{0, 300}
-	govEvents, err = persister.challengesByIDsFromTableInOrder(challengeIDs, tableName)
+	govEvents, err = persister.govEventsByChallengeIDFromTable(challengeIDs, tableName)
 
 	if len(govEvents) != 2 {
 		t.Errorf("Should have only returned 1 listing")

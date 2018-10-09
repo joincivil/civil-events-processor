@@ -132,19 +132,19 @@ func (p *PostgresPersister) GovernanceEventsByTxHash(txHash common.Hash) ([]*mod
 	return p.governanceEventsByTxHashFromTable(txHash, govEventTableName)
 }
 
-// ChallengeByID retrieves challenge by challengeID
-func (p *PostgresPersister) ChallengeByID(challengeID int) (*model.GovernanceEvent, error) {
+// GovernanceEventByChallengeID retrieves challenge by challengeID
+func (p *PostgresPersister) GovernanceEventByChallengeID(challengeID int) (*model.GovernanceEvent, error) {
 	challengeIDs := []int{challengeID}
-	govEvents, err := p.challengesByIDsFromTable(challengeIDs, govEventTableName)
+	govEvents, err := p.govEventsByChallengeIDFromTable(challengeIDs, govEventTableName)
 	if len(govEvents) > 0 {
 		return govEvents[0], err
 	}
 	return nil, err
 }
 
-// ChallengesByIDs retrieves challenges by challengeIDs
-func (p *PostgresPersister) ChallengesByIDs(challengeIDs []int) ([]*model.GovernanceEvent, error) {
-	return p.challengesByIDsFromTableInOrder(challengeIDs, govEventTableName)
+// GovernanceEventsByChallengeID retrieves challenges by challengeIDs
+func (p *PostgresPersister) GovernanceEventsByChallengeID(challengeIDs []int) ([]*model.GovernanceEvent, error) {
+	return p.govEventsByChallengeIDFromTable(challengeIDs, govEventTableName)
 }
 
 // CreateGovernanceEvent creates a new governance event
@@ -580,22 +580,8 @@ func (p *PostgresPersister) governanceEventsByTxHashFromTable(txHash common.Hash
 	return p.scanGovEvents(rows)
 }
 
-func (p *PostgresPersister) challengesByIDsFromTable(challengeIDs []int, tableName string) ([]*model.GovernanceEvent, error) {
-	queryString := p.challengesByIDsQuery(tableName, challengeIDs)
-	rows, err := p.db.Queryx(queryString)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			err = model.ErrPersisterNoResults
-		}
-		return nil, fmt.Errorf("Error retrieving governance events from table: %v", err)
-	}
-	govEvents, err := p.scanGovEvents(rows)
-
-	return govEvents, err
-}
-
-func (p *PostgresPersister) challengesByIDsFromTableInOrder(challengeIDs []int, tableName string) ([]*model.GovernanceEvent, error) {
-	queryString := p.challengesByIDsQuery(tableName, challengeIDs)
+func (p *PostgresPersister) govEventsByChallengeIDFromTable(challengeIDs []int, tableName string) ([]*model.GovernanceEvent, error) {
+	queryString := p.govEventsByChallengeIDQuery(tableName, challengeIDs)
 	rows, err := p.db.Queryx(queryString)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -654,7 +640,7 @@ func (p *PostgresPersister) govEventsQuery(tableName string) string {
 	return queryString
 }
 
-func (p *PostgresPersister) challengesByIDsQuery(tableName string, challengeIDs []int) string {
+func (p *PostgresPersister) govEventsByChallengeIDQuery(tableName string, challengeIDs []int) string {
 	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
 	var idbuf bytes.Buffer
 	for _, id := range challengeIDs {
