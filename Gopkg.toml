@@ -43,5 +43,6 @@ required = ["github.com/99designs/gqlgen"]
   revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 
 [[constraint]]
-  name = "github.com/joincivil/civil-events-crawler"
-  revision = "e315432844572405d21f232db27dc6c2e37838b0"
+  name = "github.com/ethereum/go-ethereum"
+  version = "1.8.15"
+
