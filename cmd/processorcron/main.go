@@ -51,6 +51,7 @@ type initializedPersisters struct {
 	listing         model.ListingPersister
 	contentRevision model.ContentRevisionPersister
 	governanceEvent model.GovernanceEventPersister
+	challenge       model.ChallengePersister
 }
 
 func initPersisters(config *utils.ProcessorConfig) (*initializedPersisters, error) {
@@ -79,12 +80,18 @@ func initPersisters(config *utils.ProcessorConfig) (*initializedPersisters, erro
 		log.Errorf("Error w governanceEventPersister: err: %v", err)
 		return nil, err
 	}
+	challengePersister, err := helpers.ChallengePersister(config)
+	if err != nil {
+		log.Errorf("Error w ChallengePersister: err: %v", err)
+		return nil, err
+	}
 	return &initializedPersisters{
 		cron:            cronPersister,
 		event:           eventPersister,
 		listing:         listingPersister,
 		contentRevision: contentRevisionPersister,
 		governanceEvent: governanceEventPersister,
+		challenge:       challengePersister,
 	}, nil
 }
 
@@ -118,6 +125,7 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 			persisters.listing,
 			persisters.contentRevision,
 			persisters.governanceEvent,
+			persisters.challenge,
 			helpers.ContentScraper(config),
 			helpers.MetadataScraper(config),
 			helpers.CivilMetadataScraper(config),

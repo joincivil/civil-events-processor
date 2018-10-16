@@ -2,6 +2,7 @@
 package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 )
@@ -29,6 +30,16 @@ func NewPoll(commitEndDate int64, revealEndDate int64, voteQuorum uint64, votesF
 		votesFor:      votesFor,
 		votesAgainst:  votesAgainst,
 	}
+}
+
+// UpdateVotesFor updates votes for poll
+func (p *Poll) UpdateVotesFor(votesFor uint64) {
+	p.votesFor = votesFor
+}
+
+// UpdateVotesAgainst updates votes against poll
+func (p *Poll) UpdateVotesAgainst(votesAgainst uint64) {
+	p.votesAgainst = votesAgainst
 }
 
 //CommitEndDate returns the commitenddate
@@ -71,13 +82,8 @@ type Appeal struct {
 
 	statement string // this is type ContentData in dapp
 
-	// // check to see if the following are necessary
-	// challengeRewardPool  *big.Int
-	// challengeChallenger  common.Address
-	// challengeResolved    bool
-	// challengeStake       *big.Int
-	// challengeTotalTokens *big.Int
-	// challengePoll        Poll
+	// NOTE(IS): This corresponds to another challengeID in the challenge table
+	appealChallengeID *big.Int
 }
 
 // Requester returns the Appeal requester
@@ -110,11 +116,19 @@ func (a *Appeal) Statement() string {
 	return a.statement
 }
 
+// AppealChallengeID returns appealchallengeid
+func (a *Appeal) AppealChallengeID() *big.Int {
+	return a.appealChallengeID
+}
+
 // NewChallenge is a convenience function to initialize a new Challenge struct
 // NOTE(IS): Temporarily ignoring Appeal
-func NewChallenge(statement string, rewardPool *big.Int, challenger common.Address, resolved bool,
-	stake *big.Int, totalTokens *big.Int, poll *Poll, requestAppealExpiry *big.Int) *Challenge {
+func NewChallenge(challengeID *big.Int, listingAddress common.Address, statement string, rewardPool *big.Int,
+	challenger common.Address, resolved bool, stake *big.Int, totalTokens *big.Int, poll *Poll,
+	requestAppealExpiry *big.Int, lastUpdatedDateTs int64) *Challenge {
 	return &Challenge{
+		challengeID:         challengeID,
+		listingAddress:      listingAddress,
 		statement:           statement,
 		rewardPool:          rewardPool,
 		challenger:          challenger,
@@ -123,6 +137,7 @@ func NewChallenge(statement string, rewardPool *big.Int, challenger common.Addre
 		totalTokens:         totalTokens,
 		poll:                poll,
 		requestAppealExpiry: requestAppealExpiry,
+		lastUpdatedDateTs:   lastUpdatedDateTs,
 		appeal:              Appeal{},
 	}
 }
@@ -130,6 +145,8 @@ func NewChallenge(statement string, rewardPool *big.Int, challenger common.Addre
 // Challenge represents a ChallengeData object
 type Challenge struct {
 	challengeID *big.Int
+
+	listingAddress common.Address
 
 	statement string
 
@@ -148,11 +165,30 @@ type Challenge struct {
 	requestAppealExpiry *big.Int
 
 	appeal Appeal
+
+	lastUpdatedDateTs int64
+}
+
+// SetPoll sets the poll for this challenge
+func (c *Challenge) SetPoll(poll *Poll) {
+	fmt.Println(*poll)
+	c.poll = poll
+	fmt.Println("cannot get here")
+}
+
+// SetLastUpdateDateTs sets the date of last update
+func (c *Challenge) SetLastUpdateDateTs(ts int64) {
+	c.lastUpdatedDateTs = ts
 }
 
 // ChallengeID returns the challenge ID
 func (c *Challenge) ChallengeID() *big.Int {
 	return c.challengeID
+}
+
+// ListingAddress returns the listing address associataed with this challenge
+func (c *Challenge) ListingAddress() common.Address {
+	return c.listingAddress
 }
 
 // Statement returns the statement
@@ -180,7 +216,7 @@ func (c *Challenge) Stake() *big.Int {
 	return c.stake
 }
 
-// TotalTokens returns the totaltokens in this challenge
+// TotalTokens returns the totaltokens for reward distribution purposes
 func (c *Challenge) TotalTokens() *big.Int {
 	return c.totalTokens
 }
@@ -198,4 +234,9 @@ func (c *Challenge) RequestAppealExpiry() *big.Int {
 // Appeal returns the appeal object data from this challenge
 func (c *Challenge) Appeal() Appeal {
 	return c.appeal
+}
+
+// LastUpdatedDateTs returns the ts of last update
+func (c *Challenge) LastUpdatedDateTs() int64 {
+	return c.lastUpdatedDateTs
 }

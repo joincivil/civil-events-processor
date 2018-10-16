@@ -26,6 +26,7 @@ const (
 	listingNameDBModelName  = "Name"
 	ownerAddDBModelName     = "OwnerAddresses"
 	challengeIDDBModelName  = "ChallengeID"
+	pollDBModelName         = "Poll"
 )
 
 type whitelistedStatus int
@@ -58,13 +59,14 @@ func byte32ToHexString(input [32]byte) string {
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
 	revisionPersister model.ContentRevisionPersister, govEventPersister model.GovernanceEventPersister,
-	contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
-	civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
+	challengePersister model.ChallengePersister, contentScraper model.ContentScraper,
+	metadataScraper model.MetadataScraper, civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
 	return &EventProcessor{
 		client:               client,
 		listingPersister:     listingPersister,
 		revisionPersister:    revisionPersister,
 		govEventPersister:    govEventPersister,
+		challengePersister:   challengePersister,
 		contentScraper:       contentScraper,
 		metadataScraper:      metadataScraper,
 		civilMetadataScraper: civilMetadataScraper,
@@ -78,6 +80,7 @@ type EventProcessor struct {
 	listingPersister     model.ListingPersister
 	revisionPersister    model.ContentRevisionPersister
 	govEventPersister    model.GovernanceEventPersister
+	challengePersister   model.ChallengePersister
 	contentScraper       model.ContentScraper
 	metadataScraper      model.MetadataScraper
 	civilMetadataScraper model.CivilMetadataScraper
@@ -96,10 +99,18 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		if ran {
 			continue
 		}
-		_, err = e.processCivilTCREvent(event)
+		ran, err = e.processCivilTCREvent(event)
 		if err != nil {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
+		if ran {
+			continue
+		}
+		_, err = e.processPLCRVotingEvent(event)
+		if err != nil {
+			log.Errorf("Error processing plcr event: err: %v\n", err)
+		}
+
 	}
 	return err
 }
@@ -113,6 +124,12 @@ func (e *EventProcessor) isValidNewsroomContractEventName(name string) bool {
 func (e *EventProcessor) isValidCivilTCRContractEventName(name string) bool {
 	name = strings.Trim(name, " _")
 	eventNames := commongen.EventTypesCivilTCRContract()
+	return isStringInSlice(eventNames, name)
+}
+
+func (e *EventProcessor) isValidPLCRContractEventName(name string) bool {
+	name = strings.Trim(name, " _")
+	eventNames := commongen.EventTypesPLCRVotingContract()
 	return isStringInSlice(eventNames, name)
 }
 
@@ -146,6 +163,106 @@ func (e *EventProcessor) processNewsroomEvent(event *crawlermodel.Event) (bool, 
 		ran = false
 	}
 	return ran, err
+}
+
+func (e *EventProcessor) processPLCRVotingEvent(event *crawlermodel.Event) (bool, error) {
+	if !e.isValidPLCRContractEventName(event.EventType()) {
+		return false, nil
+	}
+
+	var err error
+	ran := true
+	eventName := strings.Trim(event.EventType(), " _")
+
+	switch eventName {
+	case "PollCreated":
+		log.Infof("Handling PollCreated for %v\n", event.ContractAddress().Hex())
+		err = e.processPollCreated(event)
+	case "VoteRevealed":
+		log.Infof("Handling VoteRevealed for %v\n", event.ContractAddress().Hex())
+		err = e.processVoteRevealed(event)
+	}
+	return ran, err
+}
+
+func (e *EventProcessor) processPollCreated(event *crawlermodel.Event) error {
+	// create poll here
+	payload := event.EventPayload()
+	voteQuorum, ok := payload["VoteQuorum"]
+	if !ok {
+		return errors.New("No voteQuorum found in pollCreated event")
+	}
+	voteQuorum1 := voteQuorum.(*big.Int).Uint64()
+
+	commitEndDate, ok := payload["CommitEndDate"]
+	if !ok {
+		return errors.New("No commitEndDate found in pollCreated event")
+	}
+	commitEndDate1 := commitEndDate.(*big.Int).Int64()
+
+	revealEndDate, ok := payload["RevealEndDate"]
+	if !ok {
+		return errors.New("No revealEndDate found in pollCreated event")
+	}
+	revealEndDate1 := revealEndDate.(*big.Int).Int64()
+
+	pollID, ok := payload["PollID"]
+	if !ok {
+		return errors.New("No pollID found in pollCreated event")
+	}
+	votesFor := uint64(0)
+	votesAgainst := uint64(0)
+
+	poll := model.NewPoll(commitEndDate1, revealEndDate1, voteQuorum1, votesFor, votesAgainst)
+	// fmt.Println("challengeID with", pollID.(*big.Int))
+	challenge, err := e.challengePersister.ChallengeByChallengeID(pollID.(*big.Int))
+	if err != nil && err != model.ErrPersisterNoResults {
+		return err
+	}
+	// NOTE(IS): model.ErrPersisterNoResults is nil
+	if challenge == nil {
+		//TODO(IS): If no challenge returned, create new challenge, for now skip
+		return err
+	}
+
+	challenge.SetPoll(poll)
+	// Update challenge with challengeID pollID
+	updatedFields := []string{pollDBModelName}
+
+	err = e.challengePersister.UpdateChallenge(challenge, updatedFields)
+	return err
+}
+
+func (e *EventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
+	// NOTE(IS): All challengeIDs come from PollIDs
+	payload := event.EventPayload()
+	pollID, ok := payload["PollID"]
+	if !ok {
+		return errors.New("No pollID found in voteRevealed event")
+	}
+	votesFor, ok := payload["VotesFor"]
+	if !ok {
+		return errors.New("No votesFor found in voteRevealed event")
+	}
+	votesAgainst, ok := payload["VotesAgainst"]
+	if !ok {
+		return errors.New("No votesAgainst found in voteRevealed event")
+	}
+
+	challenge, err := e.challengePersister.ChallengeByChallengeID(pollID.(*big.Int))
+	if err != nil && err != model.ErrPersisterNoResults {
+		return err
+	}
+
+	poll := challenge.Poll()
+	poll.UpdateVotesFor(votesFor.(*big.Int).Uint64())
+	poll.UpdateVotesAgainst(votesAgainst.(*big.Int).Uint64())
+	challenge.SetPoll(poll)
+	// Update challenge with challengeID pollID
+	updatedFields := []string{pollDBModelName}
+
+	err = e.challengePersister.UpdateChallenge(challenge, updatedFields)
+	return err
 }
 
 func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, error) {
@@ -430,12 +547,73 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	return err
 }
 
+func (e *EventProcessor) persistNewChallenge(event *crawlermodel.Event) error {
+	// Cannot get all fields from ChallengeEvent so set those to nil values for now
+	payload := event.EventPayload()
+	statement := ""
+	resolved := false
+	challengeID, ok := payload["ChallengeID"]
+	if !ok {
+		return errors.New("No challengeID found in challenge event")
+	}
+	challenger, ok := payload["Challenger"]
+	if !ok {
+		return errors.New("No challenger found in challenge event")
+	}
+	listingAddress := payload["ListingAddress"]
+	if !ok {
+		return errors.New("No listingAddress found in challenge event")
+	}
+	// TODO(IS): stake is minDeposit from parametrizer, rewardPool also from parametrizer
+	challenge := model.NewChallenge(challengeID.(*big.Int), listingAddress.(common.Address), statement, nil,
+		challenger.(common.Address), resolved, nil, nil, nil, nil, crawlerutils.CurrentEpochSecsInInt64())
+
+	err := e.challengePersister.CreateChallenge(challenge)
+	if err != nil {
+		return fmt.Errorf("Error persisting new challenge: %v", err)
+	}
+	return nil
+}
+
+func (e *EventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) error {
+	// NOTE(IS): Creates a new challenge for an appeal challenge
+	// TODO(IS): Have to update existing challengeID with appeal data
+	payload := event.EventPayload()
+	statement := ""
+	resolved := false
+	appealChallengeID, ok := payload["AppealChallengeID"]
+	if !ok {
+		return errors.New("No appealChallengeID found in GrantedAppealChallenged event")
+	}
+	// challengeID, ok := payload["ChallengeID"]
+	// if !ok {
+	// 	return errors.New("No appealChallengeID found in GrantedAppealChallenged event")
+	// }
+	listingAddress := payload["ListingAddress"]
+	if !ok {
+		return errors.New("No listingAddress found in GrantedAppealChallenged event")
+	}
+	// TODO(IS): Challenger is the messageSender
+	challenger := common.HexToAddress("")
+	challenge := model.NewChallenge(appealChallengeID.(*big.Int), listingAddress.(common.Address), statement, nil,
+		challenger, resolved, nil, nil, nil, nil, crawlerutils.CurrentEpochSecsInInt64())
+	err := e.challengePersister.CreateChallenge(challenge)
+	if err != nil {
+		return fmt.Errorf("Error persisting new challenge: %v", err)
+	}
+	return nil
+}
+
 func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error {
 	return e.processTCREvent(event, model.GovernanceStateApplied, whitelistedFalse,
 		approvalDateEmptyValue)
 }
 
 func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
+	err := e.persistNewChallenge(event)
+	if err != nil {
+		return fmt.Errorf("Error processing Challenge: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateChallenged, whitelistedNoChange,
 		approvalDateNoUpdate)
 }
@@ -491,6 +669,11 @@ func (e *EventProcessor) processTCRAppealRequested(event *crawlermodel.Event) er
 }
 
 func (e *EventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.Event) error {
+	// Challenge is started here for appeal
+	err := e.persistNewAppealChallenge(event)
+	if err != nil {
+		return fmt.Errorf("Error processesing GrantedAppealChallenged: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateGrantedAppealChallenged, whitelistedNoChange,
 		approvalDateNoUpdate)
 }

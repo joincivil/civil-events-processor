@@ -118,6 +118,12 @@ type CronPersister interface {
 
 // ChallengePersister is the interface to store ChallengeData
 type ChallengePersister interface {
+	// ChallengeByChallengeID gets a challenge by challengeID
 	ChallengeByChallengeID(challengeID *big.Int) (*Challenge, error)
-	ChallengesByChallengeIDs(challengeIDs []*big.Int) (*[]Challenge, error)
+	// ChallengesByChallengeIDs returns a slice of challenges based on challenge IDs
+	ChallengesByChallengeIDs(challengeIDs []*big.Int) ([]*Challenge, error)
+	// CreateChallenge creates a new challenge
+	CreateChallenge(challenge *Challenge) error
+	// UpdateChallenge updates a challenge
+	UpdateChallenge(challenge *Challenge, updatedFields []string) error
 }
