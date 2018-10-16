@@ -2,7 +2,6 @@
 package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 import (
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 )
@@ -171,9 +170,7 @@ type Challenge struct {
 
 // SetPoll sets the poll for this challenge
 func (c *Challenge) SetPoll(poll *Poll) {
-	fmt.Println(*poll)
 	c.poll = poll
-	fmt.Println("cannot get here")
 }
 
 // SetLastUpdateDateTs sets the date of last update
