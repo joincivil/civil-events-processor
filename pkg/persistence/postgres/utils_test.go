@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
+	"math/big"
 	"reflect"
 	"testing"
 )
@@ -79,5 +80,23 @@ func TestGetAllStructFieldsForQuery(t *testing.T) {
 	}
 	if structFieldsString4 != ":name, :contract_address, :whitelisted, :last_governance_state, :url, :charter_uri, :owner_addresses, :owner, :contributor_addresses, :creation_timestamp, :application_timestamp, :approval_timestamp, :last_updated_timestamp, :app_expiry, :unstaked_deposit, :challenge_id" {
 		t.Errorf("Generated structFieldString with colon is not what it should be: %v", structFieldsString4)
+	}
+}
+
+func TestBigIntToFloat64(t *testing.T) {
+	floatVal := float64(3)
+	bigInt := big.NewInt(3)
+	floatNum := postgres.BigIntToFloat64(bigInt)
+	if floatVal != floatNum {
+		t.Errorf("Bigint to Float64 conversion failed")
+	}
+}
+
+func TestFloat64ToBigInt(t *testing.T) {
+	bigIntVal := big.NewInt(34)
+	float := float64(34)
+	bigInt := postgres.Float64ToBigInt(float)
+	if bigInt == bigIntVal {
+		t.Errorf("Float64 to Bigint conversion failed")
 	}
 }

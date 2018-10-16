@@ -21,12 +21,13 @@ import (
 )
 
 const (
-	postgresPort     = 5432
-	postgresDBName   = "civil_crawler"
-	postgresUser     = "docker"
-	postgresPswd     = "docker"
-	postgresHost     = "localhost"
-	govTestTableName = "governance_event_test"
+	postgresPort           = 5432
+	postgresDBName         = "civil_crawler"
+	postgresUser           = "docker"
+	postgresPswd           = "docker"
+	postgresHost           = "localhost"
+	govTestTableName       = "governance_event_test"
+	challengeTestTableName = "challenge_test"
 )
 
 // randomHex generates a random hex string
@@ -62,7 +63,10 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreateGovernanceEventTableQueryString(tableName)
 	case "cron_test":
 		queryString = postgres.CreateCronTableQueryString(tableName)
+	case "challenge_test":
+		queryString = postgres.CreateChallengeTableQueryString(tableName)
 	}
+
 	_, err = persister.db.Query(queryString)
 	if err != nil {
 		return persister, fmt.Errorf("Couldn't create test table %s: %v", tableName, err)
@@ -81,6 +85,8 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 		_, err = persister.db.Query("DROP TABLE governance_event_test;")
 	case "cron_test":
 		_, err = persister.db.Query("DROP TABLE cron_test;")
+	case "challenge_test":
+		_, err = persister.db.Query("DROP TABLE challenge_test;")
 	}
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
@@ -1213,6 +1219,112 @@ func TestNilChallenges(t *testing.T) {
 }
 
 // also test that you can create multiple queries and cnxn pools are working
+
+/*
+All tests for challenge table:
+*/
+
+func setupSampleChallengeWithNillPoll(randListing bool) (*model.Challenge, *big.Int) {
+	var listingAddr common.Address
+	address2, _ := randomHex(32)
+	if randListing {
+		address1, _ := randomHex(32)
+		listingAddr = common.HexToAddress(address1)
+	} else {
+		// keep listingAddress constant
+		listingAddr = common.HexToAddress("0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d")
+	}
+
+	challengeID := big.NewInt(50)
+	statement := ""
+	challenger := common.HexToAddress(address2)
+	rewardPool := big.NewInt(232323223232)
+	stake := big.NewInt(232323223232)
+	totalTokens := big.NewInt(232323223232)
+
+	requestAppealExpiry := big.NewInt(1231312)
+	testChallenge := model.NewChallenge(challengeID, listingAddr, statement, rewardPool,
+		challenger, false, stake, totalTokens, nil, requestAppealExpiry, int64(1212141313))
+	return testChallenge, challengeID
+}
+
+func setupChallengeTable(t *testing.T) *PostgresPersister {
+	persister, err := setupTestTable(challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	return persister
+}
+
+func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Challenge, *big.Int) {
+	// sample challenge
+	modelChallenge, challengeID := setupSampleChallengeWithNillPoll(randListing)
+
+	// insert to table
+	err := persister.createChallengeInTable(modelChallenge, challengeTestTableName)
+	if err != nil {
+		t.Errorf("error saving challenge: %v", err)
+	}
+	return modelChallenge, challengeID
+}
+
+func TestCreateChallenge(t *testing.T) {
+	persister, err := setupTestTable(challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, challengeTestTableName)
+	_, _ = createAndSaveTestChallenge(t, persister, true)
+
+}
+
+func TestGetChallenge(t *testing.T) {
+	persister, err := setupTestTable(challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, challengeTestTableName)
+	modelChallenge, challengeID := createAndSaveTestChallenge(t, persister, true)
+
+	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]*big.Int{challengeID}, challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+	if len(challengesFromDB) == 0 {
+		t.Errorf("Didn't get anything from DB challenge test")
+	}
+	challengeFromDB := challengesFromDB[0]
+
+	if !reflect.DeepEqual(modelChallenge.ChallengeID(), challengeFromDB.ChallengeID()) {
+		t.Error("Mismatch in challenge ID")
+	}
+	if !reflect.DeepEqual(modelChallenge.ListingAddress(), challengeFromDB.ListingAddress()) {
+		t.Error("Mismatch in listingaddress")
+	}
+	if !reflect.DeepEqual(modelChallenge.Statement(), challengeFromDB.Statement()) {
+		t.Error("Mismatch in statement")
+	}
+	if !reflect.DeepEqual(modelChallenge.RewardPool(), challengeFromDB.RewardPool()) {
+		t.Error("Mismatch in rewardpool")
+	}
+
+	if !reflect.DeepEqual(modelChallenge.Stake(), challengeFromDB.Stake()) {
+		t.Error("Mismatch in stake")
+	}
+
+	if !reflect.DeepEqual(modelChallenge.TotalTokens(), challengeFromDB.TotalTokens()) {
+		t.Error("Mismatch in total tokens")
+	}
+	if !reflect.DeepEqual(modelChallenge.Challenger(), challengeFromDB.Challenger()) {
+		t.Error("Mismatch in challenger")
+	}
+	if !reflect.DeepEqual(modelChallenge.LastUpdatedDateTs(), challengeFromDB.LastUpdatedDateTs()) {
+		t.Error("Mismatch in ts")
+	}
+	// TODO: nil poll is all 0s bc of how we save it. write check for this.
+	// fmt.Println(challengeFromDB.Poll())
+	// fmt.Println(challenge.Poll())
+}
 
 /*
 All tests for cron table:
