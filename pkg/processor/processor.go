@@ -192,19 +192,16 @@ func (e *EventProcessor) processPollCreated(event *crawlermodel.Event) error {
 	if !ok {
 		return errors.New("No voteQuorum found in pollCreated event")
 	}
-	voteQuorum1 := voteQuorum.(*big.Int).Uint64()
 
 	commitEndDate, ok := payload["CommitEndDate"]
 	if !ok {
 		return errors.New("No commitEndDate found in pollCreated event")
 	}
-	commitEndDate1 := commitEndDate.(*big.Int).Int64()
 
 	revealEndDate, ok := payload["RevealEndDate"]
 	if !ok {
 		return errors.New("No revealEndDate found in pollCreated event")
 	}
-	revealEndDate1 := revealEndDate.(*big.Int).Int64()
 
 	pollID, ok := payload["PollID"]
 	if !ok {
@@ -213,7 +210,8 @@ func (e *EventProcessor) processPollCreated(event *crawlermodel.Event) error {
 	votesFor := uint64(0)
 	votesAgainst := uint64(0)
 
-	poll := model.NewPoll(commitEndDate1, revealEndDate1, voteQuorum1, votesFor, votesAgainst)
+	poll := model.NewPoll(commitEndDate.(*big.Int).Int64(), revealEndDate.(*big.Int).Int64(), voteQuorum.(*big.Int).Uint64(),
+		votesFor, votesAgainst)
 	// fmt.Println("challengeID with", pollID.(*big.Int))
 	challenge, err := e.challengePersister.ChallengeByChallengeID(pollID.(*big.Int))
 	if err != nil && err != model.ErrPersisterNoResults {
