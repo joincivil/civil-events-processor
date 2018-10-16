@@ -115,3 +115,9 @@ type CronPersister interface {
 	// UpdateTimestampForCron updates the timestamp of the last event seen by the cron
 	UpdateTimestampForCron(timestamp int64) error
 }
+
+// ChallengePersister is the interface to store ChallengeData
+type ChallengePersister interface {
+	ChallengeByChallengeID(challengeID *big.Int) (*Challenge, error)
+	ChallengesByChallengeIDs(challengeIDs []*big.Int) (*[]Challenge, error)
+}

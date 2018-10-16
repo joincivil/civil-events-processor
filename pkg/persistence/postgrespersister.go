@@ -179,6 +179,7 @@ func (p *PostgresPersister) CreateTables() error {
 	govEventTableQuery := postgres.CreateGovernanceEventTableQuery()
 	listingTableQuery := postgres.CreateListingTableQuery()
 	cronTableQuery := postgres.CreateCronTableQuery()
+	challengeTableQuery := postgres.CreateChallengeTableQuery()
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -196,7 +197,11 @@ func (p *PostgresPersister) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Error creating listing table in postgres: %v", err)
 	}
-	return err
+	_, err = p.db.Exec(challengeTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating challenge table in postgres: %v", err)
+	}
+	return nil
 }
 
 func (p *PostgresPersister) insertIntoDBQueryString(tableName string, dbModelStruct interface{}) string {

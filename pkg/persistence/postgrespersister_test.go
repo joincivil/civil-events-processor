@@ -62,7 +62,10 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreateGovernanceEventTableQueryString(tableName)
 	case "cron_test":
 		queryString = postgres.CreateCronTableQueryString(tableName)
+	case "challenge":
+		queryString = postgres.CreateChallengeTableQueryString(tableName)
 	}
+
 	_, err = persister.db.Query(queryString)
 	if err != nil {
 		return persister, fmt.Errorf("Couldn't create test table %s: %v", tableName, err)
@@ -81,6 +84,8 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 		_, err = persister.db.Query("DROP TABLE governance_event_test;")
 	case "cron_test":
 		_, err = persister.db.Query("DROP TABLE cron_test;")
+	case "challenge_test":
+		_, err = persister.db.Query("DROP TABLE challenge_test;")
 	}
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
