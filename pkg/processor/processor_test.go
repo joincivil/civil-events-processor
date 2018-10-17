@@ -31,7 +31,7 @@ type TestPersister struct {
 	listings   map[string]*model.Listing
 	revisions  map[string][]*model.ContentRevision
 	govEvents  map[string][]*model.GovernanceEvent
-	challenges map[int64]*model.Challenge
+	challenges map[int]*model.Challenge
 	timestamp  int64
 }
 
@@ -283,12 +283,12 @@ func (t *TestPersister) DeleteGovernanceEvent(govEvent *model.GovernanceEvent) e
 	return nil
 }
 
-func (t *TestPersister) ChallengeByChallengeID(challengeID *big.Int) (*model.Challenge, error) {
-	listing := t.challenges[challengeID.Int64()]
+func (t *TestPersister) ChallengeByChallengeID(challengeID int) (*model.Challenge, error) {
+	listing := t.challenges[challengeID]
 	return listing, nil
 
 }
-func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []*big.Int) ([]*model.Challenge, error) {
+func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []int) ([]*model.Challenge, error) {
 	results := []*model.Challenge{}
 	for _, challengeID := range challengeIDs {
 		challenge, err := t.ChallengeByChallengeID(challengeID)
@@ -299,17 +299,17 @@ func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []*big.Int) ([]*mo
 	return results, nil
 }
 func (t *TestPersister) CreateChallenge(challenge *model.Challenge) error {
-	challengeID := challenge.ChallengeID().Int64()
+	challengeID := int(challenge.ChallengeID().Int64())
 	if t.challenges == nil {
-		t.challenges = map[int64]*model.Challenge{}
+		t.challenges = map[int]*model.Challenge{}
 	}
 	t.challenges[challengeID] = challenge
 	return nil
 }
 func (t *TestPersister) UpdateChallenge(challenge *model.Challenge, updatedFields []string) error {
-	challengeID := challenge.ChallengeID().Int64()
+	challengeID := int(challenge.ChallengeID().Int64())
 	if t.challenges == nil {
-		t.challenges = map[int64]*model.Challenge{}
+		t.challenges = map[int]*model.Challenge{}
 	}
 	t.challenges[challengeID] = challenge
 	return nil

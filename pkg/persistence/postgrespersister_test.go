@@ -1224,7 +1224,7 @@ func TestNilChallenges(t *testing.T) {
 All tests for challenge table:
 */
 
-func setupSampleChallengeWithNillPoll(randListing bool) (*model.Challenge, *big.Int) {
+func setupSampleChallengeWithNillPoll(randListing bool) (*model.Challenge, int) {
 	var listingAddr common.Address
 	address2, _ := randomHex(32)
 	if randListing {
@@ -1234,8 +1234,8 @@ func setupSampleChallengeWithNillPoll(randListing bool) (*model.Challenge, *big.
 		// keep listingAddress constant
 		listingAddr = common.HexToAddress("0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d")
 	}
-
-	challengeID := big.NewInt(50)
+	challengeIDInt := 50
+	challengeID := big.NewInt(int64(challengeIDInt))
 	statement := ""
 	challenger := common.HexToAddress(address2)
 	rewardPool := big.NewInt(232323223232)
@@ -1245,7 +1245,7 @@ func setupSampleChallengeWithNillPoll(randListing bool) (*model.Challenge, *big.
 	requestAppealExpiry := big.NewInt(1231312)
 	testChallenge := model.NewChallenge(challengeID, listingAddr, statement, rewardPool,
 		challenger, false, stake, totalTokens, nil, requestAppealExpiry, int64(1212141313))
-	return testChallenge, challengeID
+	return testChallenge, challengeIDInt
 }
 
 func setupChallengeTable(t *testing.T) *PostgresPersister {
@@ -1256,7 +1256,7 @@ func setupChallengeTable(t *testing.T) *PostgresPersister {
 	return persister
 }
 
-func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Challenge, *big.Int) {
+func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Challenge, int) {
 	// sample challenge
 	modelChallenge, challengeID := setupSampleChallengeWithNillPoll(randListing)
 
@@ -1286,7 +1286,7 @@ func TestGetChallenge(t *testing.T) {
 	defer deleteTestTable(t, persister, challengeTestTableName)
 	modelChallenge, challengeID := createAndSaveTestChallenge(t, persister, true)
 
-	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]*big.Int{challengeID}, challengeTestTableName)
+	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}

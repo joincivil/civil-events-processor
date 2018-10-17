@@ -213,7 +213,7 @@ func (e *EventProcessor) processPollCreated(event *crawlermodel.Event) error {
 	poll := model.NewPoll(commitEndDate.(*big.Int).Int64(), revealEndDate.(*big.Int).Int64(), voteQuorum.(*big.Int).Uint64(),
 		votesFor, votesAgainst)
 	// fmt.Println("challengeID with", pollID.(*big.Int))
-	challenge, err := e.challengePersister.ChallengeByChallengeID(pollID.(*big.Int))
+	challenge, err := e.challengePersister.ChallengeByChallengeID(int(pollID.(*big.Int).Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
@@ -247,7 +247,7 @@ func (e *EventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
 		return errors.New("No votesAgainst found in voteRevealed event")
 	}
 
-	challenge, err := e.challengePersister.ChallengeByChallengeID(pollID.(*big.Int))
+	challenge, err := e.challengePersister.ChallengeByChallengeID(int(pollID.(*big.Int).Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
