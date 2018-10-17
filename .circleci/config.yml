@@ -180,10 +180,8 @@ workflows:
           filters:
             branches:
               only:
-                - development
                 - master
-                - png/1322/ci
-                - /container-.*/
+                - /staging.*/
       - push-container:
           context: gcp-common
           requires:
@@ -191,10 +189,8 @@ workflows:
           filters:
             branches:
               only:
-                - development
                 - master
-                - png/1322/ci
-                - /container-.*/
+                - /staging.*/
       - deploy-staging:
           context: gcp-common
           requires:
@@ -202,8 +198,8 @@ workflows:
           filters:
             branches:
               only:
-                - development
-                - png/1322/ci
+                - master
+                - /staging.*/
       - deploy-production:
           context: gcp-common
           requires:
