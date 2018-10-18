@@ -19,14 +19,20 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 )
 
+// TODO(IS): Change naming for these constants to reflect which model they change
 const (
-	govStateDBModelName     = "LastGovernanceState"
-	whitelistedDBModelName  = "Whitelisted"
-	approvalDateDBModelName = "ApprovalDateTs"
-	listingNameDBModelName  = "Name"
-	ownerAddDBModelName     = "OwnerAddresses"
-	challengeIDDBModelName  = "ChallengeID"
-	pollDBModelName         = "Poll"
+	govStateDBModelName        = "LastGovernanceState"
+	whitelistedDBModelName     = "Whitelisted"
+	approvalDateDBModelName    = "ApprovalDateTs"
+	listingNameDBModelName     = "Name"
+	ownerAddDBModelName        = "OwnerAddresses"
+	challengeIDDBModelName     = "ChallengeID"
+	appExpiryDBModelName       = "AppExpiry"
+	unstakedDepositDBModelName = "UnstakedDeposit"
+	pollDBModelName            = "Poll"
+	appealDBModelName          = "Appeal"
+	resolvedDBModelName        = "Resolved"
+	totalTokensDBModelName     = "TotalTokens"
 )
 
 type whitelistedStatus int
@@ -173,7 +179,7 @@ func (e *EventProcessor) processPLCRVotingEvent(event *crawlermodel.Event) (bool
 	var err error
 	ran := true
 	eventName := strings.Trim(event.EventType(), " _")
-
+	// Handling all the actionable events from PLCR Contract
 	switch eventName {
 	case "PollCreated":
 		log.Infof("Handling PollCreated for %v\n", event.ContractAddress().Hex())
@@ -190,39 +196,39 @@ func (e *EventProcessor) processPollCreated(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	voteQuorum, ok := payload["VoteQuorum"]
 	if !ok {
-		return errors.New("No voteQuorum found in pollCreated event")
+		return errors.New("No voteQuorum found")
 	}
 
 	commitEndDate, ok := payload["CommitEndDate"]
 	if !ok {
-		return errors.New("No commitEndDate found in pollCreated event")
+		return errors.New("No commitEndDate found")
 	}
 
 	revealEndDate, ok := payload["RevealEndDate"]
 	if !ok {
-		return errors.New("No revealEndDate found in pollCreated event")
+		return errors.New("No revealEndDate found")
 	}
 
 	pollID, ok := payload["PollID"]
 	if !ok {
-		return errors.New("No pollID found in pollCreated event")
+		return errors.New("No pollID found")
 	}
 	votesFor := uint64(0)
 	votesAgainst := uint64(0)
 
 	poll := model.NewPoll(commitEndDate.(*big.Int).Int64(), revealEndDate.(*big.Int).Int64(), voteQuorum.(*big.Int).Uint64(),
 		votesFor, votesAgainst)
-	// fmt.Println("challengeID with", pollID.(*big.Int))
+
 	challenge, err := e.challengePersister.ChallengeByChallengeID(int(pollID.(*big.Int).Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	// NOTE(IS): model.ErrPersisterNoResults is nil
 	if challenge == nil {
-		//TODO(IS): If no challenge returned, create new challenge, for now skip
+		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		log.Infof("No existing challenge found in persistence for ID %v\n", pollID)
 		return err
 	}
-
 	challenge.SetPoll(poll)
 	// Update challenge with challengeID pollID
 	updatedFields := []string{pollDBModelName}
@@ -236,19 +242,20 @@ func (e *EventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	pollID, ok := payload["PollID"]
 	if !ok {
-		return errors.New("No pollID found in voteRevealed event")
+		return errors.New("No pollID found")
 	}
 	votesFor, ok := payload["VotesFor"]
 	if !ok {
-		return errors.New("No votesFor found in voteRevealed event")
+		return errors.New("No votesFor found")
 	}
 	votesAgainst, ok := payload["VotesAgainst"]
 	if !ok {
-		return errors.New("No votesAgainst found in voteRevealed event")
+		return errors.New("No votesAgainst found")
 	}
 
 	challenge, err := e.challengePersister.ChallengeByChallengeID(int(pollID.(*big.Int).Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
+		// TODO(IS): If no challenge returned, create new challenge, for now skip
 		return err
 	}
 
@@ -474,7 +481,7 @@ func (e *EventProcessor) persistNewGovernanceEvent(listingAddr common.Address,
 
 func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	whitelisted bool, lastGovernanceState model.GovernanceState, creationDate int64,
-	applicationDate int64, approvalDate int64, tcrAddress common.Address) error {
+	applicationDate int64, approvalDate int64) error {
 	// TODO(PN): How do I get the URL of the site?
 	url := ""
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, e.client)
@@ -499,30 +506,6 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	ownerAddresses := []common.Address{ownerAddr}
 	contributorAddresses := []common.Address{charterAuthorAddr}
 
-	var appExpiry *big.Int
-	var challengeID *big.Int
-	var unstakedDeposit *big.Int
-
-	if tcrAddress != (common.Address{}) {
-		// NOTE(IS): If this was called for a newsroom event we don't have a TCR address associated
-		// TODO(IS): For now, solution is leaving fields blank, FIX THIS
-
-		tcrcontract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
-		if tcrErr != nil {
-			return fmt.Errorf("Error reading from CivilTCR Contract: %v", err)
-		}
-		listingstcr, listingErr := tcrcontract.Listings(&bind.CallOpts{}, listingAddress)
-		if listingErr != nil {
-			return fmt.Errorf("Error getting Listings from CivilTCRContract: %v", err)
-		}
-
-		appExpiry = listingstcr.ApplicationExpiry
-		challengeID = listingstcr.ChallengeID
-		unstakedDeposit = listingstcr.UnstakedDeposit
-	} else {
-		log.Errorf("No existing listing in persistence for listing address: %v", listingAddress.Hex())
-	}
-
 	listing := model.NewListing(
 		name,
 		listingAddress,
@@ -537,69 +520,230 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		applicationDate,
 		approvalDate,
 		crawlerutils.CurrentEpochSecsInInt64(),
-		appExpiry,
-		unstakedDeposit,
-		challengeID,
 	)
 	err = e.listingPersister.CreateListing(listing)
 	return err
 }
 
 func (e *EventProcessor) persistNewChallenge(event *crawlermodel.Event) error {
-	// Cannot get all fields from ChallengeEvent so set those to nil values for now
 	payload := event.EventPayload()
+	// TODO(IS): Fill out statement
 	statement := ""
-	resolved := false
 	challengeID, ok := payload["ChallengeID"]
 	if !ok {
-		return errors.New("No challengeID found in challenge event")
+		return errors.New("No challengeID found")
 	}
-	challenger, ok := payload["Challenger"]
+	listingAddress, ok := payload["ListingAddress"]
 	if !ok {
-		return errors.New("No challenger found in challenge event")
+		return errors.New("No listingAddress found")
 	}
-	listingAddress := payload["ListingAddress"]
-	if !ok {
-		return errors.New("No listingAddress found in challenge event")
+	tcrAddress := event.ContractAddress()
+	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, e.client)
+	if err != nil {
+		return fmt.Errorf("Error creating TCR contract: err: %v", err)
 	}
-	// TODO(IS): stake is minDeposit from parametrizer, rewardPool also from parametrizer
-	challenge := model.NewChallenge(challengeID.(*big.Int), listingAddress.(common.Address), statement, nil,
-		challenger.(common.Address), resolved, nil, nil, nil, nil, crawlerutils.CurrentEpochSecsInInt64())
+	challengeRes, err := tcrContract.Challenges(&bind.CallOpts{}, challengeID.(*big.Int))
+	if err != nil {
+		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
+	}
+	requestAppealExpiry, err := tcrContract.ChallengeRequestAppealExpiries(&bind.CallOpts{}, challengeID.(*big.Int))
 
-	err := e.challengePersister.CreateChallenge(challenge)
+	challenge := model.NewChallenge(challengeID.(*big.Int), listingAddress.(common.Address), statement,
+		challengeRes.RewardPool, challengeRes.Challenger, challengeRes.Resolved, challengeRes.Stake,
+		challengeRes.TotalTokens, nil, requestAppealExpiry, crawlerutils.CurrentEpochSecsInInt64())
+
+	err = e.challengePersister.CreateChallenge(challenge)
 	if err != nil {
 		return fmt.Errorf("Error persisting new challenge: %v", err)
 	}
 	return nil
 }
 
+func (e *EventProcessor) persistNewAppeal(event *crawlermodel.Event) error {
+	// This creates a new appeal to an existing challenge (not granted yet)
+	payload := event.EventPayload()
+	challengeID, ok := payload["ChallengeID"]
+	if !ok {
+		return errors.New("No challengeID found")
+	}
+	appealFeePaid, ok := payload["AppealFeePaid"]
+	if !ok {
+		return errors.New("No appealFeePaid found")
+	}
+	appealRequester, ok := payload["Requester"]
+	if !ok {
+		return errors.New("No appealRequester found")
+	}
+	tcrAddress := event.ContractAddress()
+	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, e.client)
+	if err != nil {
+		return fmt.Errorf("Error creating TCR contract: err: %v", err)
+	}
+	challengeRes, err := tcrContract.Appeals(&bind.CallOpts{}, challengeID.(*big.Int))
+	appealPhaseExpiry := challengeRes.AppealPhaseExpiry
+	appealGranted := false
+	// TODO(IS): Fill out statement
+	statement := ""
+	appeal := model.NewAppeal(appealRequester.(common.Address), appealFeePaid.(*big.Int), appealPhaseExpiry, appealGranted, statement)
+	existingChallenge, err := e.challengePersister.ChallengeByChallengeID(int(challengeID.(*big.Int).Int64()))
+	if err != nil && err != model.ErrPersisterNoResults {
+		return err
+	}
+	if existingChallenge == nil {
+		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		return fmt.Errorf("No existing challenge found in persistence for ID %v", challengeID)
+	}
+	existingChallenge.SetAppeal(appeal)
+	updatedFields := []string{appealDBModelName}
+	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	return err
+}
+
 func (e *EventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) error {
 	// NOTE(IS): Creates a new challenge for an appeal challenge
-	// TODO(IS): Have to update existing challengeID with appeal data
 	payload := event.EventPayload()
 	statement := ""
-	resolved := false
 	appealChallengeID, ok := payload["AppealChallengeID"]
 	if !ok {
-		return errors.New("No appealChallengeID found in GrantedAppealChallenged event")
+		return errors.New("No appealChallengeID found")
 	}
-	// challengeID, ok := payload["ChallengeID"]
-	// if !ok {
-	// 	return errors.New("No appealChallengeID found in GrantedAppealChallenged event")
-	// }
+	challengeID, ok := payload["ChallengeID"]
+	if !ok {
+		return errors.New("No challengeID found")
+	}
 	listingAddress := payload["ListingAddress"]
 	if !ok {
-		return errors.New("No listingAddress found in GrantedAppealChallenged event")
+		return errors.New("No listingAddress found")
 	}
-	// TODO(IS): Challenger is the messageSender
-	challenger := common.HexToAddress("")
-	challenge := model.NewChallenge(appealChallengeID.(*big.Int), listingAddress.(common.Address), statement, nil,
-		challenger, resolved, nil, nil, nil, nil, crawlerutils.CurrentEpochSecsInInt64())
-	err := e.challengePersister.CreateChallenge(challenge)
+	tcrAddress := event.ContractAddress()
+	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, e.client)
 	if err != nil {
-		return fmt.Errorf("Error persisting new challenge: %v", err)
+		return fmt.Errorf("Error creating TCR contract: err: %v", err)
 	}
-	return nil
+	challengeRes, err := tcrContract.Challenges(&bind.CallOpts{}, appealChallengeID.(*big.Int))
+	if err != nil {
+		return fmt.Errorf("Error retrieving challenges: err: %v", err)
+	}
+	requestAppealExpiry, err := tcrContract.ChallengeRequestAppealExpiries(&bind.CallOpts{}, appealChallengeID.(*big.Int))
+	if err != nil {
+		return fmt.Errorf("Error retrieving requestAppealExpiries: err: %v", err)
+	}
+	newAppealChallenge := model.NewChallenge(appealChallengeID.(*big.Int), listingAddress.(common.Address), statement,
+		challengeRes.RewardPool, challengeRes.Challenger, challengeRes.Resolved, challengeRes.Stake,
+		challengeRes.TotalTokens, nil, requestAppealExpiry, crawlerutils.CurrentEpochSecsInInt64())
+	err = e.challengePersister.CreateChallenge(newAppealChallenge)
+	if err != nil {
+		return fmt.Errorf("Error persisting new AppealChallenge: %v", err)
+	}
+
+	existingChallenge, err := e.challengePersister.ChallengeByChallengeID(int(challengeID.(*big.Int).Int64()))
+	if err != nil && err != model.ErrPersisterNoResults {
+		return err
+	}
+	if existingChallenge == nil {
+		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
+	}
+	existingAppeal := existingChallenge.Appeal()
+	existingAppeal.SetAppealChallengeID(appealChallengeID.(*big.Int))
+	existingChallenge.SetAppeal(existingAppeal)
+	updatedFields := []string{appealDBModelName}
+	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	return err
+}
+
+func (e *EventProcessor) processAppealGranted(event *crawlermodel.Event) error {
+	payload := event.EventPayload()
+	challengeID, ok := payload["ChallengeID"]
+	if !ok {
+		return errors.New("No challengeID found in")
+	}
+
+	tcrAddress := event.ContractAddress()
+	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, e.client)
+	if err != nil {
+		return fmt.Errorf("Error creating TCR contract: err: %v", err)
+	}
+	challengeRes, err := tcrContract.Appeals(&bind.CallOpts{}, challengeID.(*big.Int))
+	if err != nil {
+		return err
+	}
+	appealOpenToChallengeExpiry := challengeRes.AppealOpenToChallengeExpiry
+	appealGranted := true
+
+	existingChallenge, err := e.challengePersister.ChallengeByChallengeID(int(challengeID.(*big.Int).Int64()))
+	if err != nil && err != model.ErrPersisterNoResults {
+		return err
+	}
+	if existingChallenge == nil {
+		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
+	}
+
+	existingAppeal := existingChallenge.Appeal()
+	existingAppeal.SetAppealOpenToChallengeExpiry(appealOpenToChallengeExpiry)
+	existingAppeal.SetAppealGranted(appealGranted)
+
+	existingChallenge.SetAppeal(existingAppeal)
+	updatedFields := []string{appealDBModelName}
+	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	return err
+}
+
+func (e *EventProcessor) processAppealWinner(event *crawlermodel.Event) error {
+	payload := event.EventPayload()
+	resolved := true
+	challengeID, ok := payload["ChallengeID"]
+	if !ok {
+		return errors.New("No challengeID found")
+	}
+	totalTokens, ok := payload["TotalTokens"]
+	if !ok {
+		return errors.New("No totalTokens found")
+	}
+
+	existingChallenge, err := e.challengePersister.ChallengeByChallengeID(int(challengeID.(*big.Int).Int64()))
+	if err != nil && err != model.ErrPersisterNoResults {
+		return err
+	}
+	if existingChallenge == nil {
+		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
+	}
+	existingChallenge.SetResolved(resolved)
+	existingChallenge.SetTotalTokens(totalTokens.(*big.Int))
+	updatedFields := []string{resolvedDBModelName, totalTokensDBModelName}
+	// TODO(IS): Handle changing of fields when overturned vs not
+	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	return err
+}
+
+func (e *EventProcessor) processChallengeWinner(event *crawlermodel.Event, success bool) error {
+	payload := event.EventPayload()
+	resolved := true
+	challengeID, ok := payload["ChallengeID"]
+	if !ok {
+		return errors.New("No challengeID found")
+	}
+	totalTokens, ok := payload["TotalTokens"]
+	if !ok {
+		return errors.New("No totalTokens found")
+	}
+	existingChallenge, err := e.challengePersister.ChallengeByChallengeID(int(challengeID.(*big.Int).Int64()))
+	if err != nil && err != model.ErrPersisterNoResults {
+		return err
+	}
+	if existingChallenge == nil {
+		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
+	}
+	existingChallenge.SetResolved(resolved)
+	existingChallenge.SetTotalTokens(totalTokens.(*big.Int))
+	updatedFields := []string{resolvedDBModelName, totalTokensDBModelName}
+	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+
+	return err
+
 }
 
 func (e *EventProcessor) processTCRApplication(event *crawlermodel.Event) error {
@@ -617,21 +761,31 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
 }
 
 func (e *EventProcessor) processTCRChallengeFailed(event *crawlermodel.Event) error {
+	err := e.processChallengeWinner(event, false)
+	if err != nil {
+		return fmt.Errorf("Error processing ChallengeFailed: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateChallengeFailed, whitelistedNoChange,
 		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Event) error {
+	err := e.processChallengeWinner(event, true)
+	if err != nil {
+		return fmt.Errorf("Error processing ChallengeSucceeded: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateChallengeSucceeded, whitelistedFalse,
 		approvalDateEmptyValue)
 }
 
 func (e *EventProcessor) processTCRChallengeFailedOverturned(event *crawlermodel.Event) error {
+	//TODO(IS) -- changes in listing + challenge
 	return e.processTCREvent(event, model.GovernanceStateFailedChallengeOverturned, whitelistedNoChange,
 		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRChallengeSuccessfulOverturned(event *crawlermodel.Event) error {
+	//TODO(IS) -- changes in listing + challenge
 	return e.processTCREvent(event, model.GovernanceStateSuccessfulChallengeOverturned, whitelistedFalse,
 		approvalDateEmptyValue)
 }
@@ -657,11 +811,21 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) e
 }
 
 func (e *EventProcessor) processTCRAppealGranted(event *crawlermodel.Event) error {
+	// Grants a requested appeal
+	err := e.processAppealGranted(event)
+	if err != nil {
+		return fmt.Errorf("Error processing AppealGranted: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateAppealGranted, whitelistedNoChange,
 		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRAppealRequested(event *crawlermodel.Event) error {
+	// Appeal requested
+	err := e.persistNewAppeal(event)
+	if err != nil {
+		return fmt.Errorf("Error processesing AppealRequested: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateAppealRequested, whitelistedNoChange,
 		approvalDateNoUpdate)
 }
@@ -677,11 +841,21 @@ func (e *EventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.E
 }
 
 func (e *EventProcessor) processTCRGrantedAppealConfirmed(event *crawlermodel.Event) error {
+	// Appeal is resolved
+	err := e.processAppealWinner(event)
+	if err != nil {
+		return fmt.Errorf("Error processesing GrantedAppealConfirmed: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateGrantedAppealConfirmed, whitelistedNoChange,
 		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.Event) error {
+	// Appeal is resolved
+	err := e.processAppealWinner(event)
+	if err != nil {
+		return fmt.Errorf("Error processesing GrantedAppealOverturn: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateGrantedAppealOverturned, whitelistedNoChange,
 		approvalDateNoUpdate)
 }
@@ -719,9 +893,9 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			event.Timestamp(),
 			event.Timestamp(),
 			approvalDate,
-			tcrAddress,
 		)
 	} else {
+		// All TCR events that update listing
 		var updatedFields []string
 		listing.SetLastGovernanceState(govState)
 		updatedFields = append(updatedFields, govStateDBModelName)
@@ -732,6 +906,18 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 		if approvalDate != approvalDateNoUpdate {
 			listing.SetApprovalDateTs(approvalDate)
 			updatedFields = append(updatedFields, approvalDateDBModelName)
+		}
+		if govState == model.GovernanceStateApplied {
+			appExpiry := event.EventPayload()["AppEndDate"].(*big.Int)
+			unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
+			listing.SetAppExpiry(appExpiry)
+			listing.SetAppExpiry(unstakedDeposit)
+			updatedFields = append(updatedFields, appExpiryDBModelName, unstakedDepositDBModelName)
+		}
+		if govState == model.GovernanceStateDeposit || govState == model.GovernanceStateDepositWithdrawl {
+			deposit := event.EventPayload()["NewTotal"].(*big.Int)
+			listing.SetUnstakedDeposit(deposit)
+			updatedFields = append(updatedFields, unstakedDepositDBModelName)
 		}
 		// Set challengeID if Challenge occurs
 		if govState == model.GovernanceStateChallenged {
@@ -745,6 +931,22 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			listing.SetChallengeID(challengeID)
 			updatedFields = append(updatedFields, challengeIDDBModelName)
 		}
+		if govState == model.GovernanceStateChallengeFailed {
+			challengeID := event.EventPayload()["ChallengeID"].(*big.Int)
+			tcrContract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
+			if tcrErr != nil {
+				return fmt.Errorf("Error creating TCR contract: err: %v", err)
+			}
+			reward, err := tcrContract.DetermineReward(&bind.CallOpts{}, challengeID)
+			if err != nil {
+				return fmt.Errorf("Error getting reward: err: %v", err)
+			}
+			total := big.NewInt(0)
+			total = total.Add(listing.UnstakedDeposit(), reward)
+			listing.SetUnstakedDeposit(total)
+			updatedFields = append(updatedFields, unstakedDepositDBModelName)
+		}
+
 		err = e.listingPersister.UpdateListing(listing, updatedFields)
 	}
 	return err
@@ -791,8 +993,6 @@ func (e *EventProcessor) retrieveOrCreateListingForNewsroomEvent(event *crawlerm
 	if listing != nil {
 		return listing, nil
 	}
-	// NOTE(IS): In this case, we don't have a tcrAddress associated with a newsroom event.
-	tcrAddress := common.Address{}
 	err = e.persistNewListing(
 		listingAddress,
 		false,
@@ -800,7 +1000,6 @@ func (e *EventProcessor) retrieveOrCreateListingForNewsroomEvent(event *crawlerm
 		event.Timestamp(),
 		event.Timestamp(),
 		approvalDateEmptyValue,
-		tcrAddress,
 	)
 	if err != nil {
 		return nil, err
