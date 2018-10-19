@@ -29,10 +29,16 @@ const (
 	challengeIDDBModelName     = "ChallengeID"
 	appExpiryDBModelName       = "AppExpiry"
 	unstakedDepositDBModelName = "UnstakedDeposit"
-	pollDBModelName            = "Poll"
-	appealDBModelName          = "Appeal"
-	resolvedDBModelName        = "Resolved"
-	totalTokensDBModelName     = "TotalTokens"
+
+	resolvedDBModelName    = "Resolved"
+	totalTokensDBModelName = "TotalTokens"
+
+	pollVotesForFieldName     = "VotesFor"
+	pollVotesAgainstFieldName = "VotesAgainst"
+
+	appealAppealChallengeIDFieldName           = "AppealChallengeID"
+	appealAppealOpenToChallengeExpiryFieldName = "AppealOpenToChallengeExpiry"
+	appealAppealGrantedFieldName               = "AppealGranted"
 )
 
 type whitelistedStatus int
@@ -65,14 +71,17 @@ func byte32ToHexString(input [32]byte) string {
 // NewEventProcessor is a convenience function to init an EventProcessor
 func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
 	revisionPersister model.ContentRevisionPersister, govEventPersister model.GovernanceEventPersister,
-	challengePersister model.ChallengePersister, contentScraper model.ContentScraper,
-	metadataScraper model.MetadataScraper, civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
+	challengePersister model.ChallengePersister, pollPersister model.PollPersister, appealPersister model.AppealPersister,
+	contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
+	civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
 	return &EventProcessor{
 		client:               client,
 		listingPersister:     listingPersister,
 		revisionPersister:    revisionPersister,
 		govEventPersister:    govEventPersister,
 		challengePersister:   challengePersister,
+		pollPersister:        pollPersister,
+		appealPersister:      appealPersister,
 		contentScraper:       contentScraper,
 		metadataScraper:      metadataScraper,
 		civilMetadataScraper: civilMetadataScraper,
@@ -87,6 +96,8 @@ type EventProcessor struct {
 	revisionPersister    model.ContentRevisionPersister
 	govEventPersister    model.GovernanceEventPersister
 	challengePersister   model.ChallengePersister
+	pollPersister        model.PollPersister
+	appealPersister      model.AppealPersister
 	contentScraper       model.ContentScraper
 	metadataScraper      model.MetadataScraper
 	civilMetadataScraper model.CivilMetadataScraper
@@ -183,7 +194,7 @@ func (e *EventProcessor) processPLCRVotingEvent(event *crawlermodel.Event) (bool
 	switch eventName {
 	case "PollCreated":
 		log.Infof("Handling PollCreated for %v\n", event.ContractAddress().Hex())
-		err = e.processPollCreated(event)
+		err = e.persistNewPoll(event)
 	case "VoteRevealed":
 		log.Infof("Handling VoteRevealed for %v\n", event.ContractAddress().Hex())
 		err = e.processVoteRevealed(event)
@@ -191,8 +202,7 @@ func (e *EventProcessor) processPLCRVotingEvent(event *crawlermodel.Event) (bool
 	return ran, err
 }
 
-func (e *EventProcessor) processPollCreated(event *crawlermodel.Event) error {
-	// create poll here
+func (e *EventProcessor) persistNewPoll(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	voteQuorum, ok := payload["VoteQuorum"]
 	if !ok {
@@ -213,32 +223,23 @@ func (e *EventProcessor) processPollCreated(event *crawlermodel.Event) error {
 	if !ok {
 		return errors.New("No pollID found")
 	}
-	votesFor := uint64(0)
-	votesAgainst := uint64(0)
+	votesFor := big.NewInt(0)
+	votesAgainst := big.NewInt(0)
 
-	poll := model.NewPoll(commitEndDate.(*big.Int).Int64(), revealEndDate.(*big.Int).Int64(), voteQuorum.(*big.Int).Uint64(),
-		votesFor, votesAgainst)
-
-	challenge, err := e.challengePersister.ChallengeByChallengeID(int(pollID.(*big.Int).Int64()))
-	if err != nil && err != model.ErrPersisterNoResults {
-		return err
-	}
-	// NOTE(IS): model.ErrPersisterNoResults is nil
-	if challenge == nil {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
-		log.Infof("No existing challenge found in persistence for ID %v\n", pollID)
-		return err
-	}
-	challenge.SetPoll(poll)
-	// Update challenge with challengeID pollID
-	updatedFields := []string{pollDBModelName}
-
-	err = e.challengePersister.UpdateChallenge(challenge, updatedFields)
+	poll := model.NewPoll(
+		pollID.(*big.Int),
+		commitEndDate.(*big.Int),
+		revealEndDate.(*big.Int),
+		voteQuorum.(*big.Int),
+		votesFor,
+		votesAgainst,
+		crawlerutils.CurrentEpochSecsInInt64(),
+	)
+	err := e.pollPersister.CreatePoll(poll)
 	return err
 }
 
 func (e *EventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
-	// NOTE(IS): All challengeIDs come from PollIDs
 	payload := event.EventPayload()
 	pollID, ok := payload["PollID"]
 	if !ok {
@@ -253,20 +254,21 @@ func (e *EventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
 		return errors.New("No votesAgainst found")
 	}
 
-	challenge, err := e.challengePersister.ChallengeByChallengeID(int(pollID.(*big.Int).Int64()))
+	poll, err := e.pollPersister.PollByPollID(int(pollID.(*big.Int).Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
 		return err
 	}
+	if poll == nil {
+		// TODO(IS): create new poll
+		return fmt.Errorf("No poll with ID: %v", pollID)
+	}
 
-	poll := challenge.Poll()
-	poll.UpdateVotesFor(votesFor.(*big.Int).Uint64())
-	poll.UpdateVotesAgainst(votesAgainst.(*big.Int).Uint64())
-	challenge.SetPoll(poll)
-	// Update challenge with challengeID pollID
-	updatedFields := []string{pollDBModelName}
+	poll.UpdateVotesFor(votesFor.(*big.Int))
+	poll.UpdateVotesAgainst(votesAgainst.(*big.Int))
 
-	err = e.challengePersister.UpdateChallenge(challenge, updatedFields)
+	updatedFields := []string{pollVotesForFieldName, pollVotesAgainstFieldName}
+
+	err = e.pollPersister.UpdatePoll(poll, updatedFields)
 	return err
 }
 
@@ -548,9 +550,17 @@ func (e *EventProcessor) persistNewChallenge(event *crawlermodel.Event) error {
 	}
 	requestAppealExpiry, err := tcrContract.ChallengeRequestAppealExpiries(&bind.CallOpts{}, challengeID.(*big.Int))
 
-	challenge := model.NewChallenge(challengeID.(*big.Int), listingAddress.(common.Address), statement,
-		challengeRes.RewardPool, challengeRes.Challenger, challengeRes.Resolved, challengeRes.Stake,
-		challengeRes.TotalTokens, nil, requestAppealExpiry, crawlerutils.CurrentEpochSecsInInt64())
+	challenge := model.NewChallenge(
+		challengeID.(*big.Int),
+		listingAddress.(common.Address),
+		statement,
+		challengeRes.RewardPool,
+		challengeRes.Challenger,
+		challengeRes.Resolved,
+		challengeRes.Stake,
+		challengeRes.TotalTokens,
+		requestAppealExpiry,
+		crawlerutils.CurrentEpochSecsInInt64())
 
 	err = e.challengePersister.CreateChallenge(challenge)
 	if err != nil {
@@ -584,18 +594,16 @@ func (e *EventProcessor) persistNewAppeal(event *crawlermodel.Event) error {
 	appealGranted := false
 	// TODO(IS): Fill out statement
 	statement := ""
-	appeal := model.NewAppeal(appealRequester.(common.Address), appealFeePaid.(*big.Int), appealPhaseExpiry, appealGranted, statement)
-	existingChallenge, err := e.challengePersister.ChallengeByChallengeID(int(challengeID.(*big.Int).Int64()))
-	if err != nil && err != model.ErrPersisterNoResults {
-		return err
-	}
-	if existingChallenge == nil {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
-		return fmt.Errorf("No existing challenge found in persistence for ID %v", challengeID)
-	}
-	existingChallenge.SetAppeal(appeal)
-	updatedFields := []string{appealDBModelName}
-	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	appeal := model.NewAppeal(
+		challengeID.(*big.Int),
+		appealRequester.(common.Address),
+		appealFeePaid.(*big.Int),
+		appealPhaseExpiry,
+		appealGranted,
+		statement,
+		crawlerutils.CurrentEpochSecsInInt64(),
+	)
+	err = e.appealPersister.CreateAppeal(appeal)
 	return err
 }
 
@@ -628,27 +636,36 @@ func (e *EventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) er
 	if err != nil {
 		return fmt.Errorf("Error retrieving requestAppealExpiries: err: %v", err)
 	}
-	newAppealChallenge := model.NewChallenge(appealChallengeID.(*big.Int), listingAddress.(common.Address), statement,
-		challengeRes.RewardPool, challengeRes.Challenger, challengeRes.Resolved, challengeRes.Stake,
-		challengeRes.TotalTokens, nil, requestAppealExpiry, crawlerutils.CurrentEpochSecsInInt64())
+	newAppealChallenge := model.NewChallenge(
+		appealChallengeID.(*big.Int),
+		listingAddress.(common.Address),
+		statement,
+		challengeRes.RewardPool,
+		challengeRes.Challenger,
+		challengeRes.Resolved,
+		challengeRes.Stake,
+		challengeRes.TotalTokens,
+		requestAppealExpiry,
+		crawlerutils.CurrentEpochSecsInInt64())
+
 	err = e.challengePersister.CreateChallenge(newAppealChallenge)
 	if err != nil {
 		return fmt.Errorf("Error persisting new AppealChallenge: %v", err)
 	}
 
-	existingChallenge, err := e.challengePersister.ChallengeByChallengeID(int(challengeID.(*big.Int).Int64()))
+	// TODO: update appealchallengeid
+	existingAppeal, err := e.appealPersister.AppealByChallengeID(int(challengeID.(*big.Int).Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
-	if existingChallenge == nil {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
-		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
+	if existingAppeal == nil {
+		// TODO(IS): create new appeal
+		return fmt.Errorf("No existing appeal found in persistence for id %v", challengeID)
 	}
-	existingAppeal := existingChallenge.Appeal()
+
 	existingAppeal.SetAppealChallengeID(appealChallengeID.(*big.Int))
-	existingChallenge.SetAppeal(existingAppeal)
-	updatedFields := []string{appealDBModelName}
-	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	updatedFields := []string{appealAppealChallengeIDFieldName}
+	err = e.appealPersister.UpdateAppeal(existingAppeal, updatedFields)
 	return err
 }
 
@@ -680,13 +697,19 @@ func (e *EventProcessor) processAppealGranted(event *crawlermodel.Event) error {
 		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
 	}
 
-	existingAppeal := existingChallenge.Appeal()
+	existingAppeal, err := e.appealPersister.AppealByChallengeID(int(challengeID.(*big.Int).Int64()))
+
 	existingAppeal.SetAppealOpenToChallengeExpiry(appealOpenToChallengeExpiry)
 	existingAppeal.SetAppealGranted(appealGranted)
-
-	existingChallenge.SetAppeal(existingAppeal)
-	updatedFields := []string{appealDBModelName}
-	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	if err != nil && err != model.ErrPersisterNoResults {
+		return err
+	}
+	if existingAppeal == nil {
+		// TODO(IS): create new appeal
+		return fmt.Errorf("No existing appeal found in persistence for id %v", challengeID)
+	}
+	updatedFields := []string{appealAppealOpenToChallengeExpiryFieldName, appealAppealGrantedFieldName}
+	err = e.appealPersister.UpdateAppeal(existingAppeal, updatedFields)
 	return err
 }
 
@@ -713,7 +736,7 @@ func (e *EventProcessor) processAppealWinner(event *crawlermodel.Event) error {
 	existingChallenge.SetResolved(resolved)
 	existingChallenge.SetTotalTokens(totalTokens.(*big.Int))
 	updatedFields := []string{resolvedDBModelName, totalTokensDBModelName}
-	// TODO(IS): Handle changing of fields when overturned vs not
+	// TODO(IS):  More to handle here: handle changing of fields when overturned vs not
 	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
 	return err
 }
