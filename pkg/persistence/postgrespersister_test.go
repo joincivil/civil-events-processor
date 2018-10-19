@@ -1461,45 +1461,86 @@ func TestUpdatePoll(t *testing.T) {
 All tests for appeal table:
 */
 
-// func TestUpdateAppeal(t *testing.T) {
-// 	persister, err := setupTestTable(challengeTestTableName)
-// 	if err != nil {
-// 		t.Errorf("Error connecting to DB: %v", err)
-// 	}
-// 	defer deleteTestTable(t, persister, challengeTestTableName)
-// 	_, challengeID := createAndSaveTestChallenge(t, persister, true)
+func setupSampleAppeal(randListing bool) (*model.Appeal, *big.Int) {
+	originalChallengeID := big.NewInt(23)
+	address2, _ := randomHex(32)
+	return model.NewAppeal(
+		originalChallengeID,
+		common.HexToAddress(address2),
+		big.NewInt(2322),
+		big.NewInt(401123243),
+		true,
+		"",
+		int64(232323),
+	), originalChallengeID
+}
 
-// 	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
-// 	if err != nil {
-// 		t.Errorf("Error getting value from DB: %v", err)
-// 	}
-// 	if len(challengesFromDB) == 0 {
-// 		t.Errorf("Didn't get anything from DB challenge test")
-// 	}
-// 	challengeFromDB := challengesFromDB[0]
-// 	sampleAddress, _ := randomHex(32)
-// 	appeal := model.NewAppeal(common.HexToAddress(sampleAddress), big.NewInt(22), big.NewInt(33), false, "")
-// 	challengeFromDB.SetAppeal(appeal)
-// 	fmt.Println("what it should be", challengeFromDB.Appeal())
+func setupAppealTable(t *testing.T) *PostgresPersister {
+	persister, err := setupTestTable(appealTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	return persister
+}
 
-// 	err = persister.updateChallengeInTable(challengeFromDB, []string{"Appeal"}, challengeTableName)
-// 	if err != nil {
-// 		t.Error("Error updating challenge")
-// 	}
-// 	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
-// 	if err != nil {
-// 		t.Errorf("Error getting value from DB: %v", err)
-// 	}
-// 	if len(challengesFromDB) == 0 {
-// 		t.Errorf("Didn't get anything from DB challenge test")
-// 	}
-// 	challengeFromDBModified := challengesFromDB[0]
-// 	//NOTE(IS): update query is not updating
-// 	fmt.Println("what it is", challengeFromDBModified.Appeal())
+func createAndSaveTestAppeal(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Appeal, *big.Int) {
+	// sample appeal
+	modelAppeal, challengeID := setupSampleAppeal(randListing)
+	// insert to table
+	err := persister.createAppealInTable(modelAppeal, appealTestTableName)
+	if err != nil {
+		t.Errorf("error saving appeal: %v", err)
+	}
+	return modelAppeal, challengeID
+}
 
-// 	//// update poll
+func TestCreateAppeal(t *testing.T) {
+	persister, err := setupTestTable(appealTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, appealTestTableName)
+	_, _ = createAndSaveTestAppeal(t, persister, true)
 
-// }
+}
+
+func TestUpdateAppeal(t *testing.T) {
+	persister, err := setupTestTable(appealTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, appealTestTableName)
+	_, challengeID := createAndSaveTestAppeal(t, persister, true)
+
+	appealsFromDB, err := persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64())}, appealTestTableName)
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+	if len(appealsFromDB) == 0 {
+		t.Errorf("Didn't get anything from DB poll test")
+	}
+	appealFromDB := appealsFromDB[0]
+
+	newChallengeID := big.NewInt(100)
+	appealFromDB.SetAppealChallengeID(newChallengeID)
+
+	err = persister.updateAppealInTable(appealFromDB, []string{"AppealChallengeID"}, appealTestTableName)
+	if err != nil {
+		t.Errorf("Error updating appeal %v", err)
+	}
+
+	appealsFromDB, err = persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64())}, appealTestTableName)
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+	if len(appealsFromDB) == 0 {
+		t.Errorf("Didn't get anything from DB challenge test")
+	}
+	appealFromDBModified := appealsFromDB[0]
+	if !reflect.DeepEqual(appealFromDBModified.AppealChallengeID(), appealFromDB.AppealChallengeID()) {
+		t.Errorf("Error updating appeal table")
+	}
+}
 
 /*
 All tests for cron table:
