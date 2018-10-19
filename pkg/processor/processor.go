@@ -546,10 +546,12 @@ func (e *EventProcessor) persistNewChallenge(event *crawlermodel.Event) error {
 	}
 	challengeRes, err := tcrContract.Challenges(&bind.CallOpts{}, challengeID.(*big.Int))
 	if err != nil {
-		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
+		return fmt.Errorf("Error calling function in TCR contract: err: %v", err)
 	}
 	requestAppealExpiry, err := tcrContract.ChallengeRequestAppealExpiries(&bind.CallOpts{}, challengeID.(*big.Int))
-
+	if err != nil {
+		return fmt.Errorf("Error calling function in TCR contract: err: %v", err)
+	}
 	challenge := model.NewChallenge(
 		challengeID.(*big.Int),
 		listingAddress.(common.Address),
@@ -590,6 +592,9 @@ func (e *EventProcessor) persistNewAppeal(event *crawlermodel.Event) error {
 		return fmt.Errorf("Error creating TCR contract: err: %v", err)
 	}
 	challengeRes, err := tcrContract.Appeals(&bind.CallOpts{}, challengeID.(*big.Int))
+	if err != nil {
+		return fmt.Errorf("Error calling function in TCR contract: err: %v", err)
+	}
 	appealPhaseExpiry := challengeRes.AppealPhaseExpiry
 	appealGranted := false
 	// TODO(IS): Fill out statement
@@ -960,8 +965,8 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			if tcrErr != nil {
 				return fmt.Errorf("Error creating TCR contract: err: %v", err)
 			}
-			reward, err := tcrContract.DetermineReward(&bind.CallOpts{}, challengeID)
-			if err != nil {
+			reward, rewardErr := tcrContract.DetermineReward(&bind.CallOpts{}, challengeID)
+			if rewardErr != nil {
 				return fmt.Errorf("Error getting reward: err: %v", err)
 			}
 			total := big.NewInt(0)
