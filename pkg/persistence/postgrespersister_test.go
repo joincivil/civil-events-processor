@@ -28,6 +28,8 @@ const (
 	postgresHost           = "localhost"
 	govTestTableName       = "governance_event_test"
 	challengeTestTableName = "challenge_test"
+	pollTestTableName      = "poll_test"
+	appealTestTableName    = "appeal_test"
 )
 
 // randomHex generates a random hex string
@@ -65,6 +67,10 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreateCronTableQueryString(tableName)
 	case "challenge_test":
 		queryString = postgres.CreateChallengeTableQueryString(tableName)
+	case "poll_test":
+		queryString = postgres.CreatePollTableQueryString(tableName)
+	case "appeal_test":
+		queryString = postgres.CreateAppealTableQueryString(tableName)
 	}
 
 	_, err = persister.db.Query(queryString)
@@ -87,6 +93,10 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 		_, err = persister.db.Query("DROP TABLE cron_test;")
 	case "challenge_test":
 		_, err = persister.db.Query("DROP TABLE challenge_test;")
+	case "poll_test":
+		_, err = persister.db.Query("DROP TABLE poll_test;")
+	case "appeal_test":
+		_, err = persister.db.Query("DROP TABLE appeal_test;")
 	}
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
@@ -176,8 +186,10 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	challengeID := big.NewInt(10)
 	testListing := model.NewListing("test_listing", contractAddress, true,
 		model.GovernanceStateAppWhitelisted, "url_string", "charterURI", ownerAddr, ownerAddresses,
-		contributorAddresses, 1257894000, 1257894000, 1257894000, 1257894000, appExpiry, unstakedDeposit,
-		challengeID)
+		contributorAddresses, 1257894000, 1257894000, 1257894000, 1257894000)
+	testListing.SetAppExpiry(appExpiry)
+	testListing.SetUnstakedDeposit(unstakedDeposit)
+	testListing.SetChallengeID(challengeID)
 	return testListing, contractAddress
 }
 
@@ -1224,7 +1236,7 @@ func TestNilChallenges(t *testing.T) {
 All tests for challenge table:
 */
 
-func setupSampleChallengeWithNillPoll(randListing bool) (*model.Challenge, int) {
+func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 	var listingAddr common.Address
 	address2, _ := randomHex(32)
 	if randListing {
@@ -1244,7 +1256,7 @@ func setupSampleChallengeWithNillPoll(randListing bool) (*model.Challenge, int) 
 
 	requestAppealExpiry := big.NewInt(1231312)
 	testChallenge := model.NewChallenge(challengeID, listingAddr, statement, rewardPool,
-		challenger, false, stake, totalTokens, nil, requestAppealExpiry, int64(1212141313))
+		challenger, false, stake, totalTokens, requestAppealExpiry, int64(1212141313))
 	return testChallenge, challengeIDInt
 }
 
@@ -1258,7 +1270,7 @@ func setupChallengeTable(t *testing.T) *PostgresPersister {
 
 func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Challenge, int) {
 	// sample challenge
-	modelChallenge, challengeID := setupSampleChallengeWithNillPoll(randListing)
+	modelChallenge, challengeID := setupSampleChallenge(randListing)
 
 	// insert to table
 	err := persister.createChallengeInTable(modelChallenge, challengeTestTableName)
@@ -1321,10 +1333,173 @@ func TestGetChallenge(t *testing.T) {
 	if !reflect.DeepEqual(modelChallenge.LastUpdatedDateTs(), challengeFromDB.LastUpdatedDateTs()) {
 		t.Error("Mismatch in ts")
 	}
-	// TODO: nil poll is all 0s bc of how we save it. write check for this.
-	// fmt.Println(challengeFromDB.Poll())
-	// fmt.Println(challenge.Poll())
 }
+
+func TestUpdateChallenge(t *testing.T) {
+	persister, err := setupTestTable(challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, challengeTestTableName)
+	_, challengeID := createAndSaveTestChallenge(t, persister, true)
+
+	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+	if len(challengesFromDB) == 0 {
+		t.Errorf("Didn't get anything from DB challenge test")
+	}
+	challengeFromDB := challengesFromDB[0]
+	newTotalTokens := big.NewInt(int64(231231312312))
+	challengeFromDB.SetTotalTokens(newTotalTokens)
+
+	err = persister.updateChallengeInTable(challengeFromDB, []string{"TotalTokens"}, challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error updating challenge: %v", err)
+	}
+
+	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+	if len(challengesFromDB) == 0 {
+		t.Errorf("Didn't get anything from DB challenge test")
+	}
+	challengeFromDBModified := challengesFromDB[0]
+	if !reflect.DeepEqual(challengeFromDBModified.TotalTokens(), newTotalTokens) {
+		t.Error("Val was not updated")
+	}
+}
+
+/*
+All tests for poll table:
+*/
+
+func setupSamplePoll(randListing bool) (*model.Poll, *big.Int) {
+	pollID := big.NewInt(23)
+	return model.NewPoll(
+		pollID,
+		big.NewInt(232232323),
+		big.NewInt(232232350),
+		big.NewInt(40),
+		big.NewInt(50),
+		big.NewInt(50),
+		int64(232232323),
+	), pollID
+}
+
+func setupPollTable(t *testing.T) *PostgresPersister {
+	persister, err := setupTestTable(pollTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	return persister
+}
+
+func createAndSaveTestPoll(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Poll, *big.Int) {
+	// sample poll
+	modelPoll, pollID := setupSamplePoll(randListing)
+
+	// insert to table
+	err := persister.createPollInTable(modelPoll, pollTestTableName)
+	if err != nil {
+		t.Errorf("error saving poll: %v", err)
+	}
+	return modelPoll, pollID
+}
+
+func TestCreatePoll(t *testing.T) {
+	persister, err := setupTestTable(pollTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, pollTestTableName)
+	_, _ = createAndSaveTestPoll(t, persister, true)
+
+}
+
+func TestUpdatePoll(t *testing.T) {
+	persister, err := setupTestTable(pollTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, pollTestTableName)
+	_, pollID := createAndSaveTestPoll(t, persister, true)
+
+	pollsFromDB, err := persister.pollsByPollIDsInTableInOrder([]int{int(pollID.Int64())}, pollTestTableName)
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+	if len(pollsFromDB) == 0 {
+		t.Errorf("Didn't get anything from DB poll test")
+	}
+	pollFromDB := pollsFromDB[0]
+
+	newVotes := big.NewInt(30)
+	pollFromDB.UpdateVotesFor(newVotes)
+
+	err = persister.updatePollInTable(pollFromDB, []string{"VotesFor"}, pollTestTableName)
+	if err != nil {
+		t.Errorf("Error updating poll %v", err)
+	}
+
+	pollsFromDB, err = persister.pollsByPollIDsInTableInOrder([]int{int(pollID.Int64())}, pollTestTableName)
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+	if len(pollsFromDB) == 0 {
+		t.Errorf("Didn't get anything from DB challenge test")
+	}
+	pollFromDBModified := pollsFromDB[0]
+	if !reflect.DeepEqual(pollFromDBModified.VotesFor(), pollFromDB.VotesFor()) {
+		t.Errorf("Error updating poll table")
+	}
+}
+
+/*
+All tests for appeal table:
+*/
+
+// func TestUpdateAppeal(t *testing.T) {
+// 	persister, err := setupTestTable(challengeTestTableName)
+// 	if err != nil {
+// 		t.Errorf("Error connecting to DB: %v", err)
+// 	}
+// 	defer deleteTestTable(t, persister, challengeTestTableName)
+// 	_, challengeID := createAndSaveTestChallenge(t, persister, true)
+
+// 	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
+// 	if err != nil {
+// 		t.Errorf("Error getting value from DB: %v", err)
+// 	}
+// 	if len(challengesFromDB) == 0 {
+// 		t.Errorf("Didn't get anything from DB challenge test")
+// 	}
+// 	challengeFromDB := challengesFromDB[0]
+// 	sampleAddress, _ := randomHex(32)
+// 	appeal := model.NewAppeal(common.HexToAddress(sampleAddress), big.NewInt(22), big.NewInt(33), false, "")
+// 	challengeFromDB.SetAppeal(appeal)
+// 	fmt.Println("what it should be", challengeFromDB.Appeal())
+
+// 	err = persister.updateChallengeInTable(challengeFromDB, []string{"Appeal"}, challengeTableName)
+// 	if err != nil {
+// 		t.Error("Error updating challenge")
+// 	}
+// 	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
+// 	if err != nil {
+// 		t.Errorf("Error getting value from DB: %v", err)
+// 	}
+// 	if len(challengesFromDB) == 0 {
+// 		t.Errorf("Didn't get anything from DB challenge test")
+// 	}
+// 	challengeFromDBModified := challengesFromDB[0]
+// 	//NOTE(IS): update query is not updating
+// 	fmt.Println("what it is", challengeFromDBModified.Appeal())
+
+// 	//// update poll
+
+// }
 
 /*
 All tests for cron table:

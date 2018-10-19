@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
-	"math/big"
-	"reflect"
+	// "math/big"
+	// "reflect"
 	"testing"
 )
 
@@ -29,20 +29,20 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	ownerAddr := common.HexToAddress(address2)
 	ownerAddresses := []common.Address{common.HexToAddress(address2), common.HexToAddress(address3)}
 	contributorAddresses := ownerAddresses
-	appExpiry := big.NewInt(232424242)
-	unstakedDeposit := new(big.Int)
-	unstakedDeposit.SetString("100000000000000000000", 10)
-	challengeID := big.NewInt(10)
+	// appExpiry := big.NewInt(232424242)
+	// unstakedDeposit := new(big.Int)
+	// unstakedDeposit.SetString("100000000000000000000", 10)
+	// challengeID := big.NewInt(10)
 	testListing := model.NewListing("test_listing", contractAddress, true,
 		model.GovernanceStateAppWhitelisted, "url_string", "charterURI", ownerAddr, ownerAddresses,
-		contributorAddresses, 1257894000, 1257894000, 1257894000, 1257894000, appExpiry, unstakedDeposit,
-		challengeID)
+		contributorAddresses, 1257894000, 1257894000, 1257894000, 1257894000)
 	return testListing, contractAddress
 }
 
 func TestNewDBListing(t *testing.T) {
 	modelListing, _ := setupSampleListing()
 	dbListing := postgres.NewListing(modelListing)
-	modelListingCheck := dbListing.DbToListingData()
-	reflect.DeepEqual(modelListing, modelListingCheck)
+	_ = dbListing.DbToListingData()
+	// TODO(IS): Check all fields other than the nil ones which are appexpiry, unstakeddeposit, challengeID
+	// when you first save a listing
 }
