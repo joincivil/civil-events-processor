@@ -33,10 +33,39 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	unstakedDeposit := new(big.Int)
 	unstakedDeposit.SetString("100000000000000000000", 10)
 	challengeID := big.NewInt(10)
-	testListing := model.NewListing("test_listing", contractAddress, true,
-		model.GovernanceStateAppWhitelisted, "url_string", "charterURI", ownerAddr, ownerAddresses,
-		contributorAddresses, 1257894000, 1257894000, 1257894000, 1257894000, appExpiry, unstakedDeposit,
-		challengeID)
+
+	hash := "33333333333333333333333333333333"
+	contentHash := [32]byte{}
+	copy(contentHash[:], hash)
+
+	charter := model.NewCharter(&model.CharterParams{
+		URI:         "charterURI",
+		ContentID:   big.NewInt(0),
+		RevisionID:  big.NewInt(3),
+		Signature:   []byte("signature"),
+		Author:      common.HexToAddress("0x98C8CF45BD844627E84E1C506Ca87cC9436317D0"),
+		ContentHash: contentHash,
+		Timestamp:   big.NewInt(1234567),
+	})
+	testListingParams := &model.NewListingParams{
+		Name:                 "test_listing",
+		ContractAddress:      contractAddress,
+		Whitelisted:          true,
+		LastState:            model.GovernanceStateAppWhitelisted,
+		URL:                  "url_string",
+		Charter:              charter,
+		Owner:                ownerAddr,
+		OwnerAddresses:       ownerAddresses,
+		ContributorAddresses: contributorAddresses,
+		CreatedDateTs:        1257894000,
+		ApplicationDateTs:    1257894000,
+		ApprovalDateTs:       1257894000,
+		LastUpdatedDateTs:    1257894000,
+		AppExpiry:            appExpiry,
+		UnstakedDeposit:      unstakedDeposit,
+		ChallengeID:          challengeID,
+	}
+	testListing := model.NewListing(testListingParams)
 	return testListing, contractAddress
 }
 

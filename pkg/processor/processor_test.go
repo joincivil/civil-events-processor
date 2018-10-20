@@ -455,7 +455,7 @@ func TestEventProcessor(t *testing.T) {
 	if listing.Whitelisted() {
 		t.Errorf("Should not be whitelisted")
 	}
-	if listing.CharterURI() != "newsroom.com/charter" {
+	if listing.Charter().URI() != "newsroom.com/charter" {
 		t.Errorf("Listing charter URI is not correct")
 	}
 	if listing.ContractAddress() != contracts.NewsroomAddr {
@@ -542,7 +542,7 @@ func TestEventProcessorChallenge(t *testing.T) {
 	if listing.Whitelisted() {
 		t.Errorf("Should not be whitelisted")
 	}
-	if listing.CharterURI() != "newsroom.com/charter" {
+	if listing.Charter().URI() != "newsroom.com/charter" {
 		t.Errorf("Listing charter URI is not correct")
 	}
 	if listing.ContractAddress() != contracts.NewsroomAddr {
@@ -589,7 +589,7 @@ func TestEventProcessorChallenge(t *testing.T) {
 	if listing.Whitelisted() {
 		t.Errorf("Should not be whitelisted")
 	}
-	if listing.CharterURI() != "newsroom.com/charter" {
+	if listing.Charter().URI() != "newsroom.com/charter" {
 		t.Errorf("Listing charter URI is not correct")
 	}
 	if listing.ContractAddress() != contracts.NewsroomAddr {
@@ -653,7 +653,7 @@ func TestEventProcessorAppWhitelisted(t *testing.T) {
 	if !listing.Whitelisted() {
 		t.Errorf("Should have been whitelisted")
 	}
-	if listing.CharterURI() != "newsroom.com/charter" {
+	if listing.Charter().URI() != "newsroom.com/charter" {
 		t.Errorf("Listing charter URI is not correct")
 	}
 	if listing.ContractAddress() != contracts.NewsroomAddr {
@@ -736,7 +736,7 @@ func TestEventProcessorApplicationRemoved(t *testing.T) {
 	if listing.Whitelisted() {
 		t.Errorf("Should not have been whitelisted")
 	}
-	if listing.CharterURI() != "newsroom.com/charter" {
+	if listing.Charter().URI() != "newsroom.com/charter" {
 		t.Errorf("Listing charter URI is not correct")
 	}
 	if listing.ContractAddress() != contracts.NewsroomAddr {
@@ -819,7 +819,7 @@ func TestEventProcessorListingRemoved(t *testing.T) {
 	if listing.Whitelisted() {
 		t.Errorf("Should not be whitelisted")
 	}
-	if listing.CharterURI() != "newsroom.com/charter" {
+	if listing.Charter().URI() != "newsroom.com/charter" {
 		t.Errorf("Listing charter URI is not correct")
 	}
 	if listing.ContractAddress() != contracts.NewsroomAddr {
@@ -902,7 +902,7 @@ func TestEventProcessorListingWithdrawn(t *testing.T) {
 	if listing.Whitelisted() {
 		t.Errorf("Should not be whitelisted")
 	}
-	if listing.CharterURI() != "newsroom.com/charter" {
+	if listing.Charter().URI() != "newsroom.com/charter" {
 		t.Errorf("Listing charter URI is not correct")
 	}
 	if listing.ContractAddress() != contracts.NewsroomAddr {

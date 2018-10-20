@@ -477,6 +477,8 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	applicationDate int64, approvalDate int64, tcrAddress common.Address) error {
 	// TODO(PN): How do I get the URL of the site?
 	url := ""
+	// charter is the first content item in the newsroom contract
+	charterContentID := big.NewInt(0)
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, e.client)
 	if newsErr != nil {
 		return fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
@@ -485,12 +487,30 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	if nameErr != nil {
 		return fmt.Errorf("Error getting Name from Newsroom contract: %v ", nameErr)
 	}
-	charterContent, contErr := newsroom.GetContent(&bind.CallOpts{}, big.NewInt(0))
-	if contErr != nil {
-		return fmt.Errorf("Error getting Content from Newsroom contract: %v ", contErr)
+	revisionCount, countErr := newsroom.RevisionCount(&bind.CallOpts{}, charterContentID)
+	if countErr != nil {
+		return fmt.Errorf("Error getting RevisionCount from Newsroom contract: %v ", countErr)
+	}
+	if revisionCount.Int64() <= 0 {
+		return fmt.Errorf("Error there are no revisions for the charter: addr: %v", listingAddress)
 	}
 
-	charterURI := charterContent.Uri
+	// latest revision should be total revisions - 1 for index
+	latestRevisionID := big.NewInt(revisionCount.Int64() - 1)
+	charterContent, contErr := newsroom.GetRevision(&bind.CallOpts{}, charterContentID, latestRevisionID)
+	if contErr != nil {
+		return fmt.Errorf("Error getting charter revision from Newsroom contract: %v ", contErr)
+	}
+
+	charter := model.NewCharter(&model.CharterParams{
+		URI:         charterContent.Uri,
+		ContentID:   charterContentID,
+		RevisionID:  big.NewInt(0),
+		Signature:   charterContent.Signature,
+		Author:      charterContent.Author,
+		ContentHash: charterContent.ContentHash,
+		Timestamp:   charterContent.Timestamp,
+	})
 	charterAuthorAddr := charterContent.Author
 	ownerAddr, err := newsroom.Owner(&bind.CallOpts{})
 	if err != nil {
@@ -523,24 +543,24 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 		log.Errorf("No existing listing in persistence for listing address: %v", listingAddress.Hex())
 	}
 
-	listing := model.NewListing(
-		name,
-		listingAddress,
-		whitelisted,
-		lastGovernanceState,
-		url,
-		charterURI,
-		ownerAddr,
-		ownerAddresses,
-		contributorAddresses,
-		creationDate,
-		applicationDate,
-		approvalDate,
-		crawlerutils.CurrentEpochSecsInInt64(),
-		appExpiry,
-		unstakedDeposit,
-		challengeID,
-	)
+	listing := model.NewListing(&model.NewListingParams{
+		Name:                 name,
+		ContractAddress:      listingAddress,
+		Whitelisted:          whitelisted,
+		LastState:            lastGovernanceState,
+		URL:                  url,
+		Charter:              charter,
+		Owner:                ownerAddr,
+		OwnerAddresses:       ownerAddresses,
+		ContributorAddresses: contributorAddresses,
+		CreatedDateTs:        creationDate,
+		ApplicationDateTs:    applicationDate,
+		ApprovalDateTs:       approvalDate,
+		LastUpdatedDateTs:    crawlerutils.CurrentEpochSecsInInt64(),
+		AppExpiry:            appExpiry,
+		UnstakedDeposit:      unstakedDeposit,
+		ChallengeID:          challengeID,
+	})
 	err = e.listingPersister.CreateListing(listing)
 	return err
 }

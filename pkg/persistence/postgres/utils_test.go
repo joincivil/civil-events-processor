@@ -42,7 +42,7 @@ func TestDbFieldNameFromModelName(t *testing.T) {
 		"Whitelisted":         "whitelisted",
 		"LastGovernanceState": "last_governance_state",
 		"URL":                  "url",
-		"CharterURI":           "charter_uri",
+		"Charter":              "charter",
 		"OwnerAddresses":       "owner_addresses",
 		"Owner":                "owner",
 		"ContributorAddresses": "contributor_addresses",
@@ -68,17 +68,17 @@ func TestDbFieldNameFromModelName(t *testing.T) {
 func TestGetAllStructFieldsForQuery(t *testing.T) {
 	listing := postgres.Listing{}
 	structFieldsString, structFieldsString2 := postgres.StructFieldsForQuery(listing, false)
-	if structFieldsString != "name, contract_address, whitelisted, last_governance_state, url, charter_uri, owner_addresses, owner, contributor_addresses, creation_timestamp, application_timestamp, approval_timestamp, last_updated_timestamp, app_expiry, unstaked_deposit, challenge_id" {
+	if structFieldsString != "name, contract_address, whitelisted, last_governance_state, url, charter, owner_addresses, owner, contributor_addresses, creation_timestamp, application_timestamp, approval_timestamp, last_updated_timestamp, app_expiry, unstaked_deposit, challenge_id" {
 		t.Errorf("Generated structFieldString is not what it should be.")
 	}
 	if structFieldsString2 != "" {
 		t.Errorf("Structfield must be empty but it isn't")
 	}
 	structFieldsString3, structFieldsString4 := postgres.StructFieldsForQuery(listing, true)
-	if structFieldsString3 != "name, contract_address, whitelisted, last_governance_state, url, charter_uri, owner_addresses, owner, contributor_addresses, creation_timestamp, application_timestamp, approval_timestamp, last_updated_timestamp, app_expiry, unstaked_deposit, challenge_id" {
+	if structFieldsString3 != "name, contract_address, whitelisted, last_governance_state, url, charter, owner_addresses, owner, contributor_addresses, creation_timestamp, application_timestamp, approval_timestamp, last_updated_timestamp, app_expiry, unstaked_deposit, challenge_id" {
 		t.Errorf("Generated structFieldString is not what it should be: %v", structFieldsString3)
 	}
-	if structFieldsString4 != ":name, :contract_address, :whitelisted, :last_governance_state, :url, :charter_uri, :owner_addresses, :owner, :contributor_addresses, :creation_timestamp, :application_timestamp, :approval_timestamp, :last_updated_timestamp, :app_expiry, :unstaked_deposit, :challenge_id" {
+	if structFieldsString4 != ":name, :contract_address, :whitelisted, :last_governance_state, :url, :charter, :owner_addresses, :owner, :contributor_addresses, :creation_timestamp, :application_timestamp, :approval_timestamp, :last_updated_timestamp, :app_expiry, :unstaked_deposit, :challenge_id" {
 		t.Errorf("Generated structFieldString with colon is not what it should be: %v", structFieldsString4)
 	}
 }
