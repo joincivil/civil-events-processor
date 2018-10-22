@@ -319,6 +319,11 @@ func (l *Listing) Charter() *Charter {
 	return l.charter
 }
 
+// SetCharter set the data regarding charter post for the newsroom
+func (l *Listing) SetCharter(c *Charter) {
+	l.charter = c
+}
+
 // OwnerAddresses is the addresses of the owners of the newsroom - all members of multisig
 func (l *Listing) OwnerAddresses() []common.Address {
 	return l.ownerAddresses

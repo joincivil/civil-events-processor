@@ -39,6 +39,8 @@ const (
 	appealAppealChallengeIDFieldName           = "AppealChallengeID"
 	appealAppealOpenToChallengeExpiryFieldName = "AppealOpenToChallengeExpiry"
 	appealAppealGrantedFieldName               = "AppealGranted"
+
+	defaultCharterContentID = 0
 )
 
 type whitelistedStatus int
@@ -487,7 +489,7 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	// TODO(PN): How do I get the URL of the site?
 	url := ""
 	// charter is the first content item in the newsroom contract
-	charterContentID := big.NewInt(0)
+	charterContentID := big.NewInt(defaultCharterContentID)
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, e.client)
 	if newsErr != nil {
 		return fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
@@ -514,7 +516,7 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	charter := model.NewCharter(&model.CharterParams{
 		URI:         charterContent.Uri,
 		ContentID:   charterContentID,
-		RevisionID:  big.NewInt(0),
+		RevisionID:  latestRevisionID,
 		Signature:   charterContent.Signature,
 		Author:      charterContent.Author,
 		ContentHash: charterContent.ContentHash,
@@ -545,6 +547,45 @@ func (e *EventProcessor) persistNewListing(listingAddress common.Address,
 	})
 	err = e.listingPersister.CreateListing(listing)
 	return err
+}
+
+func (e *EventProcessor) updateListingCharterRevision(revision *model.ContentRevision) error {
+	listing, err := e.listingPersister.ListingByAddress(revision.ListingAddress())
+	if err != nil {
+		return err
+	}
+
+	if revision.ContractRevisionID().Cmp(listing.Charter().RevisionID()) == 0 {
+		return fmt.Errorf("No updating listing, revision ids are the same")
+	}
+
+	newsroom, newsErr := contract.NewNewsroomContract(revision.ListingAddress(), e.client)
+	if newsErr != nil {
+		return fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
+	}
+
+	charterContent, contErr := newsroom.GetRevision(
+		&bind.CallOpts{},
+		revision.ContractContentID(),
+		revision.ContractRevisionID(),
+	)
+	if contErr != nil {
+		return fmt.Errorf("Error getting charter revision from Newsroom contract: %v ", contErr)
+	}
+
+	updatedFields := []string{"Charter"}
+	updatedCharter := model.NewCharter(&model.CharterParams{
+		URI:         revision.RevisionURI(),
+		ContentID:   listing.Charter().ContentID(),
+		RevisionID:  revision.ContractRevisionID(),
+		Signature:   charterContent.Signature,
+		Author:      charterContent.Author,
+		ContentHash: charterContent.ContentHash,
+		Timestamp:   charterContent.Timestamp,
+	})
+	listing.SetCharter(updatedCharter)
+
+	return e.listingPersister.UpdateListing(listing, updatedFields)
 }
 
 func (e *EventProcessor) persistNewChallenge(event *crawlermodel.Event) error {
@@ -1140,7 +1181,17 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 		revisionURI.(string),
 		event.Timestamp(),
 	)
+
 	err = e.revisionPersister.CreateContentRevision(revision)
+	if err != nil {
+		return err
+	}
+
+	// If the revision is for the charter, need to update the data in the
+	// listing.
+	if contentID.(*big.Int).Int64() == defaultCharterContentID {
+		err = e.updateListingCharterRevision(revision)
+	}
 	return err
 }
 
