@@ -6,6 +6,7 @@
 package persistence
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -267,7 +268,7 @@ func TestListingByAddress(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	// defer deleteTestTable(t, persister, tableName)
+	defer deleteTestTable(t, persister, tableName)
 	// create fake listing in listing_test
 	modelListing, modelListingAddress := setupSampleListing()
 
@@ -284,6 +285,58 @@ func TestListingByAddress(t *testing.T) {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
 
+}
+
+// TestListingCharterByAddress tests that the query we are using to get Listing works
+func TestListingCharterByAddress(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+	// create fake listing in listing_test
+	modelListing, modelListingAddress := setupSampleListing()
+
+	// save to test table
+	err = persister.createListingForTable(modelListing, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	// retrieve from test table
+	dbListing, err := persister.listingByAddressFromTable(modelListingAddress, tableName)
+
+	if err != nil {
+		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
+	}
+
+	charter := modelListing.Charter()
+	dbCharter := dbListing.Charter()
+
+	if charter.URI() != dbCharter.URI() {
+		t.Errorf("Should have had same URI")
+	}
+	if charter.ContentID().Cmp(dbCharter.ContentID()) != 0 {
+		t.Errorf("Should have had same content ID")
+	}
+	if charter.RevisionID().Cmp(dbCharter.RevisionID()) != 0 {
+		t.Errorf("Should have had same revision ID")
+	}
+	if !bytes.Equal(charter.Signature(), dbCharter.Signature()) {
+		t.Errorf("Should have had same signature")
+	}
+	if charter.Author().Hex() != dbCharter.Author().Hex() {
+		t.Errorf("Should have had same author addr")
+	}
+	chart1Hash := charter.ContentHash()
+	chart2Hash := dbCharter.ContentHash()
+	if !bytes.Equal(chart1Hash[:], chart2Hash[:]) {
+		t.Errorf("Should have had same content hash")
+	}
+	if charter.Timestamp().Cmp(dbCharter.Timestamp()) != 0 {
+		t.Errorf("Should have had same timestamp")
+	}
 }
 
 // TestListingByAddress tests that the query we are using to get Listing works
