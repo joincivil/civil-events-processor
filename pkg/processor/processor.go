@@ -30,8 +30,8 @@ const (
 	appExpiryDBModelName       = "AppExpiry"
 	unstakedDepositDBModelName = "UnstakedDeposit"
 
-	resolvedDBModelName    = "Resolved"
-	totalTokensDBModelName = "TotalTokens"
+	challengeResolvedFieldName    = "Resolved"
+	challengeTotalTokensFieldName = "TotalTokens"
 
 	pollVotesForFieldName     = "VotesFor"
 	pollVotesAgainstFieldName = "VotesAgainst"
@@ -658,7 +658,6 @@ func (e *EventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) er
 		return fmt.Errorf("Error persisting new AppealChallenge: %v", err)
 	}
 
-	// TODO: update appealchallengeid
 	existingAppeal, err := e.appealPersister.AppealByChallengeID(int(challengeID.(*big.Int).Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
@@ -740,8 +739,7 @@ func (e *EventProcessor) processAppealWinner(event *crawlermodel.Event) error {
 	}
 	existingChallenge.SetResolved(resolved)
 	existingChallenge.SetTotalTokens(totalTokens.(*big.Int))
-	updatedFields := []string{resolvedDBModelName, totalTokensDBModelName}
-	// TODO(IS):  More to handle here: handle changing of fields when overturned vs not
+	updatedFields := []string{challengeResolvedFieldName, challengeTotalTokensFieldName}
 	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
 	return err
 }
@@ -767,7 +765,7 @@ func (e *EventProcessor) processChallengeWinner(event *crawlermodel.Event, succe
 	}
 	existingChallenge.SetResolved(resolved)
 	existingChallenge.SetTotalTokens(totalTokens.(*big.Int))
-	updatedFields := []string{resolvedDBModelName, totalTokensDBModelName}
+	updatedFields := []string{challengeResolvedFieldName, challengeTotalTokensFieldName}
 	err = e.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
 
 	return err
@@ -807,13 +805,21 @@ func (e *EventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Event)
 }
 
 func (e *EventProcessor) processTCRChallengeFailedOverturned(event *crawlermodel.Event) error {
-	//TODO(IS) -- changes in listing + challenge
+	//TODO(IS) -- changes in listing
+	err := e.processChallengeWinner(event, true)
+	if err != nil {
+		return fmt.Errorf("Error processing FailedChallengeOverturned: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateFailedChallengeOverturned, whitelistedNoChange,
 		approvalDateNoUpdate)
 }
 
 func (e *EventProcessor) processTCRChallengeSuccessfulOverturned(event *crawlermodel.Event) error {
-	//TODO(IS) -- changes in listing + challenge
+	//TODO(IS) -- changes in listing
+	err := e.processChallengeWinner(event, true)
+	if err != nil {
+		return fmt.Errorf("Error processing SuccessfulChallengeOverturned: %v", err)
+	}
 	return e.processTCREvent(event, model.GovernanceStateSuccessfulChallengeOverturned, whitelistedFalse,
 		approvalDateEmptyValue)
 }
@@ -959,7 +965,7 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			listing.SetChallengeID(challengeID)
 			updatedFields = append(updatedFields, challengeIDDBModelName)
 		}
-		if govState == model.GovernanceStateChallengeFailed {
+		if govState == model.GovernanceStateChallengeFailed || govState == model.GovernanceStateSuccessfulChallengeOverturned {
 			challengeID := event.EventPayload()["ChallengeID"].(*big.Int)
 			tcrContract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
 			if tcrErr != nil {
