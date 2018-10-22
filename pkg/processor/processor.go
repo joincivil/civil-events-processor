@@ -852,7 +852,7 @@ func (e *EventProcessor) processTCRAppealRequested(event *crawlermodel.Event) er
 	// Appeal requested
 	err := e.persistNewAppeal(event)
 	if err != nil {
-		return fmt.Errorf("Error processesing AppealRequested: %v", err)
+		return fmt.Errorf("Error processing AppealRequested: %v", err)
 	}
 	return e.processTCREvent(event, model.GovernanceStateAppealRequested, whitelistedNoChange,
 		approvalDateNoUpdate)
@@ -862,7 +862,7 @@ func (e *EventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.E
 	// Challenge is started here for appeal
 	err := e.persistNewAppealChallenge(event)
 	if err != nil {
-		return fmt.Errorf("Error processesing GrantedAppealChallenged: %v", err)
+		return fmt.Errorf("Error processing GrantedAppealChallenged: %v", err)
 	}
 	return e.processTCREvent(event, model.GovernanceStateGrantedAppealChallenged, whitelistedNoChange,
 		approvalDateNoUpdate)
@@ -872,7 +872,7 @@ func (e *EventProcessor) processTCRGrantedAppealConfirmed(event *crawlermodel.Ev
 	// Appeal is resolved
 	err := e.processAppealWinner(event)
 	if err != nil {
-		return fmt.Errorf("Error processesing GrantedAppealConfirmed: %v", err)
+		return fmt.Errorf("Error processing GrantedAppealConfirmed: %v", err)
 	}
 	return e.processTCREvent(event, model.GovernanceStateGrantedAppealConfirmed, whitelistedNoChange,
 		approvalDateNoUpdate)
@@ -882,7 +882,7 @@ func (e *EventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.E
 	// Appeal is resolved
 	err := e.processAppealWinner(event)
 	if err != nil {
-		return fmt.Errorf("Error processesing GrantedAppealOverturn: %v", err)
+		return fmt.Errorf("Error processing GrantedAppealOverturn: %v", err)
 	}
 	return e.processTCREvent(event, model.GovernanceStateGrantedAppealOverturned, whitelistedNoChange,
 		approvalDateNoUpdate)
