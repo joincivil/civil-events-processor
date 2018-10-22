@@ -6,6 +6,7 @@
 package persistence
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -184,12 +185,43 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	unstakedDeposit := new(big.Int)
 	unstakedDeposit.SetString("100000000000000000000", 10)
 	challengeID := big.NewInt(10)
-	testListing := model.NewListing("test_listing", contractAddress, true,
-		model.GovernanceStateAppWhitelisted, "url_string", "charterURI", ownerAddr, ownerAddresses,
-		contributorAddresses, 1257894000, 1257894000, 1257894000, 1257894000)
-	testListing.SetAppExpiry(appExpiry)
-	testListing.SetUnstakedDeposit(unstakedDeposit)
-	testListing.SetChallengeID(challengeID)
+
+	signature, _ := randomHex(32)
+	authorAddr, _ := randomHex(32)
+
+	contentHashHex, _ := randomHex(32)
+	contentHashBytes := []byte(contentHashHex)
+	fixedContentHash := [32]byte{}
+	copy(fixedContentHash[:], contentHashBytes)
+
+	charter := model.NewCharter(&model.CharterParams{
+		URI:         "/charter/uri",
+		ContentID:   big.NewInt(0),
+		RevisionID:  big.NewInt(30),
+		Signature:   []byte(signature),
+		Author:      common.HexToAddress(authorAddr),
+		ContentHash: fixedContentHash,
+		Timestamp:   big.NewInt(12345678),
+	})
+	testListingParams := &model.NewListingParams{
+		Name:                 "test_listing",
+		ContractAddress:      contractAddress,
+		Whitelisted:          true,
+		LastState:            model.GovernanceStateAppWhitelisted,
+		URL:                  "url_string",
+		Charter:              charter,
+		Owner:                ownerAddr,
+		OwnerAddresses:       ownerAddresses,
+		ContributorAddresses: contributorAddresses,
+		CreatedDateTs:        1257894000,
+		ApplicationDateTs:    1257894000,
+		ApprovalDateTs:       1257894000,
+		LastUpdatedDateTs:    1257894000,
+		AppExpiry:            appExpiry,
+		UnstakedDeposit:      unstakedDeposit,
+		ChallengeID:          challengeID,
+	}
+	testListing := model.NewListing(testListingParams)
 	return testListing, contractAddress
 }
 
@@ -253,6 +285,58 @@ func TestListingByAddress(t *testing.T) {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
 
+}
+
+// TestListingCharterByAddress tests that the query we are using to get Listing works
+func TestListingCharterByAddress(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+	// create fake listing in listing_test
+	modelListing, modelListingAddress := setupSampleListing()
+
+	// save to test table
+	err = persister.createListingForTable(modelListing, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	// retrieve from test table
+	dbListing, err := persister.listingByAddressFromTable(modelListingAddress, tableName)
+
+	if err != nil {
+		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
+	}
+
+	charter := modelListing.Charter()
+	dbCharter := dbListing.Charter()
+
+	if charter.URI() != dbCharter.URI() {
+		t.Errorf("Should have had same URI")
+	}
+	if charter.ContentID().Cmp(dbCharter.ContentID()) != 0 {
+		t.Errorf("Should have had same content ID")
+	}
+	if charter.RevisionID().Cmp(dbCharter.RevisionID()) != 0 {
+		t.Errorf("Should have had same revision ID")
+	}
+	if !bytes.Equal(charter.Signature(), dbCharter.Signature()) {
+		t.Errorf("Should have had same signature")
+	}
+	if charter.Author().Hex() != dbCharter.Author().Hex() {
+		t.Errorf("Should have had same author addr")
+	}
+	chart1Hash := charter.ContentHash()
+	chart2Hash := dbCharter.ContentHash()
+	if !bytes.Equal(chart1Hash[:], chart2Hash[:]) {
+		t.Errorf("Should have had same content hash")
+	}
+	if charter.Timestamp().Cmp(dbCharter.Timestamp()) != 0 {
+		t.Errorf("Should have had same timestamp")
+	}
 }
 
 // TestListingByAddress tests that the query we are using to get Listing works

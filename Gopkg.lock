@@ -237,6 +237,14 @@
   revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 
 [[projects]]
+  digest = "1:53bc4cd4914cd7cd52139990d5170d6dc99067ae31c56530621b18b35fc30318"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
+  version = "v1.1.2"
+
+[[projects]]
   digest = "1:361de06aa7ae272616cbe71c3994a654cc6316324e30998e650f7765b20c5b33"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -591,6 +599,7 @@
     "github.com/ethereum/go-ethereum/crypto",
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/rlp",
+    "github.com/fatih/structs",
     "github.com/golang/glog",
     "github.com/jmoiron/sqlx",
     "github.com/joincivil/civil-events-crawler/pkg/contractutils",
@@ -602,6 +611,7 @@
     "github.com/joincivil/civil-events-crawler/pkg/utils",
     "github.com/kelseyhightower/envconfig",
     "github.com/lib/pq",
+    "github.com/mitchellh/mapstructure",
     "github.com/robfig/cron",
   ]
   solver-name = "gps-cdcl"
