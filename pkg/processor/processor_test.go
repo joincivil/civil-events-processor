@@ -12,6 +12,7 @@ import (
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	"github.com/joincivil/civil-events-crawler/pkg/utils"
 
+	// "fmt"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 )
@@ -32,6 +33,8 @@ type TestPersister struct {
 	revisions  map[string][]*model.ContentRevision
 	govEvents  map[string][]*model.GovernanceEvent
 	challenges map[int]*model.Challenge
+	appeals    map[int]*model.Appeal
+	polls      map[int]*model.Poll
 	timestamp  int64
 }
 
@@ -283,11 +286,13 @@ func (t *TestPersister) DeleteGovernanceEvent(govEvent *model.GovernanceEvent) e
 	return nil
 }
 
+// ChallengeByChallengeID gets a challenge by challengeID
 func (t *TestPersister) ChallengeByChallengeID(challengeID int) (*model.Challenge, error) {
-	listing := t.challenges[challengeID]
-	return listing, nil
-
+	challenge := t.challenges[challengeID]
+	return challenge, nil
 }
+
+// ChallengesByChallengeIDs returns a slice of challenges based on challenge IDs
 func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []int) ([]*model.Challenge, error) {
 	results := []*model.Challenge{}
 	for _, challengeID := range challengeIDs {
@@ -298,6 +303,8 @@ func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []int) ([]*model.C
 	}
 	return results, nil
 }
+
+// CreateChallenge creates a new challenge
 func (t *TestPersister) CreateChallenge(challenge *model.Challenge) error {
 	challengeID := int(challenge.ChallengeID().Int64())
 	if t.challenges == nil {
@@ -306,12 +313,90 @@ func (t *TestPersister) CreateChallenge(challenge *model.Challenge) error {
 	t.challenges[challengeID] = challenge
 	return nil
 }
+
+// UpdateChallenge updates a challenge
 func (t *TestPersister) UpdateChallenge(challenge *model.Challenge, updatedFields []string) error {
 	challengeID := int(challenge.ChallengeID().Int64())
 	if t.challenges == nil {
 		t.challenges = map[int]*model.Challenge{}
 	}
 	t.challenges[challengeID] = challenge
+	return nil
+}
+
+// PollByPollID gets a poll by pollID
+func (t *TestPersister) PollByPollID(pollID int) (*model.Poll, error) {
+	poll := t.polls[pollID]
+	return poll, nil
+}
+
+// PollsByPollIDs returns a slice of polls based on poll IDs
+func (t *TestPersister) PollsByPollIDs(pollIDs []int) ([]*model.Poll, error) {
+	results := []*model.Poll{}
+	for _, pollID := range pollIDs {
+		poll, err := t.PollByPollID(pollID)
+		if err == nil {
+			results = append(results, poll)
+		}
+	}
+	return results, nil
+}
+
+// CreatePoll creates a new poll
+func (t *TestPersister) CreatePoll(poll *model.Poll) error {
+	pollID := int(poll.PollID().Int64())
+	if t.polls == nil {
+		t.polls = map[int]*model.Poll{}
+	}
+	t.polls[pollID] = poll
+	return nil
+}
+
+// UpdatePoll updates a poll
+func (t *TestPersister) UpdatePoll(poll *model.Poll, updatedFields []string) error {
+	pollID := int(poll.PollID().Int64())
+	if t.polls == nil {
+		t.polls = map[int]*model.Poll{}
+	}
+	t.polls[pollID] = poll
+	return nil
+}
+
+// AppealByChallengeID gets an appeal by challengeID
+func (t *TestPersister) AppealByChallengeID(challengeID int) (*model.Appeal, error) {
+	appeal := t.appeals[challengeID]
+	return appeal, nil
+}
+
+// AppealsByChallengeIDs returns a slice of appeals based on challenge IDs
+func (t *TestPersister) AppealsByChallengeIDs(challengeIDs []int) ([]*model.Appeal, error) {
+	results := []*model.Appeal{}
+	for _, challengeID := range challengeIDs {
+		appeal, err := t.AppealByChallengeID(challengeID)
+		if err == nil {
+			results = append(results, appeal)
+		}
+	}
+	return results, nil
+}
+
+// CreateAppeal creates a new appeal
+func (t *TestPersister) CreateAppeal(appeal *model.Appeal) error {
+	challengeID := int(appeal.OriginalChallengeID().Int64())
+	if t.appeals == nil {
+		t.appeals = map[int]*model.Appeal{}
+	}
+	t.appeals[challengeID] = appeal
+	return nil
+}
+
+// UpdateAppeal updates an appeal
+func (t *TestPersister) UpdateAppeal(appeal *model.Appeal, updatedFields []string) error {
+	challengeID := int(appeal.OriginalChallengeID().Int64())
+	if t.appeals == nil {
+		t.appeals = map[int]*model.Appeal{}
+	}
+	t.appeals[challengeID] = appeal
 	return nil
 }
 
@@ -351,7 +436,7 @@ func TestEventProcessor(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
 		ListingAddress: contracts.NewsroomAddr,
@@ -474,7 +559,7 @@ func TestEventProcessorChallenge(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
 		ListingAddress: contracts.NewsroomAddr,
@@ -608,7 +693,7 @@ func TestEventProcessorAppWhitelisted(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	whitelisted1 := &contract.CivilTCRContractApplicationWhitelisted{
 		ListingAddress: contracts.NewsroomAddr,
@@ -691,7 +776,7 @@ func TestEventProcessorApplicationRemoved(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractApplicationRemoved{
 		ListingAddress: contracts.NewsroomAddr,
@@ -774,7 +859,7 @@ func TestEventProcessorListingRemoved(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractListingRemoved{
 		ListingAddress: contracts.NewsroomAddr,
@@ -857,7 +942,7 @@ func TestEventProcessorListingWithdrawn(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	removed1 := &contract.CivilTCRContractListingWithdrawn{
 		ListingAddress: contracts.NewsroomAddr,
@@ -940,7 +1025,7 @@ func TestEventProcessorNewsroomNameChanged(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
 		ListingAddress: contracts.NewsroomAddr,
@@ -1033,7 +1118,7 @@ func TestCivilProcessorOwnershipTransferred(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
 		ListingAddress: contracts.NewsroomAddr,
@@ -1128,7 +1213,7 @@ func TestEventProcessorChallengeUpdate(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-		scraper, scraper, scraper)
+		persister, persister, scraper, scraper, scraper)
 
 	applied1 := &contract.CivilTCRContractApplication{
 		ListingAddress: contracts.NewsroomAddr,
@@ -1201,9 +1286,8 @@ func TestEventProcessorChallengeUpdate(t *testing.T) {
 	}
 	// check for nil challenge id value
 	listing := persister.listings[contracts.NewsroomAddr.Hex()]
-
-	if listing.ChallengeID().Int64() != 0 {
-		t.Errorf("Challenge ID should have been 0 but it is %v", listing.ChallengeID())
+	if listing.ChallengeID() != nil {
+		t.Errorf("Challenge ID should have been nil but it is %v", listing.ChallengeID())
 	}
 
 	events = []*crawlermodel.Event{}
@@ -1350,4 +1434,111 @@ func TestEmptyContractAddress(t *testing.T) {
 		t.Error("2 blank common.Address types should be equal")
 	}
 
+}
+
+// TODO(IS) : Write more tests testing each of the functions that update
+func TestProcessTCRAppealRequested(t *testing.T) {
+	contracts, err := contractutils.SetupAllTestContracts()
+	if err != nil {
+		t.Fatalf("Unable to setup the contracts: %v", err)
+	}
+	persister := &TestPersister{}
+	scraper := &TestScraper{}
+	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
+		persister, persister, scraper, scraper, scraper)
+
+	applied1 := &contract.CivilTCRContractApplication{
+		ListingAddress: contracts.NewsroomAddr,
+		Deposit:        big.NewInt(1000),
+		AppEndDate:     big.NewInt(1653860896),
+		Data:           "DATA",
+		Applicant:      common.HexToAddress(testAddress),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888888,
+			TxHash:      common.Hash{},
+			TxIndex:     2,
+			BlockHash:   common.Hash{},
+			Index:       2,
+			Removed:     false,
+		},
+	}
+	challengeID := big.NewInt(120)
+	challenge1 := &contract.CivilTCRContractChallenge{
+		ListingAddress: contracts.NewsroomAddr,
+		ChallengeID:    big.NewInt(120),
+		Data:           "DATA",
+		CommitEndDate:  big.NewInt(1653860896),
+		RevealEndDate:  big.NewInt(1653860896),
+		Challenger:     common.HexToAddress(testAddress),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888890,
+			TxHash:      common.Hash{},
+			TxIndex:     4,
+			BlockHash:   common.Hash{},
+			Index:       7,
+			Removed:     false,
+		},
+	}
+	appealRequested := &contract.CivilTCRContractAppealRequested{
+		ListingAddress: contracts.NewsroomAddr,
+		ChallengeID:    big.NewInt(120),
+		AppealFeePaid:  big.NewInt(1000),
+		Requester:      common.HexToAddress(testAddress),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888888,
+			TxHash:      common.Hash{},
+			TxIndex:     2,
+			BlockHash:   common.Hash{},
+			Index:       2,
+			Removed:     false,
+		},
+	}
+
+	event1, _ := crawlermodel.NewEventFromContractEvent(
+		"_Application",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		applied1,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	event2, _ := crawlermodel.NewEventFromContractEvent(
+		"_Challenge",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		challenge1,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	event3, _ := crawlermodel.NewEventFromContractEvent(
+		"_AppealRequested",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		appealRequested,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	events := []*crawlermodel.Event{event1, event2, event3}
+	err = proc.Process(events)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	// check for challengeid reset
+	persistedChallenge := persister.challenges[int(challengeID.Int64())]
+	if persistedChallenge == nil {
+		t.Error("Should not have rreturned nil challenge")
+	}
+	//TODO(IS): check that there is appeal in persistence
+	// if persistedChallenge.Appeal() == nil {
+	// 	t.Error("Should not have rreturned nil appeal")
+	// }
 }
