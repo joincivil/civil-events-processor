@@ -52,6 +52,8 @@ type initializedPersisters struct {
 	contentRevision model.ContentRevisionPersister
 	governanceEvent model.GovernanceEventPersister
 	challenge       model.ChallengePersister
+	poll            model.PollPersister
+	appeal          model.AppealPersister
 }
 
 func initPersisters(config *utils.ProcessorConfig) (*initializedPersisters, error) {
@@ -85,6 +87,16 @@ func initPersisters(config *utils.ProcessorConfig) (*initializedPersisters, erro
 		log.Errorf("Error w ChallengePersister: err: %v", err)
 		return nil, err
 	}
+	pollPersister, err := helpers.PollPersister(config)
+	if err != nil {
+		log.Errorf("Error w PollPersister: err: %v", err)
+		return nil, err
+	}
+	appealPersister, err := helpers.AppealPersister(config)
+	if err != nil {
+		log.Errorf("Error w AppealPersister: err: %v", err)
+		return nil, err
+	}
 	return &initializedPersisters{
 		cron:            cronPersister,
 		event:           eventPersister,
@@ -92,6 +104,8 @@ func initPersisters(config *utils.ProcessorConfig) (*initializedPersisters, erro
 		contentRevision: contentRevisionPersister,
 		governanceEvent: governanceEventPersister,
 		challenge:       challengePersister,
+		poll:            pollPersister,
+		appeal:          appealPersister,
 	}, nil
 }
 
@@ -126,6 +140,8 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 			persisters.contentRevision,
 			persisters.governanceEvent,
 			persisters.challenge,
+			persisters.poll,
+			persisters.appeal,
 			helpers.ContentScraper(config),
 			helpers.MetadataScraper(config),
 			helpers.CivilMetadataScraper(config),

@@ -410,9 +410,19 @@ func (l *Listing) AppExpiry() *big.Int {
 	return l.appExpiry
 }
 
+// SetAppExpiry returns the expiration date of the application to this newsroom
+func (l *Listing) SetAppExpiry(appExpiry *big.Int) {
+	l.appExpiry = appExpiry
+}
+
 // UnstakedDeposit returns the unstaked deposit of the newsroom
 func (l *Listing) UnstakedDeposit() *big.Int {
 	return l.unstakedDeposit
+}
+
+// SetUnstakedDeposit returns the unstaked deposit of the newsroom
+func (l *Listing) SetUnstakedDeposit(unstakedDeposit *big.Int) {
+	l.unstakedDeposit = unstakedDeposit
 }
 
 // SetChallengeID sets the challenge ID of the listing.

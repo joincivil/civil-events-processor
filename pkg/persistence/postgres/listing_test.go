@@ -8,7 +8,7 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 	"math/big"
-	"reflect"
+	// "reflect"
 	"testing"
 )
 
@@ -29,10 +29,6 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	ownerAddr := common.HexToAddress(address2)
 	ownerAddresses := []common.Address{common.HexToAddress(address2), common.HexToAddress(address3)}
 	contributorAddresses := ownerAddresses
-	appExpiry := big.NewInt(232424242)
-	unstakedDeposit := new(big.Int)
-	unstakedDeposit.SetString("100000000000000000000", 10)
-	challengeID := big.NewInt(10)
 
 	hash := "33333333333333333333333333333333"
 	contentHash := [32]byte{}
@@ -61,9 +57,6 @@ func setupSampleListing() (*model.Listing, common.Address) {
 		ApplicationDateTs:    1257894000,
 		ApprovalDateTs:       1257894000,
 		LastUpdatedDateTs:    1257894000,
-		AppExpiry:            appExpiry,
-		UnstakedDeposit:      unstakedDeposit,
-		ChallengeID:          challengeID,
 	}
 	testListing := model.NewListing(testListingParams)
 	return testListing, contractAddress
@@ -72,6 +65,7 @@ func setupSampleListing() (*model.Listing, common.Address) {
 func TestNewDBListing(t *testing.T) {
 	modelListing, _ := setupSampleListing()
 	dbListing := postgres.NewListing(modelListing)
-	modelListingCheck := dbListing.DbToListingData()
-	reflect.DeepEqual(modelListing, modelListingCheck)
+	_ = dbListing.DbToListingData()
+	// TODO(IS): Check all fields other than the nil ones which are appexpiry, unstakeddeposit, challengeID
+	// when you first save a listing
 }

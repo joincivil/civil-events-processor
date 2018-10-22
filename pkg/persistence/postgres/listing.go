@@ -76,8 +76,8 @@ type Listing struct {
 	AppExpiry int64 `db:"app_expiry"`
 
 	UnstakedDeposit float64 `db:"unstaked_deposit"`
-	// TODO(IS): change challengeID to uint64
-	ChallengeID int64 `db:"challenge_id"`
+
+	ChallengeID uint64 `db:"challenge_id"`
 }
 
 // NewListing constructs a listing for DB from a model.Listing
@@ -86,10 +86,20 @@ func NewListing(listing *model.Listing) *Listing {
 	contributorAddresses := ListCommonAddressesToString(listing.ContributorAddresses())
 	lastGovernanceState := int(listing.LastGovernanceState())
 	owner := listing.Owner().Hex()
-	appExpiry := listing.AppExpiry().Int64()
-	f := new(big.Float).SetInt(listing.UnstakedDeposit())
-	unstakedDeposit, _ := f.Float64()
-	challengeID := listing.ChallengeID().Int64()
+
+	var appExpiry int64
+	var unstakedDeposit float64
+	var challengeID uint64
+	if listing.AppExpiry() != nil {
+		appExpiry = listing.AppExpiry().Int64()
+	}
+	if listing.UnstakedDeposit() != nil {
+		f := new(big.Float).SetInt(listing.UnstakedDeposit())
+		unstakedDeposit, _ = f.Float64()
+	}
+	if listing.ChallengeID() != nil {
+		challengeID = listing.ChallengeID().Uint64()
+	}
 
 	charter := crawlerpg.JsonbPayload(listing.Charter().AsMap())
 
@@ -123,7 +133,9 @@ func (l *Listing) DbToListingData() *model.Listing {
 	appExpiry := big.NewInt(l.AppExpiry)
 	unstakedDeposit := new(big.Int)
 	unstakedDeposit.SetString(strconv.FormatFloat(l.UnstakedDeposit, 'f', -1, 64), 10)
-	challengeID := big.NewInt(l.ChallengeID)
+
+	challengeID := big.NewInt(0)
+	challengeID.SetUint64(l.ChallengeID)
 
 	charter := &model.Charter{}
 	err := charter.FromMap(l.Charter)
