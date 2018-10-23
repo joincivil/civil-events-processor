@@ -2,6 +2,7 @@ package processor_test
 
 import (
 	"encoding/json"
+	// "fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
@@ -1351,7 +1352,7 @@ func TestEventProcessorChallengeUpdate(t *testing.T) {
 	if listing.ChallengeID().Int64() != 0 {
 		t.Errorf("Challenge ID should have been reset to 0 but it is %v", listing.ChallengeID())
 	}
-
+	// TODO(IS): Unstaked deposit is 0 bc we don't have the sequence of events leading up to this
 	// new challenge, then test another reset event
 	events = []*crawlermodel.Event{}
 
@@ -1436,8 +1437,8 @@ func TestEmptyContractAddress(t *testing.T) {
 
 }
 
-// TODO(IS) : Write more tests testing each of the functions that update
-func TestProcessTCRAppealRequested(t *testing.T) {
+func setupAppeal(t *testing.T, challengeID *big.Int) (*processor.EventProcessor, *contractutils.AllTestContracts,
+	[]*crawlermodel.Event, *TestPersister) {
 	contracts, err := contractutils.SetupAllTestContracts()
 	if err != nil {
 		t.Fatalf("Unable to setup the contracts: %v", err)
@@ -1465,10 +1466,10 @@ func TestProcessTCRAppealRequested(t *testing.T) {
 			Removed:     false,
 		},
 	}
-	challengeID := big.NewInt(120)
+
 	challenge1 := &contract.CivilTCRContractChallenge{
 		ListingAddress: contracts.NewsroomAddr,
-		ChallengeID:    big.NewInt(120),
+		ChallengeID:    challengeID,
 		Data:           "DATA",
 		CommitEndDate:  big.NewInt(1653860896),
 		RevealEndDate:  big.NewInt(1653860896),
@@ -1487,7 +1488,7 @@ func TestProcessTCRAppealRequested(t *testing.T) {
 	}
 	appealRequested := &contract.CivilTCRContractAppealRequested{
 		ListingAddress: contracts.NewsroomAddr,
-		ChallengeID:    big.NewInt(120),
+		ChallengeID:    challengeID,
 		AppealFeePaid:  big.NewInt(1000),
 		Requester:      common.HexToAddress(testAddress),
 		Raw: types.Log{
@@ -1532,13 +1533,191 @@ func TestProcessTCRAppealRequested(t *testing.T) {
 	if err != nil {
 		t.Errorf("Should not have failed processing events: err: %v", err)
 	}
-	// check for challengeid reset
+	return proc, contracts, events, persister
+}
+
+func TestProcessTCRAppealRequested(t *testing.T) {
+	challengeID := big.NewInt(120)
+	_, _, _, persister := setupAppeal(t, challengeID)
+
 	persistedChallenge := persister.challenges[int(challengeID.Int64())]
 	if persistedChallenge == nil {
-		t.Error("Should not have rreturned nil challenge")
+		t.Error("Should not have returned nil challenge")
 	}
-	//TODO(IS): check that there is appeal in persistence
-	// if persistedChallenge.Appeal() == nil {
-	// 	t.Error("Should not have rreturned nil appeal")
-	// }
+
+	persistedAppeal := persister.appeals[int(challengeID.Int64())]
+	if persistedAppeal == nil {
+		t.Error("Should not have rreturned nil appeal")
+	}
+}
+
+func TestProcessTCRGrantedAppealChallenged(t *testing.T) {
+	challengeID := big.NewInt(120)
+	appealChallengeID := big.NewInt(130)
+	proc, contracts, _, persister := setupAppeal(t, challengeID)
+
+	appealChallenged := &contract.CivilTCRContractGrantedAppealChallenged{
+		ListingAddress:    contracts.NewsroomAddr,
+		ChallengeID:       challengeID,
+		AppealChallengeID: appealChallengeID,
+		Data:              "DATA",
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888889,
+			TxHash:      common.Hash{},
+			TxIndex:     2,
+			BlockHash:   common.Hash{},
+			Index:       2,
+			Removed:     false,
+		},
+	}
+	event4, _ := crawlermodel.NewEventFromContractEvent(
+		"_GrantedAppealChallenged",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		appealChallenged,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	events := []*crawlermodel.Event{event4}
+	err := proc.Process(events)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	persistedChallenge := persister.challenges[int(appealChallengeID.Int64())]
+	if persistedChallenge == nil {
+		t.Error("Should not have returned nil challenge")
+	}
+
+}
+
+func TestProcessTCRAppealGranted(t *testing.T) {
+	challengeID := big.NewInt(120)
+	proc, contracts, _, persister := setupAppeal(t, challengeID)
+
+	persistedAppeal := persister.appeals[int(challengeID.Int64())]
+	if persistedAppeal == nil {
+		t.Error("Should not have rreturned nil appeal")
+	}
+	if persistedAppeal.AppealGranted() {
+		t.Error("Appeal granted field should be false")
+	}
+
+	appealGranted := &contract.CivilTCRContractAppealGranted{
+		ListingAddress: contracts.NewsroomAddr,
+		ChallengeID:    challengeID,
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888888,
+			TxHash:      common.Hash{},
+			TxIndex:     2,
+			BlockHash:   common.Hash{},
+			Index:       3,
+			Removed:     false,
+		},
+	}
+
+	event4, _ := crawlermodel.NewEventFromContractEvent(
+		"_AppealGranted",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		appealGranted,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	events := []*crawlermodel.Event{event4}
+	err := proc.Process(events)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	persistedChallenge := persister.challenges[int(challengeID.Int64())]
+	if persistedChallenge == nil {
+		t.Error("Should not have returned nil challenge")
+	}
+
+	// check that field in appeal granted has changed
+	// TODO(IS): should check more but then events should be created by simulated backend
+	if !persistedAppeal.AppealGranted() {
+		t.Error("Appeal granted field should be true")
+	}
+
+}
+
+func TestProcessTCRGrantedAppealConfirmed(t *testing.T) {
+	challengeID := big.NewInt(120)
+	appealChallengeID := big.NewInt(130)
+	proc, contracts, _, persister := setupAppeal(t, challengeID)
+
+	appealChallenged := &contract.CivilTCRContractGrantedAppealChallenged{
+		ListingAddress:    contracts.NewsroomAddr,
+		ChallengeID:       challengeID,
+		AppealChallengeID: appealChallengeID,
+		Data:              "DATA",
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888889,
+			TxHash:      common.Hash{},
+			TxIndex:     2,
+			BlockHash:   common.Hash{},
+			Index:       2,
+			Removed:     false,
+		},
+	}
+
+	appealConfirmed := &contract.CivilTCRContractGrantedAppealConfirmed{
+		ListingAddress:    contracts.NewsroomAddr,
+		ChallengeID:       challengeID,
+		AppealChallengeID: appealChallengeID,
+		RewardPool:        big.NewInt(1010101),
+		TotalTokens:       big.NewInt(110101),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888889,
+			TxHash:      common.Hash{},
+			TxIndex:     2,
+			BlockHash:   common.Hash{},
+			Index:       2,
+			Removed:     false,
+		},
+	}
+
+	event4, _ := crawlermodel.NewEventFromContractEvent(
+		"_GrantedAppealChallenged",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		appealChallenged,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+
+	event5, _ := crawlermodel.NewEventFromContractEvent(
+		"_GrantedAppealConfirmed",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		appealConfirmed,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	events := []*crawlermodel.Event{event4, event5}
+	err := proc.Process(events)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	persistedChallenge := persister.challenges[int(challengeID.Int64())]
+	if persistedChallenge == nil {
+		t.Error("Should not have returned nil challenge")
+	}
+
+	if !persistedChallenge.Resolved() {
+		t.Error("Resolved field of persisted challenge should be true")
+	}
+
 }
