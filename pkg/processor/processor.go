@@ -743,7 +743,7 @@ func (e *EventProcessor) processAppealWinner(event *crawlermodel.Event) error {
 	return err
 }
 
-func (e *EventProcessor) processChallengeWinner(event *crawlermodel.Event, success bool) error {
+func (e *EventProcessor) processChallengeResolution(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	resolved := true
 	challengeID, ok := payload["ChallengeID"]
@@ -786,7 +786,7 @@ func (e *EventProcessor) processTCRChallenge(event *crawlermodel.Event) error {
 }
 
 func (e *EventProcessor) processTCRChallengeFailed(event *crawlermodel.Event) error {
-	err := e.processChallengeWinner(event, false)
+	err := e.processChallengeResolution(event)
 	if err != nil {
 		return fmt.Errorf("Error processing ChallengeFailed: %v", err)
 	}
@@ -795,7 +795,7 @@ func (e *EventProcessor) processTCRChallengeFailed(event *crawlermodel.Event) er
 }
 
 func (e *EventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Event) error {
-	err := e.processChallengeWinner(event, true)
+	err := e.processChallengeResolution(event)
 	if err != nil {
 		return fmt.Errorf("Error processing ChallengeSucceeded: %v", err)
 	}
@@ -804,8 +804,7 @@ func (e *EventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Event)
 }
 
 func (e *EventProcessor) processTCRChallengeFailedOverturned(event *crawlermodel.Event) error {
-	//TODO(IS) -- changes in listing
-	err := e.processChallengeWinner(event, true)
+	err := e.processChallengeResolution(event)
 	if err != nil {
 		return fmt.Errorf("Error processing FailedChallengeOverturned: %v", err)
 	}
@@ -814,8 +813,7 @@ func (e *EventProcessor) processTCRChallengeFailedOverturned(event *crawlermodel
 }
 
 func (e *EventProcessor) processTCRChallengeSuccessfulOverturned(event *crawlermodel.Event) error {
-	//TODO(IS) -- changes in listing
-	err := e.processChallengeWinner(event, true)
+	err := e.processChallengeResolution(event)
 	if err != nil {
 		return fmt.Errorf("Error processing SuccessfulChallengeOverturned: %v", err)
 	}
@@ -844,7 +842,6 @@ func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) e
 }
 
 func (e *EventProcessor) processTCRAppealGranted(event *crawlermodel.Event) error {
-	// Grants a requested appeal
 	err := e.processAppealGranted(event)
 	if err != nil {
 		return fmt.Errorf("Error processing AppealGranted: %v", err)
@@ -854,7 +851,6 @@ func (e *EventProcessor) processTCRAppealGranted(event *crawlermodel.Event) erro
 }
 
 func (e *EventProcessor) processTCRAppealRequested(event *crawlermodel.Event) error {
-	// Appeal requested
 	err := e.persistNewAppeal(event)
 	if err != nil {
 		return fmt.Errorf("Error processing AppealRequested: %v", err)
@@ -864,7 +860,6 @@ func (e *EventProcessor) processTCRAppealRequested(event *crawlermodel.Event) er
 }
 
 func (e *EventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.Event) error {
-	// Challenge is started here for appeal
 	err := e.persistNewAppealChallenge(event)
 	if err != nil {
 		return fmt.Errorf("Error processing GrantedAppealChallenged: %v", err)
@@ -874,7 +869,6 @@ func (e *EventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.E
 }
 
 func (e *EventProcessor) processTCRGrantedAppealConfirmed(event *crawlermodel.Event) error {
-	// Appeal is resolved
 	err := e.processAppealWinner(event)
 	if err != nil {
 		return fmt.Errorf("Error processing GrantedAppealConfirmed: %v", err)
@@ -884,7 +878,6 @@ func (e *EventProcessor) processTCRGrantedAppealConfirmed(event *crawlermodel.Ev
 }
 
 func (e *EventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.Event) error {
-	// Appeal is resolved
 	err := e.processAppealWinner(event)
 	if err != nil {
 		return fmt.Errorf("Error processing GrantedAppealOverturned: %v", err)
