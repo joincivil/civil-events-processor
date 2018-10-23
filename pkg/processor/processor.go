@@ -1,7 +1,6 @@
 package processor
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -17,6 +16,7 @@ import (
 	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 // TODO(IS): Change naming for these constants to reflect which model they change
@@ -64,10 +64,6 @@ func isStringInSlice(slice []string, target string) bool {
 		}
 	}
 	return false
-}
-
-func byte32ToHexString(input [32]byte) string {
-	return hex.EncodeToString(input[:])
 }
 
 // NewEventProcessor is a convenience function to init an EventProcessor
@@ -1157,7 +1153,7 @@ func (e *EventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Even
 	if err != nil {
 		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
 	}
-	contentHash := byte32ToHexString(content.ContentHash)
+	contentHash := utils.Byte32ToHexString(content.ContentHash)
 
 	// Scrape the metadata and content for the revision
 	metadata, scraperContent, err := e.scrapeData(revisionURI.(string))

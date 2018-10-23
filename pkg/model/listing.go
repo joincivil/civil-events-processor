@@ -2,7 +2,7 @@
 package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 import (
-	"encoding/hex"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,21 +13,6 @@ var ResetChallengeIDEvents = []GovernanceState{
 	GovernanceStateAppWhitelisted,
 	GovernanceStateRemoved,
 	GovernanceStateAppRemoved,
-}
-
-func byte32ToHexString(input [32]byte) string {
-	return hex.EncodeToString(input[:])
-}
-
-func hexStringToByte32(input string) ([32]byte, error) {
-	bys, err := hex.DecodeString(input)
-	fixed := [32]byte{}
-	if err != nil {
-		return fixed, err
-	}
-	copy(fixed[:], bys)
-	return fixed, nil
-
 }
 
 // CharterParams are params to create a new populated charter struct via
@@ -129,7 +114,7 @@ func (c *Charter) AsMap() map[string]interface{} {
 	}
 	newMap[signatureMapStr] = string(c.signature)
 	newMap[authorMapStr] = c.author.Hex()
-	newMap[contentHashMapStr] = byte32ToHexString(c.contentHash)
+	newMap[contentHashMapStr] = utils.Byte32ToHexString(c.contentHash)
 
 	if c.timestamp != nil {
 		newMap[timestampMapStr] = c.timestamp.Int64()
@@ -172,7 +157,7 @@ func (c *Charter) FromMap(charterMap map[string]interface{}) error {
 	}
 	val, ok = charterMap[contentHashMapStr]
 	if ok && val != nil {
-		fixed, err := hexStringToByte32(val.(string))
+		fixed, err := utils.HexStringToByte32(val.(string))
 		if err != nil {
 			return err
 		}
