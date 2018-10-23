@@ -652,7 +652,6 @@ func (e *EventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) er
 		challengeRes.TotalTokens,
 		requestAppealExpiry,
 		crawlerutils.CurrentEpochSecsInInt64())
-
 	err = e.challengePersister.CreateChallenge(newAppealChallenge)
 	if err != nil {
 		return fmt.Errorf("Error persisting new AppealChallenge: %v", err)
@@ -888,7 +887,7 @@ func (e *EventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.E
 	// Appeal is resolved
 	err := e.processAppealWinner(event)
 	if err != nil {
-		return fmt.Errorf("Error processing GrantedAppealOverturn: %v", err)
+		return fmt.Errorf("Error processing GrantedAppealOverturned: %v", err)
 	}
 	return e.processTCREvent(event, model.GovernanceStateGrantedAppealOverturned, whitelistedNoChange,
 		approvalDateNoUpdate)
@@ -953,11 +952,19 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			listing.SetUnstakedDeposit(deposit)
 			updatedFields = append(updatedFields, unstakedDepositDBModelName)
 		}
-		// Set challengeID if Challenge occurs
 		if govState == model.GovernanceStateChallenged {
 			challengeID := event.EventPayload()["ChallengeID"].(*big.Int)
 			listing.SetChallengeID(challengeID)
-			updatedFields = append(updatedFields, challengeIDDBModelName)
+			tcrContract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
+			if tcrErr != nil {
+				return fmt.Errorf("Error creating TCR contract: err: %v", err)
+			}
+			listings, listingErr := tcrContract.Listings(&bind.CallOpts{}, listingAddress)
+			if listingErr != nil {
+				return fmt.Errorf("Error calling listings function from TCR Contract: %v", err)
+			}
+			listing.SetUnstakedDeposit(listings.UnstakedDeposit)
+			updatedFields = append(updatedFields, challengeIDDBModelName, unstakedDepositDBModelName)
 		}
 		// On `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved` events, challenge ID goes back to 0
 		if govEventInSlice(govState, model.ResetChallengeIDEvents) {
