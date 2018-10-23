@@ -1601,7 +1601,7 @@ func TestProcessTCRAppealGranted(t *testing.T) {
 	if persistedAppeal == nil {
 		t.Error("Should not have rreturned nil appeal")
 	}
-	if persistedAppeal.AppealGranted() != false {
+	if persistedAppeal.AppealGranted() {
 		t.Error("Appeal granted field should be false")
 	}
 
@@ -1641,7 +1641,7 @@ func TestProcessTCRAppealGranted(t *testing.T) {
 
 	// check that field in appeal granted has changed
 	// TODO(IS): should check more but then events should be created by simulated backend
-	if persistedAppeal.AppealGranted() != true {
+	if !persistedAppeal.AppealGranted() {
 		t.Error("Appeal granted field should be true")
 	}
 
