@@ -598,6 +598,72 @@ func TestDeleteListing(t *testing.T) {
 	}
 }
 
+func TestListingsByCriteria(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+	modelListingWhitelisted, _ := setupSampleListing()
+	// Create another modelListing that was rejected
+	modelListingRejected, _ := setupSampleListing()
+	modelListingRejected.SetWhitelisted(false)
+	// Create another modelListing without challenge
+	modelListingNoChallenge, _ := setupSampleListing()
+	modelListingNoChallenge.SetChallengeID(big.NewInt(0))
+
+	// save to test table
+	err = persister.createListingForTable(modelListingWhitelisted, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(modelListingRejected, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(modelListingNoChallenge, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	listingsFromDB, err := persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		RejectedOnly: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 1 {
+		t.Errorf("Only one listing should have been returned but there are %v", len(listingsFromDB))
+	}
+	if listingsFromDB[0].Whitelisted() {
+		t.Error("Listing should not be whitelisted.")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		ActiveChallenge: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+
+	if len(listingsFromDB) != 2 {
+		t.Errorf("Two listings should have been returned but there are %v", len(listingsFromDB))
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		NoActiveChallenge: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+
+	if len(listingsFromDB) != 1 {
+		t.Errorf("One listing should have been returned but there are %v", len(listingsFromDB))
+	}
+
+}
+
 /*
 Helpers for content_revision table tests:
 */
