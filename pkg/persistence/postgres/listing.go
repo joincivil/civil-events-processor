@@ -12,9 +12,13 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 )
 
+const (
+	defaultListingTableName = "listing"
+)
+
 // CreateListingTableQuery returns the query to create the listing table
 func CreateListingTableQuery() string {
-	return CreateListingTableQueryString("listing")
+	return CreateListingTableQueryString(defaultListingTableName)
 }
 
 // CreateListingTableQueryString returns the query to create this table
@@ -39,6 +43,19 @@ func CreateListingTableQueryString(tableName string) string {
             unstaked_deposit NUMERIC
         );
     `, tableName)
+	return queryString
+}
+
+// ListingTableIndices returns the query to create indices for this table
+func ListingTableIndices() string {
+	return CreateListingTableIndicesString(defaultListingTableName)
+}
+
+// CreateListingTableIndicesString returns the query to create indices for this table
+func CreateListingTableIndicesString(tableName string) string {
+	queryString := fmt.Sprintf(`
+		CREATE INDEX IF NOT EXISTS listing_whitelisted_type_idx ON %s (whitelisted);
+	`, tableName)
 	return queryString
 }
 
