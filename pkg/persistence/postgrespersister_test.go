@@ -1334,8 +1334,10 @@ func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 	challengeID := big.NewInt(int64(challengeIDInt))
 	statement := ""
 	challenger := common.HexToAddress(address2)
-	rewardPool := big.NewInt(232323223232)
-	stake := big.NewInt(232323223232)
+	stake := new(big.Int)
+	stake.SetString("100000000000000000000", 10)
+	rewardPool := new(big.Int)
+	rewardPool.SetString("50000000000000000000", 10)
 	totalTokens := big.NewInt(232323223232)
 
 	requestAppealExpiry := big.NewInt(1231312)
@@ -1403,7 +1405,6 @@ func TestGetChallenge(t *testing.T) {
 	if !reflect.DeepEqual(modelChallenge.RewardPool(), challengeFromDB.RewardPool()) {
 		t.Error("Mismatch in rewardpool")
 	}
-
 	if !reflect.DeepEqual(modelChallenge.Stake(), challengeFromDB.Stake()) {
 		t.Error("Mismatch in stake")
 	}
