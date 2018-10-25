@@ -996,7 +996,7 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			appExpiry := event.EventPayload()["AppEndDate"].(*big.Int)
 			unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
 			listing.SetAppExpiry(appExpiry)
-			listing.SetAppExpiry(unstakedDeposit)
+			listing.SetUnstakedDeposit(unstakedDeposit)
 			updatedFields = append(updatedFields, appExpiryDBModelName, unstakedDepositDBModelName)
 		}
 		if govState == model.GovernanceStateDeposit || govState == model.GovernanceStateDepositWithdrawl {
