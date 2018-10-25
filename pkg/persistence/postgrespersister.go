@@ -438,16 +438,13 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 	if criteria.WhitelistedOnly {
 		p.addWhereAnd(queryBuf)
 		queryBuf.WriteString(" whitelisted = true") // nolint: gosec
-	}
-	if criteria.RejectedOnly {
+	} else if criteria.RejectedOnly {
 		p.addWhereAnd(queryBuf)
 		queryBuf.WriteString(" whitelisted = false AND challenge_id = 0") // nolint: gosec
-	}
-	if criteria.ActiveChallenge {
+	} else if criteria.ActiveChallenge {
 		p.addWhereAnd(queryBuf)
 		queryBuf.WriteString(" challenge_id > 0") // nolint: gosec
-	}
-	if criteria.CurrentApplication {
+	} else if criteria.CurrentApplication {
 		p.addWhereAnd(queryBuf)
 		currentTime := crawlerutils.CurrentEpochSecsInInt64()
 		queryBuf.WriteString(fmt.Sprintf(" app_expiry > %v AND whitelisted = false AND challenge_id <= 0",

@@ -20,7 +20,8 @@ var (
 // type. errors must be reserved for actual internal errors.
 
 // ListingCriteria contains the retrieval criteria for the ListingsByCriteria
-// query.
+// query. Only one of WhitelistedOnly, RejectedOnly, ActiveChallenge, CurrentApplication can
+// be true in one instance.
 type ListingCriteria struct {
 	Offset int `db:"offset"`
 	Count  int `db:"count"`
