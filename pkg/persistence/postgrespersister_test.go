@@ -1433,6 +1433,7 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 	defer deleteTestTable(t, persister, challengeTestTableName)
 	_, _ = createAndSaveTestChallenge(t, persister, false)
 	_, _ = createAndSaveTestChallenge(t, persister, false)
+	_, _ = createAndSaveTestChallenge(t, persister, false)
 
 	challengesFromDB, err := persister.challengesByListingAddressInTable(
 		common.HexToAddress(testAddress),
@@ -1445,14 +1446,23 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 	if len(challengesFromDB) == 0 {
 		t.Errorf("Should have gotten some results for address")
 	}
-	if len(challengesFromDB) != 2 {
-		t.Errorf("Should have gotten 2 results for address")
+	if len(challengesFromDB) != 3 {
+		t.Errorf("Should have gotten 3 results for address")
 	}
 
+	previousChallengeID := big.NewInt(-1)
 	for _, ch := range challengesFromDB {
 		if ch.ListingAddress().Hex() != testAddress {
 			t.Errorf("Should have gotten all challenges for a single address")
 		}
+		if ch.ChallengeID().Cmp(previousChallengeID) != 1 {
+			t.Errorf(
+				"Should have returned the list in order: %v, %v",
+				ch.ChallengeID(),
+				previousChallengeID,
+			)
+		}
+		previousChallengeID = ch.ChallengeID()
 	}
 }
 
