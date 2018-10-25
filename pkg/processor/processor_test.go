@@ -305,6 +305,17 @@ func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []int) ([]*model.C
 	return results, nil
 }
 
+// ChallengesByListingAddress gets a list of challenges by listing
+func (t *TestPersister) ChallengesByListingAddress(addr common.Address) ([]*model.Challenge, error) {
+	challenges := make([]*model.Challenge, len(t.challenges))
+	index := 0
+	for _, val := range t.challenges {
+		challenges[index] = val
+		index++
+	}
+	return challenges, nil
+}
+
 // CreateChallenge creates a new challenge
 func (t *TestPersister) CreateChallenge(challenge *model.Challenge) error {
 	challengeID := int(challenge.ChallengeID().Int64())
