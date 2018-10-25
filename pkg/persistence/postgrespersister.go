@@ -310,6 +310,41 @@ func (p *PostgresPersister) CreateTables() error {
 	return nil
 }
 
+// CreateIndices creates the indices for DB if they don't exist
+func (p *PostgresPersister) CreateIndices() error {
+	indexQuery := postgres.ContentRevisionTableIndices()
+	_, err := p.db.Exec(indexQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating content revision table indices in postgres: %v", err)
+	}
+	indexQuery = postgres.GovernanceEventTableIndices()
+	_, err = p.db.Exec(indexQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating gov events table indices in postgres: %v", err)
+	}
+	indexQuery = postgres.ListingTableIndices()
+	_, err = p.db.Exec(indexQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating listing table indices in postgres: %v", err)
+	}
+	indexQuery = postgres.ChallengeTableIndices()
+	_, err = p.db.Exec(indexQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating challenge table indices in postgres: %v", err)
+	}
+	// indexQuery = postgres.PollTableIndices()
+	// _, err = p.db.Exec(indexQuery)
+	// if err != nil {
+	// 	return fmt.Errorf("Error creating poll table indices in postgres: %v", err)
+	// }
+	// indexQuery = postgres.AppealTableIndices()
+	// _, err = p.db.Exec(indexQuery)
+	// if err != nil {
+	// 	return fmt.Errorf("Error creating appeal table indices in postgres: %v", err)
+	// }
+	return err
+}
+
 func (p *PostgresPersister) insertIntoDBQueryString(tableName string, dbModelStruct interface{}) string {
 	fieldNames, fieldNamesColon := postgres.StructFieldsForQuery(dbModelStruct, true)
 	queryString := fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s);", tableName, fieldNames, fieldNamesColon) // nolint: gosec
