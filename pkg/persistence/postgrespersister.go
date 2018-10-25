@@ -202,7 +202,7 @@ func (p *PostgresPersister) ChallengeByChallengeID(challengeID int) (*model.Chal
 	return challenges[0], nil
 }
 
-// ChallengesByListingAddress gets a list of challenges for a listing
+// ChallengesByListingAddress gets a list of challenges for a listing sorted by challenge_id
 func (p *PostgresPersister) ChallengesByListingAddress(addr common.Address) ([]*model.Challenge, error) {
 	challenges, err := p.challengesByListingAddressInTable(addr, challengeTableName)
 	if err != nil {
@@ -947,6 +947,8 @@ func (p *PostgresPersister) challengesByChallengeIDsQuery(tableName string) stri
 	return queryString
 }
 
+// challengesByListingAddressQuery retrieves a list of challenges for a listing sorted
+// by challenge_id
 func (p *PostgresPersister) challengesByListingAddressInTable(addr common.Address,
 	tableName string) ([]*model.Challenge, error) {
 	challenges := []*model.Challenge{}
@@ -965,10 +967,12 @@ func (p *PostgresPersister) challengesByListingAddressInTable(addr common.Addres
 	return challenges, nil
 }
 
+// challengesByListingAddressQuery returns the query string to retrieved a list of
+// challenges for a listing sorted by challenge_id
 func (p *PostgresPersister) challengesByListingAddressQuery(tableName string) string {
 	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Challenge{}, false)
 	queryString := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE listing_address = $1;",
+		"SELECT %s FROM %s WHERE listing_address = $1 ORDER BY challenge_id;",
 		fieldNames,
 		tableName,
 	) // nolint: gosec
