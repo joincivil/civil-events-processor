@@ -988,6 +988,7 @@ func (p *PostgresPersister) challengesByListingAddressInTable(addr common.Addres
 	tableName string) ([]*model.Challenge, error) {
 	challenges := []*model.Challenge{}
 	queryString := p.challengesByListingAddressQuery(tableName)
+
 	dbChallenges := []*postgres.Challenge{}
 	err := p.db.Select(&dbChallenges, queryString, addr.Hex())
 	if err != nil {
@@ -996,9 +997,15 @@ func (p *PostgresPersister) challengesByListingAddressInTable(addr common.Addres
 		}
 		return challenges, fmt.Errorf("Error retrieving challenges from table: %v", err)
 	}
+
+	if len(dbChallenges) == 0 {
+		return nil, model.ErrPersisterNoResults
+	}
+
 	for _, dbChallenge := range dbChallenges {
 		challenges = append(challenges, dbChallenge.DbToChallengeData())
 	}
+
 	return challenges, nil
 }
 
