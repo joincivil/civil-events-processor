@@ -880,8 +880,9 @@ func (e *EventProcessor) processTCRChallengeSuccessfulOverturned(event *crawlerm
 }
 
 func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Event) error {
-	approvalDate := crawlerutils.CurrentEpochSecsInInt64()
-	return e.processTCREvent(event, model.GovernanceStateAppWhitelisted, whitelistedTrue, approvalDate)
+	// Set the approval date to the event timestamp
+	return e.processTCREvent(event, model.GovernanceStateAppWhitelisted, whitelistedTrue,
+		event.Timestamp())
 }
 
 func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event) error {

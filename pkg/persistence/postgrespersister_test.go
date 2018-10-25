@@ -31,6 +31,8 @@ const (
 	challengeTestTableName = "challenge_test"
 	pollTestTableName      = "poll_test"
 	appealTestTableName    = "appeal_test"
+
+	testAddress = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 )
 
 // randomHex generates a random hex string
@@ -963,7 +965,7 @@ func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, commo
 		listingAddr = common.HexToAddress(address1)
 	} else {
 		// keep listingAddress constant
-		listingAddr = common.HexToAddress("0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d")
+		listingAddr = common.HexToAddress(testAddress)
 	}
 
 	senderAddress := common.HexToAddress(address2)
@@ -1238,7 +1240,7 @@ func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEve
 		listingAddr = common.HexToAddress(address1)
 	} else {
 		// keep listingAddress constant
-		listingAddr = common.HexToAddress("0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d")
+		listingAddr = common.HexToAddress(testAddress)
 	}
 	challengeID := mathrand.Intn(100)
 	senderAddress := common.HexToAddress(address2)
@@ -1468,14 +1470,17 @@ func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 		listingAddr = common.HexToAddress(address1)
 	} else {
 		// keep listingAddress constant
-		listingAddr = common.HexToAddress("0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d")
+		listingAddr = common.HexToAddress(testAddress)
 	}
-	challengeIDInt := 50
+	// challengeIDInt := 50
+	challengeIDInt := mathrand.Intn(10000)
 	challengeID := big.NewInt(int64(challengeIDInt))
 	statement := ""
 	challenger := common.HexToAddress(address2)
-	rewardPool := big.NewInt(232323223232)
-	stake := big.NewInt(232323223232)
+	stake := new(big.Int)
+	stake.SetString("100000000000000000000", 10)
+	rewardPool := new(big.Int)
+	rewardPool.SetString("50000000000000000000", 10)
 	totalTokens := big.NewInt(232323223232)
 
 	requestAppealExpiry := big.NewInt(1231312)
@@ -1522,7 +1527,8 @@ func TestGetChallenge(t *testing.T) {
 	defer deleteTestTable(t, persister, challengeTestTableName)
 	modelChallenge, challengeID := createAndSaveTestChallenge(t, persister, true)
 
-	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
+	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder(
+		[]int{challengeID}, challengeTestTableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -1543,7 +1549,6 @@ func TestGetChallenge(t *testing.T) {
 	if !reflect.DeepEqual(modelChallenge.RewardPool(), challengeFromDB.RewardPool()) {
 		t.Error("Mismatch in rewardpool")
 	}
-
 	if !reflect.DeepEqual(modelChallenge.Stake(), challengeFromDB.Stake()) {
 		t.Error("Mismatch in stake")
 	}
@@ -1556,6 +1561,48 @@ func TestGetChallenge(t *testing.T) {
 	}
 	if !reflect.DeepEqual(modelChallenge.LastUpdatedDateTs(), challengeFromDB.LastUpdatedDateTs()) {
 		t.Error("Mismatch in ts")
+	}
+
+}
+
+func TestGetChallengesForListingAddress(t *testing.T) {
+	persister, err := setupTestTable(challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, challengeTestTableName)
+	_, _ = createAndSaveTestChallenge(t, persister, false)
+	_, _ = createAndSaveTestChallenge(t, persister, false)
+	_, _ = createAndSaveTestChallenge(t, persister, false)
+
+	challengesFromDB, err := persister.challengesByListingAddressInTable(
+		common.HexToAddress(testAddress),
+		challengeTestTableName,
+	)
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+
+	if len(challengesFromDB) == 0 {
+		t.Errorf("Should have gotten some results for address")
+	}
+	if len(challengesFromDB) != 3 {
+		t.Errorf("Should have gotten 3 results for address")
+	}
+
+	previousChallengeID := big.NewInt(-1)
+	for _, ch := range challengesFromDB {
+		if ch.ListingAddress().Hex() != testAddress {
+			t.Errorf("Should have gotten all challenges for a single address")
+		}
+		if ch.ChallengeID().Cmp(previousChallengeID) != 1 {
+			t.Errorf(
+				"Should have returned the list in order: %v, %v",
+				ch.ChallengeID(),
+				previousChallengeID,
+			)
+		}
+		previousChallengeID = ch.ChallengeID()
 	}
 }
 
