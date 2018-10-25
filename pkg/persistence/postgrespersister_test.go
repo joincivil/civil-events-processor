@@ -227,6 +227,56 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	return testListing, contractAddress
 }
 
+func setupSampleListingUnchallenged() (*model.Listing, common.Address) {
+	address1, _ := randomHex(32)
+	address2, _ := randomHex(32)
+	address3, _ := randomHex(32)
+	contractAddress := common.HexToAddress(address1)
+	ownerAddr := common.HexToAddress(address2)
+	ownerAddresses := []common.Address{common.HexToAddress(address2), common.HexToAddress(address3)}
+	contributorAddresses := ownerAddresses
+	appExpiry := big.NewInt(232424242)
+	unstakedDeposit := new(big.Int)
+	unstakedDeposit.SetString("100000000000000000000", 10)
+
+	signature, _ := randomHex(32)
+	authorAddr, _ := randomHex(32)
+
+	contentHashHex, _ := randomHex(32)
+	contentHashBytes := []byte(contentHashHex)
+	fixedContentHash := [32]byte{}
+	copy(fixedContentHash[:], contentHashBytes)
+
+	charter := model.NewCharter(&model.CharterParams{
+		URI:         "/charter/uri",
+		ContentID:   big.NewInt(0),
+		RevisionID:  big.NewInt(30),
+		Signature:   []byte(signature),
+		Author:      common.HexToAddress(authorAddr),
+		ContentHash: fixedContentHash,
+		Timestamp:   big.NewInt(12345678),
+	})
+	testListingParams := &model.NewListingParams{
+		Name:                 "test_listing",
+		ContractAddress:      contractAddress,
+		Whitelisted:          false,
+		LastState:            model.GovernanceStateAppWhitelisted,
+		URL:                  "url_string",
+		Charter:              charter,
+		Owner:                ownerAddr,
+		OwnerAddresses:       ownerAddresses,
+		ContributorAddresses: contributorAddresses,
+		CreatedDateTs:        1257894000,
+		ApplicationDateTs:    1257894000,
+		ApprovalDateTs:       1257894000,
+		LastUpdatedDateTs:    1257894000,
+		AppExpiry:            appExpiry,
+		UnstakedDeposit:      unstakedDeposit,
+	}
+	testListing := model.NewListing(testListingParams)
+	return testListing, contractAddress
+}
+
 func setupSampleListings(numListings int) ([]*model.Listing, []common.Address) {
 	listings := make([]*model.Listing, numListings)
 	addresses := make([]common.Address, numListings)
@@ -598,6 +648,96 @@ func TestDeleteListing(t *testing.T) {
 	if numRows != 0 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRows)
 	}
+}
+
+func TestListingsByCriteria(t *testing.T) {
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+	// whitelisted modellisting with active challenge
+	modelListingWhitelistedActiveChallenge, _ := setupSampleListing()
+	// Create another modelListing that was rejected after challenge succeeded
+	modelListingRejected, _ := setupSampleListing()
+	modelListingRejected.SetWhitelisted(false)
+	modelListingRejected.SetChallengeID(big.NewInt(0))
+	// modelListing that is still in application phase, not whitelisted
+	modelListingApplicationPhase, _ := setupSampleListingUnchallenged()
+	appExpiry := big.NewInt(crawlerutils.CurrentEpochSecsInInt64() + 100)
+	modelListingApplicationPhase.SetAppExpiry(appExpiry)
+	// modellisting that is whitelisted, never had a challenge
+	modelListingWhitelisted, _ := setupSampleListingUnchallenged()
+	modelListingWhitelisted.SetWhitelisted(true)
+	// Create another modelListing where challenge failed
+	modelListingNoChallenge, _ := setupSampleListing()
+	modelListingNoChallenge.SetChallengeID(big.NewInt(0))
+
+	// save to test table
+	err = persister.createListingForTable(modelListingWhitelistedActiveChallenge, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(modelListingRejected, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(modelListingApplicationPhase, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(modelListingWhitelisted, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(modelListingNoChallenge, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	listingsFromDB, err := persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		RejectedOnly: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 1 {
+		t.Errorf("Only one listing should have been returned but there are %v", len(listingsFromDB))
+	}
+	if listingsFromDB[0].Whitelisted() {
+		t.Error("Listing should not be whitelisted.")
+	}
+	if !reflect.DeepEqual(listingsFromDB[0].ChallengeID(), big.NewInt(0)) {
+		t.Error("Listing should have challengeID = 0")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		ActiveChallenge: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 1 {
+		t.Errorf("One listing should have been returned but there are %v", len(listingsFromDB))
+	}
+	if listingsFromDB[0].ChallengeID().Int64() <= int64(0) {
+		t.Error("Listing should have challengeID > 0")
+	}
+	if !listingsFromDB[0].Whitelisted() {
+		t.Error("Listing should be currently whitelisted")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		CurrentApplication: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 1 {
+		t.Errorf("One listing should have been returned but there are %v", len(listingsFromDB))
+	}
+
 }
 
 /*

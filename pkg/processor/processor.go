@@ -41,6 +41,7 @@ const (
 	appealAppealGrantedFieldName               = "AppealGranted"
 
 	defaultCharterContentID = 0
+	resetChallengeID        = 0
 )
 
 type whitelistedStatus int
@@ -1019,8 +1020,7 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 		}
 		// On `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved` events, challenge ID goes back to 0
 		if govEventInSlice(govState, model.ResetChallengeIDEvents) {
-			challengeID := big.NewInt(0)
-			listing.SetChallengeID(challengeID)
+			listing.SetChallengeID(big.NewInt(resetChallengeID))
 			updatedFields = append(updatedFields, challengeIDDBModelName)
 		}
 		if govState == model.GovernanceStateChallengeFailed || govState == model.GovernanceStateSuccessfulChallengeOverturned {

@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	nilChallengeID          = int64(-1)
 	defaultListingTableName = "listing"
 )
 
@@ -94,7 +95,7 @@ type Listing struct {
 
 	UnstakedDeposit float64 `db:"unstaked_deposit"`
 
-	ChallengeID uint64 `db:"challenge_id"`
+	ChallengeID int64 `db:"challenge_id"`
 }
 
 // NewListing constructs a listing for DB from a model.Listing
@@ -106,7 +107,7 @@ func NewListing(listing *model.Listing) *Listing {
 
 	var appExpiry int64
 	var unstakedDeposit float64
-	var challengeID uint64
+	var challengeID int64
 	if listing.AppExpiry() != nil {
 		appExpiry = listing.AppExpiry().Int64()
 	}
@@ -115,7 +116,9 @@ func NewListing(listing *model.Listing) *Listing {
 		unstakedDeposit, _ = f.Float64()
 	}
 	if listing.ChallengeID() != nil {
-		challengeID = listing.ChallengeID().Uint64()
+		challengeID = listing.ChallengeID().Int64()
+	} else {
+		challengeID = nilChallengeID
 	}
 
 	charter := crawlerpg.JsonbPayload(listing.Charter().AsMap())
@@ -151,8 +154,7 @@ func (l *Listing) DbToListingData() *model.Listing {
 	unstakedDeposit := new(big.Int)
 	unstakedDeposit.SetString(strconv.FormatFloat(l.UnstakedDeposit, 'f', -1, 64), 10)
 
-	challengeID := big.NewInt(0)
-	challengeID.SetUint64(l.ChallengeID)
+	challengeID := big.NewInt(l.ChallengeID)
 
 	charter := &model.Charter{}
 	err := charter.FromMap(l.Charter)
