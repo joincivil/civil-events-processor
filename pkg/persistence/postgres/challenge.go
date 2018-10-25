@@ -42,11 +42,10 @@ func ChallengeTableIndices() string {
 
 // CreateChallengeTableIndicesString returns the query to create indices this table
 func CreateChallengeTableIndicesString(tableName string) string {
-	// queryString := fmt.Sprintf(`
-	// 	CREATE INDEX IF NOT EXISTS challenge_addr_idx ON %s (listing_address);
-	// `, tableName)
-	// return queryString
-	return ""
+	queryString := fmt.Sprintf(`
+		CREATE INDEX IF NOT EXISTS challenge_addr_idx ON %s (listing_address);
+	`, tableName)
+	return queryString
 }
 
 // Challenge is postgres definition of model.Challenge

@@ -324,11 +324,11 @@ func (p *PostgresPersister) CreateIndices() error {
 	if err != nil {
 		return fmt.Errorf("Error creating listing table indices in postgres: %v", err)
 	}
-	// indexQuery = postgres.ChallengeTableIndices()
-	// _, err = p.db.Exec(indexQuery)
-	// if err != nil {
-	// 	return fmt.Errorf("Error creating challenge table indices in postgres: %v", err)
-	// }
+	indexQuery = postgres.ChallengeTableIndices()
+	_, err = p.db.Exec(indexQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating challenge table indices in postgres: %v", err)
+	}
 	// indexQuery = postgres.PollTableIndices()
 	// _, err = p.db.Exec(indexQuery)
 	// if err != nil {
