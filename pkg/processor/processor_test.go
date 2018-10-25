@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
+	"reflect"
 	"testing"
 
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
@@ -13,7 +14,6 @@ import (
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	"github.com/joincivil/civil-events-crawler/pkg/utils"
 
-	// "fmt"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 )
@@ -560,6 +560,9 @@ func TestEventProcessor(t *testing.T) {
 	}
 	if len(listing.OwnerAddresses()) <= 0 {
 		t.Errorf("Should have at least one owner address")
+	}
+	if !reflect.DeepEqual(listing.UnstakedDeposit(), big.NewInt(1000)) {
+		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
 	}
 }
 
