@@ -372,7 +372,20 @@ func (p *PostgresPersister) updateDBQueryBuffer(updatedFields []string, tableNam
 func (p *PostgresPersister) listingsByCriteriaFromTable(criteria *model.ListingCriteria,
 	tableName string) ([]*model.Listing, error) {
 	dbListings := []postgres.Listing{}
-	queryString := p.listingsByCriteriaQuery(criteria, tableName)
+	var queryString string
+	if criteria.ChallengesUnionApplications {
+		activeChallengeCriteria := &model.ListingCriteria{
+			ActiveChallenge: true,
+		}
+		challengeQueryString := p.listingsByCriteriaQuery(activeChallengeCriteria, tableName)
+		currentApplicationCriteria := &model.ListingCriteria{
+			CurrentApplication: true,
+		}
+		applicationQueryString := p.listingsByCriteriaQuery(currentApplicationCriteria, tableName)
+		queryString = fmt.Sprintf("%s UNION %s", challengeQueryString, applicationQueryString)
+	} else {
+		queryString = p.listingsByCriteriaQuery(criteria, tableName)
+	}
 	nstmt, err := p.db.PrepareNamed(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("Error preparing query with sqlx: %v", err)

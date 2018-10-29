@@ -738,6 +738,15 @@ func TestListingsByCriteria(t *testing.T) {
 		t.Errorf("One listing should have been returned but there are %v", len(listingsFromDB))
 	}
 
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		ChallengesUnionApplications: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 2 {
+		t.Errorf("Two listings should have been returned but there are %v", len(listingsFromDB))
+	}
 }
 
 /*
