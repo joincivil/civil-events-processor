@@ -739,7 +739,8 @@ func TestListingsByCriteria(t *testing.T) {
 	}
 
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
-		ChallengesUnionApplications: true,
+		ActiveChallenge:    true,
+		CurrentApplication: true,
 	}, tableName)
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
