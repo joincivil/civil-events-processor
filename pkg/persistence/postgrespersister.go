@@ -799,7 +799,9 @@ func (p *PostgresPersister) governanceEventsByTxHashQuery(txHash common.Hash, ta
 	queryString := fmt.Sprintf( // nolint: gosec
 		"SELECT %s FROM %s WHERE block_data @> '{\"txHash\": \"%s\" }'",
 		fieldNames,
-		tableName, txHash.Hex())
+		tableName,
+		txHash.Hex(),
+	)
 	return queryString
 }
 
@@ -820,7 +822,10 @@ func (p *PostgresPersister) govEventsByChallengeIDQuery(tableName string, challe
 	ids := idbuf.String()
 	queryString := fmt.Sprintf( // nolint: gosec
 		"SELECT %s FROM %s WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN (%s);",
-		fieldNames, tableName, ids)
+		fieldNames,
+		tableName,
+		ids,
+	)
 	return queryString
 }
 
