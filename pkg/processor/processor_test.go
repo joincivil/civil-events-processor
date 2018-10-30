@@ -2,7 +2,7 @@ package processor_test
 
 import (
 	"encoding/json"
-	// "fmt"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
@@ -1384,7 +1384,6 @@ func TestEventProcessorChallengeUpdate(t *testing.T) {
 			Removed:     false,
 		},
 	}
-
 	event4, _ := crawlermodel.NewEventFromContractEvent(
 		"_ApplicationRemoved",
 		"CivilTCRContract",
@@ -1402,6 +1401,10 @@ func TestEventProcessorChallengeUpdate(t *testing.T) {
 	listing = persister.listings[contracts.NewsroomAddr.Hex()]
 	if listing.ChallengeID().Int64() != 0 {
 		t.Errorf("Challenge ID should have been reset to 0 but it is %v", listing.ChallengeID())
+	}
+
+	if listing.AppExpiry().Int64() != 0 {
+		t.Errorf("AppExpiry should have been reset to 0 but it is %v", listing.AppExpiry())
 	}
 
 	// new challenge, then test another reset event

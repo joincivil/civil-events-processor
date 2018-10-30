@@ -42,6 +42,7 @@ const (
 
 	defaultCharterContentID = 0
 	resetChallengeID        = 0
+	resetAppExpiry          = 0
 )
 
 type whitelistedStatus int
@@ -1069,6 +1070,11 @@ func (e *EventProcessor) updateListingWithGovernanceStateData(event *crawlermode
 		// events, challenge ID goes back to 0
 		listing.SetChallengeID(big.NewInt(resetChallengeID))
 		updatedFields = append(updatedFields, challengeIDDBModelName)
+		// Reset appExpiry for `_ListingRemoved`, `_ApplicationRemoved`
+		if govState != model.GovernanceStateAppWhitelisted {
+			listing.SetAppExpiry(big.NewInt(resetAppExpiry))
+			updatedFields = append(updatedFields, appExpiryDBModelName)
+		}
 	}
 
 	if err != nil {
