@@ -492,9 +492,10 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 	} else if criteria.CurrentApplication {
 		p.addWhereAnd(queryBuf)
 		currentTime := crawlerutils.CurrentEpochSecsInInt64()
-		queryBuf.WriteString( // nolint: gosec
-			fmt.Sprintf(" app_expiry > %v AND whitelisted = false AND challenge_id <= 0", // nolint: gosec
-				currentTime))
+		queryBuf.WriteString(fmt.Sprintf( // nolint: gosec
+			" app_expiry > %v AND whitelisted = false AND challenge_id <= 0",
+			currentTime,
+		))
 	}
 	if criteria.CreatedBeforeTs > 0 {
 		p.addWhereAnd(queryBuf)
@@ -797,7 +798,9 @@ func (p *PostgresPersister) governanceEventsByTxHashQuery(txHash common.Hash, ta
 	queryString := fmt.Sprintf( // nolint: gosec
 		"SELECT %s FROM %s WHERE block_data @> '{\"txHash\": \"%s\" }'",
 		fieldNames,
-		tableName, txHash.Hex())
+		tableName,
+		txHash.Hex(),
+	)
 	return queryString
 }
 
@@ -818,7 +821,10 @@ func (p *PostgresPersister) govEventsByChallengeIDQuery(tableName string, challe
 	ids := idbuf.String()
 	queryString := fmt.Sprintf( // nolint: gosec
 		"SELECT %s FROM %s WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN (%s);",
-		fieldNames, tableName, ids)
+		fieldNames,
+		tableName,
+		ids,
+	)
 	return queryString
 }
 

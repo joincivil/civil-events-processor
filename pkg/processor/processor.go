@@ -951,26 +951,20 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 	if err != nil {
 		return err
 	}
+
 	listing, err := e.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
+
 	tcrAddress := event.ContractAddress()
-	wlisting := false
-	if listing != nil {
-		wlisting = listing.Whitelisted()
-	}
-	if whitelisted == whitelistedTrue {
-		wlisting = true
-	} else if whitelisted == whitelistedFalse {
-		wlisting = false
-	} else if whitelisted == whitelistedFlip {
-		wlisting = !wlisting
-	}
+	wlisting := e.determineWhitelisted(listing, whitelisted)
+
 	if listing == nil {
 		if approvalDate == approvalDateNoUpdate {
 			approvalDate = approvalDateEmptyValue
 		}
+		// Save new listing
 		err = e.persistNewListing(
 			listingAddress,
 			wlisting,
@@ -979,69 +973,171 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 			event.Timestamp(),
 			approvalDate,
 		)
-	} else {
-		// All TCR events that update listing
-		var updatedFields []string
-		listing.SetLastGovernanceState(govState)
-		updatedFields = append(updatedFields, govStateDBModelName)
-		if whitelisted != whitelistedNoChange {
-			listing.SetWhitelisted(wlisting)
-			updatedFields = append(updatedFields, whitelistedDBModelName)
-		}
-		if approvalDate != approvalDateNoUpdate {
-			listing.SetApprovalDateTs(approvalDate)
-			updatedFields = append(updatedFields, approvalDateDBModelName)
-		}
-		if govState == model.GovernanceStateApplied {
-			appExpiry := event.EventPayload()["AppEndDate"].(*big.Int)
-			unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
-			listing.SetAppExpiry(appExpiry)
-			listing.SetUnstakedDeposit(unstakedDeposit)
-			updatedFields = append(updatedFields, appExpiryDBModelName, unstakedDepositDBModelName)
-		}
-		if govState == model.GovernanceStateDeposit || govState == model.GovernanceStateDepositWithdrawl {
-			deposit := event.EventPayload()["NewTotal"].(*big.Int)
-			listing.SetUnstakedDeposit(deposit)
-			updatedFields = append(updatedFields, unstakedDepositDBModelName)
-		}
-		if govState == model.GovernanceStateChallenged {
-			challengeID := event.EventPayload()["ChallengeID"].(*big.Int)
-			listing.SetChallengeID(challengeID)
-			tcrContract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
-			if tcrErr != nil {
-				return fmt.Errorf("Error creating TCR contract: err: %v", err)
-			}
-			listings, listingErr := tcrContract.Listings(&bind.CallOpts{}, listingAddress)
-			if listingErr != nil {
-				return fmt.Errorf("Error calling listings function from TCR Contract: %v", err)
-			}
-			listing.SetUnstakedDeposit(listings.UnstakedDeposit)
-			updatedFields = append(updatedFields, challengeIDDBModelName, unstakedDepositDBModelName)
-		}
-		// On `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved` events, challenge ID goes back to 0
-		if govEventInSlice(govState, model.ResetChallengeIDEvents) {
-			listing.SetChallengeID(big.NewInt(resetChallengeID))
-			updatedFields = append(updatedFields, challengeIDDBModelName)
-		}
-		if govState == model.GovernanceStateChallengeFailed || govState == model.GovernanceStateSuccessfulChallengeOverturned {
-			challengeID := event.EventPayload()["ChallengeID"].(*big.Int)
-			tcrContract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
-			if tcrErr != nil {
-				return fmt.Errorf("Error creating TCR contract: err: %v", err)
-			}
-			reward, rewardErr := tcrContract.DetermineReward(&bind.CallOpts{}, challengeID)
-			if rewardErr != nil {
-				return fmt.Errorf("Error getting reward: err: %v", err)
-			}
-			total := big.NewInt(0)
-			total = total.Add(listing.UnstakedDeposit(), reward)
-			listing.SetUnstakedDeposit(total)
-			updatedFields = append(updatedFields, unstakedDepositDBModelName)
+		if err != nil {
+			return err
 		}
 
-		err = e.listingPersister.UpdateListing(listing, updatedFields)
+		// Retrieve the newly saved listing
+		listing, err = e.listingPersister.ListingByAddress(listingAddress)
+		if err != nil {
+			return err
+		}
+		if listing == nil {
+			return fmt.Errorf("Listing should have been persisted for retrieval")
+		}
 	}
-	return err
+
+	var updatedFields []string
+
+	// Set the last governance state
+	listing.SetLastGovernanceState(govState)
+	updatedFields = append(updatedFields, govStateDBModelName)
+
+	// Update if the listing is whitelisted if needed
+	if whitelisted != whitelistedNoChange {
+		listing.SetWhitelisted(wlisting)
+		updatedFields = append(updatedFields, whitelistedDBModelName)
+	}
+
+	// Update approval date for the listing if needed
+	if approvalDate != approvalDateNoUpdate {
+		listing.SetApprovalDateTs(approvalDate)
+		updatedFields = append(updatedFields, approvalDateDBModelName)
+	}
+
+	// Update listing with any data associated with the governance event
+	listing, updatedFields, err = e.updateListingWithGovernanceStateData(
+		event,
+		listing,
+		updatedFields,
+		govState,
+		whitelisted,
+		tcrAddress,
+		listingAddress,
+	)
+	if err != nil {
+		return err
+	}
+
+	return e.listingPersister.UpdateListing(listing, updatedFields)
+}
+
+func (e *EventProcessor) determineWhitelisted(listing *model.Listing,
+	whitelisted whitelistedStatus) bool {
+	wlisting := false
+	if listing != nil {
+		wlisting = listing.Whitelisted()
+	}
+
+	if whitelisted == whitelistedTrue {
+		wlisting = true
+	} else if whitelisted == whitelistedFalse {
+		wlisting = false
+	} else if whitelisted == whitelistedFlip {
+		wlisting = !wlisting
+	}
+	return wlisting
+}
+
+func (e *EventProcessor) updateListingWithGovernanceStateData(event *crawlermodel.Event,
+	listing *model.Listing, updatedFields []string, govState model.GovernanceState,
+	whitelisted whitelistedStatus, tcrAddress common.Address,
+	listingAddress common.Address) (*model.Listing, []string, error) {
+
+	var err error
+
+	if govState == model.GovernanceStateApplied {
+		listing, updatedFields, err = e.updateListingWithApplicationData(
+			event, listing, updatedFields)
+
+	} else if govState == model.GovernanceStateDeposit ||
+		govState == model.GovernanceStateDepositWithdrawl {
+		listing, updatedFields, err = e.updateListingWithDepositData(
+			event, listing, updatedFields)
+
+	} else if govState == model.GovernanceStateChallenged {
+		listing, updatedFields, err = e.updateListingWithChallengeData(
+			event, listing, updatedFields, tcrAddress, listingAddress)
+
+	} else if govState == model.GovernanceStateChallengeFailed ||
+		govState == model.GovernanceStateSuccessfulChallengeOverturned {
+		listing, updatedFields, err = e.updateListingWithChallengeFailedOverturnedData(
+			event, listing, updatedFields, tcrAddress, listingAddress)
+
+	} else if govEventInSlice(govState, model.ResetChallengeIDEvents) {
+		// On `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved`
+		// events, challenge ID goes back to 0
+		listing.SetChallengeID(big.NewInt(resetChallengeID))
+		updatedFields = append(updatedFields, challengeIDDBModelName)
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return listing, updatedFields, nil
+}
+
+func (e *EventProcessor) updateListingWithApplicationData(event *crawlermodel.Event,
+	listing *model.Listing, updatedFields []string) (*model.Listing, []string, error) {
+	appExpiry := event.EventPayload()["AppEndDate"].(*big.Int)
+	unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
+
+	listing.SetAppExpiry(appExpiry)
+	listing.SetUnstakedDeposit(unstakedDeposit)
+	updatedFields = append(updatedFields, appExpiryDBModelName, unstakedDepositDBModelName)
+	return listing, updatedFields, nil
+}
+
+func (e *EventProcessor) updateListingWithDepositData(event *crawlermodel.Event,
+	listing *model.Listing, updatedFields []string) (*model.Listing, []string, error) {
+	deposit := event.EventPayload()["NewTotal"].(*big.Int)
+	listing.SetUnstakedDeposit(deposit)
+	updatedFields = append(updatedFields, unstakedDepositDBModelName)
+	return listing, updatedFields, nil
+}
+
+func (e *EventProcessor) updateListingWithChallengeData(event *crawlermodel.Event,
+	listing *model.Listing, updatedFields []string, tcrAddress common.Address,
+	listingAddress common.Address) (*model.Listing, []string, error) {
+	challengeID := event.EventPayload()["ChallengeID"].(*big.Int)
+	listing.SetChallengeID(challengeID)
+
+	tcrContract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
+	if tcrErr != nil {
+		return nil, nil, fmt.Errorf("Error creating TCR contract: err: %v", tcrErr)
+	}
+
+	listings, listingErr := tcrContract.Listings(&bind.CallOpts{}, listingAddress)
+	if listingErr != nil {
+		return nil, nil, fmt.Errorf("Error calling listings function from TCR Contract: %v", listingErr)
+	}
+
+	listing.SetUnstakedDeposit(listings.UnstakedDeposit)
+	updatedFields = append(updatedFields, challengeIDDBModelName, unstakedDepositDBModelName)
+	return listing, updatedFields, nil
+}
+
+func (e *EventProcessor) updateListingWithChallengeFailedOverturnedData(event *crawlermodel.Event,
+	listing *model.Listing, updatedFields []string, tcrAddress common.Address,
+	listingAddress common.Address) (*model.Listing, []string, error) {
+	challengeID := event.EventPayload()["ChallengeID"].(*big.Int)
+
+	tcrContract, tcrErr := contract.NewCivilTCRContract(tcrAddress, e.client)
+	if tcrErr != nil {
+		return nil, nil, fmt.Errorf("Error creating TCR contract: err: %v", tcrErr)
+	}
+
+	reward, rewardErr := tcrContract.DetermineReward(&bind.CallOpts{}, challengeID)
+	if rewardErr != nil {
+		return nil, nil, fmt.Errorf("Error getting reward: err: %v", rewardErr)
+	}
+
+	total := big.NewInt(0)
+	total = total.Add(listing.UnstakedDeposit(), reward)
+	listing.SetUnstakedDeposit(total)
+	updatedFields = append(updatedFields, unstakedDepositDBModelName)
+	return listing, updatedFields, nil
 }
 
 func govEventInSlice(govState model.GovernanceState, listGovState []model.GovernanceState) bool {
