@@ -663,6 +663,7 @@ func TestListingsByCriteria(t *testing.T) {
 	modelListingRejected, _ := setupSampleListing()
 	modelListingRejected.SetWhitelisted(false)
 	modelListingRejected.SetChallengeID(big.NewInt(0))
+	modelListingRejected.SetAppExpiry(big.NewInt(0))
 	// modelListing that is still in application phase, not whitelisted
 	modelListingApplicationPhase, _ := setupSampleListingUnchallenged()
 	appExpiry := big.NewInt(crawlerutils.CurrentEpochSecsInInt64() + 100)
@@ -743,7 +744,7 @@ func TestListingsByCriteria(t *testing.T) {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
 	if len(listingsFromDB) != 2 {
-		t.Errorf("One listing should have been returned but there are %v", len(listingsFromDB))
+		t.Errorf("Two listings should have been returned but there are %v", len(listingsFromDB))
 	}
 
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{

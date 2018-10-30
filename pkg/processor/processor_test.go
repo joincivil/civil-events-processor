@@ -2,7 +2,7 @@ package processor_test
 
 import (
 	"encoding/json"
-	"fmt"
+	// "fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"

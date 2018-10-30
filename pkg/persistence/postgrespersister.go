@@ -481,22 +481,15 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 		queryBuf.WriteString(" whitelisted = false AND challenge_id = 0") // nolint: gosec
 	} else if criteria.ActiveChallenge && criteria.CurrentApplication {
 		p.addWhereAnd(queryBuf)
-		currentTime := crawlerutils.CurrentEpochSecsInInt64()
-		queryBuf.WriteString(" (challenge_id > 0) OR ") // nolint: gosec
-		queryBuf.WriteString(                           // nolint: gosec
-			fmt.Sprintf(
-				" ((app_expiry > %v AND whitelisted = false AND challenge_id <= 0) OR (whitelisted = false AND challenge_id < 0))", // nolint: gosec
-				currentTime))
+		queryBuf.WriteString( // nolint: gosec
+			" (challenge_id > 0) OR (app_expiry > 0 AND whitelisted = false AND challenge_id <= 0)") // nolint: gosec
+
 	} else if criteria.ActiveChallenge {
 		p.addWhereAnd(queryBuf)
 		queryBuf.WriteString(" challenge_id > 0") // nolint: gosec
 	} else if criteria.CurrentApplication {
 		p.addWhereAnd(queryBuf)
-		currentTime := crawlerutils.CurrentEpochSecsInInt64()
-		queryBuf.WriteString( // nolint: gosec
-			fmt.Sprintf(
-				" (app_expiry > %v AND whitelisted = false AND challenge_id <= 0) OR (whitelisted = false AND challenge_id < 0)", // nolint: gosec
-				currentTime))
+		queryBuf.WriteString(" app_expiry > 0 AND whitelisted = false AND challenge_id <= 0") // nolint: gosec
 	}
 	if criteria.CreatedBeforeTs > 0 {
 		p.addWhereAnd(queryBuf)
