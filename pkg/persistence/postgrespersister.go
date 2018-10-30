@@ -479,6 +479,13 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 	} else if criteria.RejectedOnly {
 		p.addWhereAnd(queryBuf)
 		queryBuf.WriteString(" whitelisted = false AND challenge_id = 0") // nolint: gosec
+	} else if criteria.ActiveChallenge && criteria.CurrentApplication {
+		p.addWhereAnd(queryBuf)
+		currentTime := crawlerutils.CurrentEpochSecsInInt64()
+		queryBuf.WriteString(" (challenge_id > 0) OR ") // nolint: gosec
+		queryBuf.WriteString(                           // nolint: gosec
+			fmt.Sprintf(" (app_expiry > %v AND whitelisted = false AND challenge_id <= 0)", // nolint: gosec
+				currentTime))
 	} else if criteria.ActiveChallenge {
 		p.addWhereAnd(queryBuf)
 		queryBuf.WriteString(" challenge_id > 0") // nolint: gosec
@@ -789,7 +796,8 @@ func (p *PostgresPersister) scanGovEvents(rows *sqlx.Rows) ([]*model.GovernanceE
 func (p *PostgresPersister) governanceEventsByTxHashQuery(txHash common.Hash, tableName string) string {
 	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
 	queryString := fmt.Sprintf( // nolint: gosec
-		"SELECT %s FROM %s WHERE block_data @> '{\"txHash\": \"%s\" }'", fieldNames,
+		"SELECT %s FROM %s WHERE block_data @> '{\"txHash\": \"%s\" }'",
+		fieldNames,
 		tableName,
 		txHash.Hex(),
 	)
