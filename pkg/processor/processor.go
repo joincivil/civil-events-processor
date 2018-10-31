@@ -1065,11 +1065,10 @@ func (e *EventProcessor) updateListingWithGovernanceStateData(event *crawlermode
 		listing, updatedFields, err = e.updateListingWithChallengeFailedOverturnedData(
 			event, listing, updatedFields, tcrAddress, listingAddress)
 
-	} else if govEventInSlice(govState, model.UpdateListingStatusEvents) {
+	} else if govEventInSlice(govState, model.ResetListingFieldsEvents) {
 		// TODO(IS): Make sure you are updating all fields you should be here.
+		// Reset challengeID on `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved`
 		if govEventInSlice(govState, model.ResetChallengeIDEvents) {
-			// On `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved`
-			// events, challenge ID goes back to 0
 			listing.SetChallengeID(big.NewInt(resetChallengeID))
 			updatedFields = append(updatedFields, challengeIDDBModelName)
 		}
