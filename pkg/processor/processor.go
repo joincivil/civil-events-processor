@@ -146,7 +146,7 @@ func (e *EventProcessor) isValidCivilTCRContractEventName(name string) bool {
 
 func (e *EventProcessor) isValidPLCRContractEventName(name string) bool {
 	name = strings.Trim(name, " _")
-	eventNames := commongen.EventTypesPLCRVotingContract()
+	eventNames := commongen.EventTypesCivilPLCRVotingContract()
 	return isStringInSlice(eventNames, name)
 }
 
@@ -554,7 +554,7 @@ func (e *EventProcessor) updateListingCharterRevision(revision *model.ContentRev
 	}
 
 	if revision.ContractRevisionID().Cmp(listing.Charter().RevisionID()) == 0 {
-		return fmt.Errorf("No updating listing, revision ids are the same")
+		return fmt.Errorf("Not updating listing charter, revision ids are the same")
 	}
 
 	newsroom, newsErr := contract.NewNewsroomContract(revision.ListingAddress(), e.client)
