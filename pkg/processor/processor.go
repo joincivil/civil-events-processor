@@ -1065,18 +1065,20 @@ func (e *EventProcessor) updateListingWithGovernanceStateData(event *crawlermode
 		listing, updatedFields, err = e.updateListingWithChallengeFailedOverturnedData(
 			event, listing, updatedFields, tcrAddress, listingAddress)
 
-	} else if govEventInSlice(govState, model.ResetChallengeIDEvents) {
-		// On `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved`
-		// events, challenge ID goes back to 0
-		listing.SetChallengeID(big.NewInt(resetChallengeID))
-		updatedFields = append(updatedFields, challengeIDDBModelName)
+	} else if govEventInSlice(govState, model.UpdateListingStatusEvents) {
+		// TODO(IS): Make sure you are updating all fields you should be here.
+		if govEventInSlice(govState, model.ResetChallengeIDEvents) {
+			// On `_ApplicationWhitelisted`, `_ListingRemoved`, `_ApplicationRemoved`
+			// events, challenge ID goes back to 0
+			listing.SetChallengeID(big.NewInt(resetChallengeID))
+			updatedFields = append(updatedFields, challengeIDDBModelName)
+		}
 		// Reset appExpiry for `_ListingRemoved`, `_ApplicationRemoved`
-		if govState != model.GovernanceStateAppWhitelisted {
+		if govEventInSlice(govState, model.ResetAppExpiryEvents) {
 			listing.SetAppExpiry(big.NewInt(resetAppExpiry))
 			updatedFields = append(updatedFields, appExpiryDBModelName)
 		}
 	}
-
 	if err != nil {
 		return nil, nil, err
 	}

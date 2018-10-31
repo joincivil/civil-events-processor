@@ -8,9 +8,23 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// UpdateListingStatusEvents is the list of governance events emitted that modify the Listing status
+// when UpdateStatus() is called
+var UpdateListingStatusEvents = []GovernanceState{
+	GovernanceStateAppWhitelisted,
+	GovernanceStateRemoved,
+	GovernanceStateAppRemoved,
+}
+
 // ResetChallengeIDEvents is the list of governance events that reset challengeID to 0
 var ResetChallengeIDEvents = []GovernanceState{
 	GovernanceStateAppWhitelisted,
+	GovernanceStateRemoved,
+	GovernanceStateAppRemoved,
+}
+
+// ResetAppExpiryEvents is the list of governance events that reset appExpiry to 0
+var ResetAppExpiryEvents = []GovernanceState{
 	GovernanceStateRemoved,
 	GovernanceStateAppRemoved,
 }
