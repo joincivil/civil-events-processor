@@ -663,6 +663,7 @@ func TestListingsByCriteria(t *testing.T) {
 	modelListingRejected, _ := setupSampleListing()
 	modelListingRejected.SetWhitelisted(false)
 	modelListingRejected.SetChallengeID(big.NewInt(0))
+	modelListingRejected.SetAppExpiry(big.NewInt(0))
 	// modelListing that is still in application phase, not whitelisted
 	modelListingApplicationPhase, _ := setupSampleListingUnchallenged()
 	appExpiry := big.NewInt(crawlerutils.CurrentEpochSecsInInt64() + 100)
@@ -673,6 +674,10 @@ func TestListingsByCriteria(t *testing.T) {
 	// Create another modelListing where challenge failed
 	modelListingNoChallenge, _ := setupSampleListing()
 	modelListingNoChallenge.SetChallengeID(big.NewInt(0))
+	// modelListing that passed application phase but not challenged so ready to be whitelisted
+	modelListingPastApplicationPhase, _ := setupSampleListingUnchallenged()
+	appExpiry = big.NewInt(crawlerutils.CurrentEpochSecsInInt64() - 100)
+	modelListingPastApplicationPhase.SetAppExpiry(appExpiry)
 
 	// save to test table
 	err = persister.createListingForTable(modelListingWhitelistedActiveChallenge, tableName)
@@ -692,6 +697,10 @@ func TestListingsByCriteria(t *testing.T) {
 		t.Errorf("error saving listing: %v", err)
 	}
 	err = persister.createListingForTable(modelListingNoChallenge, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(modelListingPastApplicationPhase, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -734,8 +743,8 @@ func TestListingsByCriteria(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
-	if len(listingsFromDB) != 1 {
-		t.Errorf("One listing should have been returned but there are %v", len(listingsFromDB))
+	if len(listingsFromDB) != 2 {
+		t.Errorf("Two listings should have been returned but there are %v", len(listingsFromDB))
 	}
 
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
@@ -745,7 +754,7 @@ func TestListingsByCriteria(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
-	if len(listingsFromDB) != 2 {
+	if len(listingsFromDB) != 3 {
 		t.Errorf("Two listings should have been returned but there are %v", len(listingsFromDB))
 	}
 }
