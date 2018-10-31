@@ -109,6 +109,10 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	var err error
 	var ran bool
 	for _, event := range events {
+		if event == nil {
+			log.Errorf("Nil event found, should not be nil")
+			continue
+		}
 		ran, err = e.processNewsroomEvent(event)
 		if err != nil {
 			log.Errorf("Error processing newsroom event: err: %v\n", err)

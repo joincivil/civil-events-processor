@@ -63,14 +63,6 @@
   version = "v1.7.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:67d0b50be0549e610017cb91e0b0b745ec0cad7c613bc8e18ff2d1c1fc8825a7"
-  name = "github.com/edsrzf/mmap-go"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
-
-[[projects]]
   digest = "1:08af77c41dc6a9ab5dd123ce76356fa4068d57287c060cdc934e1131973dd037"
   name = "github.com/ethereum/go-ethereum"
   packages = [
@@ -78,30 +70,16 @@
     "accounts",
     "accounts/abi",
     "accounts/abi/bind",
-    "accounts/abi/bind/backends",
     "accounts/keystore",
     "common",
-    "common/bitutil",
     "common/hexutil",
     "common/math",
     "common/mclock",
     "common/prque",
-    "consensus",
-    "consensus/ethash",
-    "consensus/misc",
-    "core",
-    "core/bloombits",
-    "core/rawdb",
-    "core/state",
     "core/types",
-    "core/vm",
     "crypto",
-    "crypto/bn256",
-    "crypto/bn256/cloudflare",
-    "crypto/bn256/google",
     "crypto/secp256k1",
     "crypto/sha3",
-    "eth/filters",
     "ethclient",
     "ethdb",
     "event",
@@ -174,17 +152,6 @@
   version = "v2.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:cf296baa185baae04a9a7004efee8511d08e2f5f51d4cbe5375da89722d681db"
-  name = "github.com/hashicorp/golang-lru"
-  packages = [
-    ".",
-    "simplelru",
-  ]
-  pruneopts = "UT"
-  revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
-
-[[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
@@ -204,10 +171,9 @@
 
 [[projects]]
   branch = "png/2575/update-contracts-fix"
-  digest = "1:d5f7f74eefcc157fe2ff1dee47123cbcedc1a18f0c1fb84b231030ddc97262c2"
+  digest = "1:ac1a4a0059f8331e5d9ff105188d932a5b88bd92177a026aa403c219ad42660b"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
-    "pkg/contractutils",
     "pkg/generated/common",
     "pkg/generated/contract",
     "pkg/model",
@@ -374,11 +340,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:230a66be994ebe110710c86b4c475b9050f4872ef04937b290d9c9db20436005"
+  digest = "1:29672ea8ec3ef342d345f668d47666e45366b7691080ee4c07bf4851f4fa8864"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
-    "ripemd160",
     "scrypt",
   ]
   pruneopts = "UT"
@@ -429,12 +394,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d5805c7decaaed636ef300476ddc5df845d53ceefedd8b7f0167fd76b6eb2932"
+  digest = "1:d773e525476aefa22ea944a5425a9bfb99819b2e67eeb9b1966454fd57522bbf"
   name = "golang.org/x/sys"
-  packages = [
-    "cpu",
-    "unix",
-  ]
+  packages = ["unix"]
   pruneopts = "UT"
   revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
 
@@ -593,7 +555,6 @@
     "github.com/ethereum/go-ethereum/rlp",
     "github.com/golang/glog",
     "github.com/jmoiron/sqlx",
-    "github.com/joincivil/civil-events-crawler/pkg/contractutils",
     "github.com/joincivil/civil-events-crawler/pkg/generated/common",
     "github.com/joincivil/civil-events-crawler/pkg/generated/contract",
     "github.com/joincivil/civil-events-crawler/pkg/model",
