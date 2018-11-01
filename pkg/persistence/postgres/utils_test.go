@@ -37,10 +37,10 @@ func TestStringToCommonAddressesList(t *testing.T) {
 
 func TestDbFieldNameFromModelName(t *testing.T) {
 	listingNameMapping := map[string]string{
-		"Name":                 "name",
-		"ContractAddress":      "contract_address",
-		"Whitelisted":          "whitelisted",
-		"LastGovernanceState":  "last_governance_state",
+		"Name":                "name",
+		"ContractAddress":     "contract_address",
+		"Whitelisted":         "whitelisted",
+		"LastGovernanceState": "last_governance_state",
 		"URL":                  "url",
 		"Charter":              "charter",
 		"OwnerAddresses":       "owner_addresses",
