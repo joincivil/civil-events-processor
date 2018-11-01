@@ -266,7 +266,6 @@ func (e *EventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
 		// TODO(IS): create new poll
 		return fmt.Errorf("No poll with ID: %v", pollID)
 	}
-
 	poll.UpdateVotesFor(votesFor.(*big.Int))
 	poll.UpdateVotesAgainst(votesAgainst.(*big.Int))
 
