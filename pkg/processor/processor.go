@@ -591,8 +591,10 @@ func (e *EventProcessor) updateListingCharterRevision(revision *model.ContentRev
 
 func (e *EventProcessor) persistNewChallenge(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
-	// TODO(IS): Fill out statement
-	statement := ""
+	statement, ok := payload["Data"]
+	if !ok {
+		return errors.New("No data field found")
+	}
 	challengeID, ok := payload["ChallengeID"]
 	if !ok {
 		return errors.New("No challengeID found")
@@ -617,7 +619,7 @@ func (e *EventProcessor) persistNewChallenge(event *crawlermodel.Event) error {
 	challenge := model.NewChallenge(
 		challengeID.(*big.Int),
 		listingAddress.(common.Address),
-		statement,
+		statement.(string),
 		challengeRes.RewardPool,
 		challengeRes.Challenger,
 		challengeRes.Resolved,
@@ -636,6 +638,10 @@ func (e *EventProcessor) persistNewChallenge(event *crawlermodel.Event) error {
 func (e *EventProcessor) persistNewAppeal(event *crawlermodel.Event) error {
 	// This creates a new appeal to an existing challenge (not granted yet)
 	payload := event.EventPayload()
+	statement, ok := payload["Data"]
+	if !ok {
+		return errors.New("No data field found")
+	}
 	challengeID, ok := payload["ChallengeID"]
 	if !ok {
 		return errors.New("No challengeID found")
@@ -659,15 +665,13 @@ func (e *EventProcessor) persistNewAppeal(event *crawlermodel.Event) error {
 	}
 	appealPhaseExpiry := challengeRes.AppealPhaseExpiry
 	appealGranted := false
-	// TODO(IS): Fill out statement
-	statement := ""
 	appeal := model.NewAppeal(
 		challengeID.(*big.Int),
 		appealRequester.(common.Address),
 		appealFeePaid.(*big.Int),
 		appealPhaseExpiry,
 		appealGranted,
-		statement,
+		statement.(string),
 		crawlerutils.CurrentEpochSecsInInt64(),
 	)
 	err = e.appealPersister.CreateAppeal(appeal)
@@ -675,9 +679,11 @@ func (e *EventProcessor) persistNewAppeal(event *crawlermodel.Event) error {
 }
 
 func (e *EventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) error {
-	// NOTE(IS): Creates a new challenge for an appeal challenge
 	payload := event.EventPayload()
-	statement := ""
+	statement, ok := payload["Data"]
+	if !ok {
+		return errors.New("No data field found")
+	}
 	appealChallengeID, ok := payload["AppealChallengeID"]
 	if !ok {
 		return errors.New("No appealChallengeID found")
@@ -706,7 +712,7 @@ func (e *EventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) er
 	newAppealChallenge := model.NewChallenge(
 		appealChallengeID.(*big.Int),
 		listingAddress.(common.Address),
-		statement,
+		statement.(string),
 		challengeRes.RewardPool,
 		challengeRes.Challenger,
 		challengeRes.Resolved,
