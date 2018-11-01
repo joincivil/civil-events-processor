@@ -1584,6 +1584,74 @@ func TestGetChallenge(t *testing.T) {
 
 }
 
+func TestGetChallengesForListingAddresses(t *testing.T) {
+	persister, err := setupTestTable(challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, challengeTestTableName)
+
+	// Multiple for a single address
+	challenge1, _ := createAndSaveTestChallenge(t, persister, false)
+	_, _ = createAndSaveTestChallenge(t, persister, false)
+	_, _ = createAndSaveTestChallenge(t, persister, false)
+
+	// A few random challenges
+	challenge4, _ := createAndSaveTestChallenge(t, persister, true)
+	challenge5, _ := createAndSaveTestChallenge(t, persister, true)
+
+	addrs := []common.Address{
+		challenge1.ListingAddress(),
+		challenge4.ListingAddress(),
+		challenge5.ListingAddress(),
+	}
+
+	listingChallenges, err := persister.challengesByListingAddressesInTable(
+		addrs,
+		challengeTestTableName,
+	)
+	if err != nil {
+		t.Errorf("Error getting values from DB: %v", err)
+	}
+	if len(listingChallenges) == 0 {
+		t.Errorf("Should have gotten some results")
+	}
+	if len(listingChallenges) != 3 {
+		t.Errorf("Should have gotten 3 results")
+	}
+
+	for index, addr := range addrs {
+		addrChallenges := listingChallenges[index]
+		if addr.Hex() == challenge1.ListingAddress().Hex() {
+			if len(addrChallenges) != 3 {
+				t.Errorf("Should have gotten 3 challenges for %v", addr.Hex())
+			}
+			challenge := addrChallenges[0]
+			if challenge.ListingAddress().Hex() != challenge1.ListingAddress().Hex() {
+				t.Errorf("Should have matched addresses, might be out of order: addr %v", addr.Hex())
+			}
+		}
+		if addr.Hex() == challenge4.ListingAddress().Hex() {
+			if len(addrChallenges) != 1 {
+				t.Errorf("Should have gotten 1 challenge for %v", addr.Hex())
+			}
+			challenge := addrChallenges[0]
+			if challenge.ListingAddress().Hex() != challenge4.ListingAddress().Hex() {
+				t.Errorf("Should have matched addresses, might be out of order: addr %v", addr.Hex())
+			}
+		}
+		if addr.Hex() == challenge5.ListingAddress().Hex() {
+			if len(addrChallenges) != 1 {
+				t.Errorf("Should have gotten 1 challenge for %v", addr.Hex())
+			}
+			challenge := addrChallenges[0]
+			if challenge.ListingAddress().Hex() != challenge5.ListingAddress().Hex() {
+				t.Errorf("Should have matched addresses, might be out of order: addr %v", addr.Hex())
+			}
+		}
+	}
+}
+
 func TestGetChallengesForListingAddress(t *testing.T) {
 	persister, err := setupTestTable(challengeTestTableName)
 	if err != nil {
