@@ -511,6 +511,7 @@ func TestListingByAddressesInOrder(t *testing.T) {
 			t.Errorf("Couldn't save listing to table: %v", err)
 		}
 	}
+
 	//retrieve listings
 	dbListings, err := persister.listingsByAddressesFromTableInOrder(modelListingAddresses, tableName)
 	if err != nil {
@@ -521,6 +522,30 @@ func TestListingByAddressesInOrder(t *testing.T) {
 		if modelListingAddress != listingAddress.Hex() {
 			t.Errorf("Order of addresses don't match up for index %v", i)
 		}
+	}
+
+	// Empty input results
+	dbListings, err = persister.listingsByAddressesFromTableInOrder([]common.Address{}, tableName)
+	if err == nil {
+		t.Errorf("Should have received an error on listing addresses")
+	}
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Should have received an ErrPersisterNoResults on empty listing addresses: err: %v", err)
+	}
+
+	// What happens with a non-existent listing address
+	dbListings, err = persister.listingsByAddressesFromTableInOrder(
+		[]common.Address{common.HexToAddress("0x39eD84CE90Bc48DD76C4760DD0F90997Ba274F9d")},
+		tableName,
+	)
+	if err != nil {
+		t.Errorf("Should have received an error on bad listing address")
+	}
+	if len(dbListings) != 1 {
+		t.Errorf("Should have received 1 item in the listings from DB")
+	}
+	if dbListings[0] != nil {
+		t.Errorf("Should have received a nil value for an unfound listing")
 	}
 
 }
@@ -1338,6 +1363,25 @@ func TestGovernanceEventByChallengeID(t *testing.T) {
 		}
 	}
 
+	govEvents, err = persister.govEventsByChallengeIDsFromTable([]int{}, tableName)
+	if err == nil {
+		t.Errorf("Should have received an error on empty challenges ID")
+	}
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Should have received an ErrPersisterNoResults on empty challenges ID: err: %v", err)
+	}
+
+	govEvents, err = persister.govEventsByChallengeIDsFromTable([]int{2402042030}, tableName)
+	if err != nil {
+		t.Errorf("Should not have received an error on bad challenges IDs")
+	}
+	if len(govEvents) != 1 {
+		t.Errorf("Should have received gov events from DB")
+	}
+	if govEvents[0] != nil {
+		t.Errorf("Should have received a nil value for an unfound govevents")
+	}
+
 }
 
 func TestGovernanceEventByChallengeIDOrder(t *testing.T) {
@@ -1582,6 +1626,27 @@ func TestGetChallenge(t *testing.T) {
 		t.Error("Mismatch in ts")
 	}
 
+	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder(
+		[]int{}, challengeTestTableName)
+	if err == nil {
+		t.Errorf("Should have received an error on empty challenges ID")
+	}
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Should have received an ErrPersisterNoResults on empty challenges ID: err: %v", err)
+	}
+
+	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder(
+		[]int{1002040929}, challengeTestTableName)
+	if err != nil {
+		t.Errorf("Should have received an error on empty challenges ID")
+	}
+	if len(challengesFromDB) != 1 {
+		t.Errorf("Should have received 1 item in the challenges from DB")
+	}
+	if challengesFromDB[0] != nil {
+		t.Errorf("Should have received a nil value for an unfound challenge")
+	}
+
 }
 
 func TestGetChallengesForListingAddresses(t *testing.T) {
@@ -1650,6 +1715,32 @@ func TestGetChallengesForListingAddresses(t *testing.T) {
 			}
 		}
 	}
+
+	listingChallenges, err = persister.challengesByListingAddressesInTable(
+		[]common.Address{},
+		challengeTestTableName,
+	)
+	if err == nil {
+		t.Errorf("Should have received an error on empty addresses")
+	}
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Should have received an ErrPersisterNoResults on empty addresses: err: %v", err)
+	}
+
+	listingChallenges, err = persister.challengesByListingAddressesInTable(
+		[]common.Address{common.HexToAddress("0x39eD84CE90Bc48DD76C4760DD0F90997Ba274F9d")},
+		challengeTestTableName,
+	)
+	if err != nil {
+		t.Errorf("Should have received an error on bad address")
+	}
+	if len(listingChallenges) != 1 {
+		t.Errorf("Should have received 1 item in the challenges from DB")
+	}
+	if listingChallenges[0] != nil {
+		t.Errorf("Should have received a nil value for an unfound challenge")
+	}
+
 }
 
 func TestGetChallengesForListingAddress(t *testing.T) {
