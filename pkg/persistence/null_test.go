@@ -19,6 +19,15 @@ func testGovernanceEventPersister(p model.GovernanceEventPersister) {
 func testCronPersister(p model.CronPersister) {
 }
 
+func testPollPersister(p model.PollPersister) {
+}
+
+func testChallengePersister(p model.ChallengePersister) {
+}
+
+func testAppealPersister(p model.AppealPersister) {
+}
+
 func TestNullInterface(t *testing.T) {
 	p := &persistence.NullPersister{}
 
@@ -26,4 +35,7 @@ func TestNullInterface(t *testing.T) {
 	testContentRevisionPersister(p)
 	testGovernanceEventPersister(p)
 	testCronPersister(p)
+	testPollPersister(p)
+	testChallengePersister(p)
+	testAppealPersister(p)
 }
