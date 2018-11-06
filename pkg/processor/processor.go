@@ -263,7 +263,7 @@ func (e *EventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
 		return err
 	}
 	if poll == nil {
-		// TODO(IS): create new poll
+		// TODO(IS): Create new poll. Shouldn't be necessary if events are in order
 		return fmt.Errorf("No poll with ID: %v", pollID)
 	}
 	poll.UpdateVotesFor(votesFor.(*big.Int))
@@ -730,7 +730,7 @@ func (e *EventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) er
 		return err
 	}
 	if existingAppeal == nil {
-		// TODO(IS): create new appeal
+		// TODO(IS): Create new appeal. Shouldn't be necessary if events are in order
 		return fmt.Errorf("No existing appeal found in persistence for id %v", challengeID)
 	}
 
@@ -764,7 +764,7 @@ func (e *EventProcessor) processAppealGranted(event *crawlermodel.Event) error {
 		return err
 	}
 	if existingChallenge == nil {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		// TODO(IS): If no challenge returned, create new challenge. Shouldn't be necessary if events are in order
 		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
 	}
 
@@ -776,7 +776,7 @@ func (e *EventProcessor) processAppealGranted(event *crawlermodel.Event) error {
 		return err
 	}
 	if existingAppeal == nil {
-		// TODO(IS): create new appeal
+		// TODO(IS): Create new appeal. Shouldn't be necessary if events are in order
 		return fmt.Errorf("No existing appeal found in persistence for id %v", challengeID)
 	}
 	updatedFields := []string{appealAppealOpenToChallengeExpiryFieldName, appealAppealGrantedFieldName}
@@ -801,7 +801,7 @@ func (e *EventProcessor) processAppealWinner(event *crawlermodel.Event) error {
 		return err
 	}
 	if existingChallenge == nil {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		// TODO(IS): If no challenge returned, create new challenge. Shouldn't be necessary if events are in order
 		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
 	}
 	existingChallenge.SetResolved(resolved)
@@ -827,7 +827,7 @@ func (e *EventProcessor) processChallengeResolution(event *crawlermodel.Event) e
 		return err
 	}
 	if existingChallenge == nil {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
+		// TODO(IS): If no challenge returned, create new challenge. Shouldn't be necessary if events are in order
 		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
 	}
 	existingChallenge.SetResolved(resolved)
