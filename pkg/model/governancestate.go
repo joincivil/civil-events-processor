@@ -33,9 +33,6 @@ const (
 	GovernanceStateAppWhitelisted
 	// GovernanceStateRemoved is _ListingRemoved when a listing has been removed
 	GovernanceStateRemoved
-	// GovernanceStateWithdrawn is _ListingWithdrawn when a listing has been withdrawn before it
-	// has been whitelisted
-	GovernanceStateWithdrawn
 
 	// GovernanceStateAppealGranted is _AppealGranted when an appeal is granted by the CC
 	GovernanceStateAppealGranted
@@ -53,9 +50,12 @@ const (
 	GovernanceStateDeposit
 	// GovernanceStateDepositWithdrawl is _Withdrawal when the owner of a listing decreases their unstaked deposit
 	GovernanceStateDepositWithdrawl
+
+	// GovernanceStateRewardClaimed is _RewardClaimed when a voted claims their reward
+	GovernanceStateRewardClaimed
 )
 
-// Events unused for states
+// Events that are not actionable (Check out crawler doc for details)
 // "GovernmentTransfered"
-// "RewardClaimed"
 // "TouchAndRemoved"
+// "ListingWithdrawn"

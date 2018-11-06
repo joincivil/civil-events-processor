@@ -206,6 +206,30 @@ func (e *EventProcessor) processPLCRVotingEvent(event *crawlermodel.Event) (bool
 	return ran, err
 }
 
+func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, error) {
+	if !e.isValidCivilTCRContractEventName(event.EventType()) {
+		return false, nil
+	}
+
+	var err error
+	ran := true
+	eventName := strings.Trim(event.EventType(), " _")
+
+	ran, err = e.processCivilTCRApplicationListingEvent(event, eventName)
+	if !ran {
+		ran, err = e.processCivilTCRChallengeEvent(event, eventName)
+	}
+	if !ran {
+		ran, err = e.processCivilTCRAppealEvent(event, eventName)
+	}
+
+	govErr := e.persistGovernanceEvent(event)
+	if err != nil {
+		return ran, err
+	}
+	return ran, govErr
+}
+
 func (e *EventProcessor) persistNewPoll(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	voteQuorum, ok := payload["VoteQuorum"]
@@ -249,54 +273,36 @@ func (e *EventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
 	if !ok {
 		return errors.New("No pollID found")
 	}
-	votesFor, ok := payload["VotesFor"]
+	choice, ok := payload["Choice"]
 	if !ok {
-		return errors.New("No votesFor found")
+		return errors.New("No choice found")
 	}
-	votesAgainst, ok := payload["VotesAgainst"]
-	if !ok {
-		return errors.New("No votesAgainst found")
-	}
-
 	poll, err := e.pollPersister.PollByPollID(int(pollID.(*big.Int).Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	if poll == nil {
-		// TODO(IS): create new poll
+		// TODO(IS): create new poll. If getting events in order, this shouldn't happen.
 		return fmt.Errorf("No poll with ID: %v", pollID)
 	}
-	poll.UpdateVotesFor(votesFor.(*big.Int))
-	poll.UpdateVotesAgainst(votesAgainst.(*big.Int))
-
-	updatedFields := []string{pollVotesForFieldName, pollVotesAgainstFieldName}
+	if choice == 1 {
+		votesFor, ok := payload["VotesFor"]
+		if !ok {
+			return errors.New("No votesFor found")
+		}
+		poll.UpdateVotesFor(votesFor.(*big.Int))
+		updatedFields := []string{pollVotesForFieldName}
+	} else {
+		votesAgainst, ok := payload["VotesAgainst"]
+		if !ok {
+			return errors.New("No votesAgainst found")
+		}
+		poll.UpdateVotesAgainst(votesAgainst.(*big.Int))
+		updatedFields := []string{pollVotesAgainstFieldName}
+	}
 
 	err = e.pollPersister.UpdatePoll(poll, updatedFields)
 	return err
-}
-
-func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, error) {
-	if !e.isValidCivilTCRContractEventName(event.EventType()) {
-		return false, nil
-	}
-
-	var err error
-	ran := true
-	eventName := strings.Trim(event.EventType(), " _")
-
-	ran, err = e.processCivilTCRApplicationListingEvent(event, eventName)
-	if !ran {
-		ran, err = e.processCivilTCRChallengeEvent(event, eventName)
-	}
-	if !ran {
-		ran, err = e.processCivilTCRAppealEvent(event, eventName)
-	}
-
-	govErr := e.persistGovernanceEvent(event)
-	if err != nil {
-		return ran, err
-	}
-	return ran, govErr
 }
 
 func (e *EventProcessor) processCivilTCRChallengeEvent(event *crawlermodel.Event,
@@ -890,7 +896,6 @@ func (e *EventProcessor) processTCRChallengeSuccessfulOverturned(event *crawlerm
 }
 
 func (e *EventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Event) error {
-	// Set the approval date to the event timestamp
 	return e.processTCREvent(event, model.GovernanceStateAppWhitelisted, whitelistedTrue,
 		event.Timestamp())
 }
@@ -902,11 +907,6 @@ func (e *EventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event)
 
 func (e *EventProcessor) processTCRListingRemoved(event *crawlermodel.Event) error {
 	return e.processTCREvent(event, model.GovernanceStateRemoved, whitelistedFalse,
-		approvalDateEmptyValue)
-}
-
-func (e *EventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event) error {
-	return e.processTCREvent(event, model.GovernanceStateWithdrawn, whitelistedFalse,
 		approvalDateEmptyValue)
 }
 
@@ -1029,7 +1029,8 @@ func (e *EventProcessor) processTCREvent(event *crawlermodel.Event, govState mod
 		return err
 	}
 
-	return e.listingPersister.UpdateListing(listing, updatedFields)
+	err := e.listingPersister.UpdateListing(listing, updatedFields)
+	return err
 }
 
 func (e *EventProcessor) determineWhitelisted(listing *model.Listing,
