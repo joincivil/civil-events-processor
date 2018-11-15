@@ -48,14 +48,15 @@ const (
 
 	// GovernanceStateDeposit is _Deposit when the owner of a listing increases their unstaked deposit
 	GovernanceStateDeposit
-	// GovernanceStateDepositWithdrawl is _Withdrawal when the owner of a listing decreases their unstaked deposit
-	GovernanceStateDepositWithdrawl
+	// GovernanceStateWithdrawal is _Withdrawal when the owner of a listing decreases their unstaked deposit
+	GovernanceStateWithdrawal
 
 	// GovernanceStateRewardClaimed is _RewardClaimed when a voted claims their reward
 	GovernanceStateRewardClaimed
 )
 
 // Events that are not actionable (Check out crawler doc for details)
+// NOTE(IS): We should actually still process these because we should update governanceevents with them.
 // "GovernmentTransfered"
 // "TouchAndRemoved"
 // "ListingWithdrawn"

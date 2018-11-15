@@ -8,6 +8,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// ListingUpdateCriteria is a set of criteria used to update a listing about criteria
+type ListingUpdateCriteria struct {
+	UnstakedDeposit *big.Int
+}
+
 // ResetListingFieldsEvents is the list of governance events emitted that reset fields in the Listing
 // model to 0 when UpdateStatus() is called
 // NOTE(IS): This is just a union of ResetChallengeIDEvents and ResetAppExpiryEvents
@@ -406,6 +411,7 @@ func (l *Listing) SetLastUpdatedDateTs(date int64) {
 }
 
 // CreatedDateTs returns the timestamp of listing creation
+// (i.e. the block timestamp of the application event that created this listing)
 func (l *Listing) CreatedDateTs() int64 {
 	return l.createdDateTs
 }
