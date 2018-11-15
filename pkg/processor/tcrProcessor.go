@@ -240,7 +240,7 @@ func (t *TcrEventProcessor) processTCRChallenge(event *crawlermodel.Event,
 	minDeposit := challenge.Stake()
 
 	listing, err := t.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 
@@ -357,7 +357,7 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 		return err
 	}
 	existingChallenge, err := t.challengePersister.ChallengeByChallengeID(int(challengeID.Int64()))
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	if existingChallenge == nil {
@@ -392,7 +392,7 @@ func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event
 		return errors.New("No totalTokens found")
 	}
 	existingChallenge, err := t.challengePersister.ChallengeByChallengeID(int(challengeID.Int64()))
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	if existingChallenge == nil {
@@ -450,7 +450,7 @@ func (t *TcrEventProcessor) processTCRAppealGranted(event *crawlermodel.Event) e
 	appealGranted := true
 
 	existingAppeal, err := t.appealPersister.AppealByChallengeID(int(challengeID.Int64()))
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	if existingAppeal == nil {
@@ -475,7 +475,7 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 		return err
 	}
 	listing, err := t.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 
@@ -524,7 +524,7 @@ func (t *TcrEventProcessor) updateChallengeWithOverturnedData(event *crawlermode
 	}
 	resolved := true
 	existingChallenge, err := t.challengePersister.ChallengeByChallengeID(int(challengeID.Int64()))
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	existingChallenge.SetResolved(resolved)
@@ -582,7 +582,7 @@ func (t *TcrEventProcessor) persistNewAppealChallenge(event *crawlermodel.Event)
 	}
 
 	existingAppeal, err := t.appealPersister.AppealByChallengeID(int(challengeID.Int64()))
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
 	if existingAppeal == nil {
@@ -598,7 +598,7 @@ func (t *TcrEventProcessor) persistNewAppealChallenge(event *crawlermodel.Event)
 
 func (t *TcrEventProcessor) checkAppealNotGranted(challengeID *big.Int) (bool, error) {
 	appeal, err := t.appealPersister.AppealByChallengeID(int(challengeID.Int64()))
-	if err != nil {
+	if err != nil && err != model.ErrPersisterNoResults {
 		return false, err
 	}
 	if appeal == nil {

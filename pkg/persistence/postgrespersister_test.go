@@ -1991,6 +1991,26 @@ func TestUpdateAppeal(t *testing.T) {
 	}
 }
 
+// func TestAppealByChallengeIDEmptyResults(t *testing.T) {
+// 	persister, err := setupTestTable(appealTestTableName)
+// 	if err != nil {
+// 		t.Errorf("Error connecting to DB: %v", err)
+// 	}
+// 	defer deleteTestTable(t, persister, appealTestTableName)
+// 	_, challengeID := createAndSaveTestAppeal(t, persister, true)
+
+// 	_, err = persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64()) + 1}, appealTestTableName)
+// 	// TODO(IS): Change this so model.ErrPersisterNoResults is being used correctly!
+// 	// Even though this challengeID doesn't exist err == nil
+// 	if err == nil {
+// 		t.Error("Should have received an error on appeals")
+// 	}
+// 	// // Empty input results
+// 	// if err != model.ErrPersisterNoResults {
+// 	// 	t.Errorf("Should have received an ErrPersisterNoResults on empty listing addresses: err: %v", err)
+// 	// }
+// }
+
 /*
 All tests for cron table:
 */
