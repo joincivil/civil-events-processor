@@ -222,7 +222,7 @@ func (t *TcrEventProcessor) process(event *crawlermodel.Event) (bool, error) {
 
 func (t *TcrEventProcessor) processTCRApplication(event *crawlermodel.Event,
 	listingAddress common.Address) error {
-	return t.persistNewListingFromApplication(event, listingAddress)
+	return t.newListingFromApplication(event, listingAddress)
 }
 
 func (t *TcrEventProcessor) processTCRChallenge(event *crawlermodel.Event,
@@ -245,8 +245,11 @@ func (t *TcrEventProcessor) processTCRChallenge(event *crawlermodel.Event,
 	}
 
 	if listing == nil {
-		// TODO(IS) : persist new listing by getting values to initialize from the contract
-		return fmt.Errorf("No listing with listingAddress: %v", listingAddress)
+		tcrAddress := event.ContractAddress()
+		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
+		if err != nil {
+			return fmt.Errorf("Error persisting listing: %v", err)
+		}
 	}
 
 	listing.SetChallengeID(challengeID)
@@ -264,8 +267,11 @@ func (t *TcrEventProcessor) processTCRDepositWithdrawal(event *crawlermodel.Even
 		return err
 	}
 	if listing == nil {
-		// TODO(IS): persist new listing by getting values to initialize from contract
-		return fmt.Errorf("No listing with listingAddress: %v", listingAddress)
+		tcrAddress := event.ContractAddress()
+		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
+		if err != nil {
+			return fmt.Errorf("Error persisting listing: %v", err)
+		}
 	}
 	unstakedDeposit := listing.UnstakedDeposit()
 	payload := event.EventPayload()
@@ -296,8 +302,11 @@ func (t *TcrEventProcessor) processTCRApplicationWhitelisted(event *crawlermodel
 	}
 	whitelisted := true
 	if listing == nil {
-		// TODO(IS) : persist new listing by getting values to initialize from the contract
-		return fmt.Errorf("No listing with listingAddress: %v", listingAddress)
+		tcrAddress := event.ContractAddress()
+		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
+		if err != nil {
+			return fmt.Errorf("Error persisting listing: %v", err)
+		}
 	}
 
 	listing.SetWhitelisted(whitelisted)
@@ -306,11 +315,11 @@ func (t *TcrEventProcessor) processTCRApplicationWhitelisted(event *crawlermodel
 }
 
 func (t *TcrEventProcessor) processTCRApplicationRemoved(event *crawlermodel.Event, listingAddress common.Address) error {
-	return t.resetListing(listingAddress)
+	return t.resetListing(event, listingAddress)
 }
 
 func (t *TcrEventProcessor) processTCRListingRemoved(event *crawlermodel.Event, listingAddress common.Address) error {
-	return t.resetListing(listingAddress)
+	return t.resetListing(event, listingAddress)
 }
 
 func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
@@ -320,8 +329,11 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 		return err
 	}
 	if listing == nil {
-		// TODO(IS) : persist new listing by getting values to initialize from the contract
-		return fmt.Errorf("No listing with listingAddress: %v", listingAddress)
+		tcrAddress := event.ContractAddress()
+		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
+		if err != nil {
+			return fmt.Errorf("Error persisting listing: %v", err)
+		}
 	}
 	challengeID, err := t.challengeIDFromEvent(event)
 	if err != nil {
@@ -480,8 +492,11 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 	}
 
 	if listing == nil {
-		// TODO(IS) : persist new listing by getting values to initialize from the contract
-		return fmt.Errorf("No listing with listingAddress: %v", listingAddress)
+		tcrAddress := event.ContractAddress()
+		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
+		if err != nil {
+			return fmt.Errorf("Error persisting listing: %v", err)
+		}
 	}
 	challengeID, err := t.challengeIDFromEvent(event)
 	if err != nil {
@@ -638,7 +653,7 @@ func (t *TcrEventProcessor) getChallengeFromTCRContract(tcrAddress common.Addres
 	return &challenge, err
 }
 
-func (t *TcrEventProcessor) resetListing(listingAddress common.Address) error {
+func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddress common.Address) error {
 	// Based on certain events this resets the listing values.
 	// This corresponds to delete listings[listingAddress] in the dApp.
 	listing, err := t.listingPersister.ListingByAddress(listingAddress)
@@ -647,8 +662,11 @@ func (t *TcrEventProcessor) resetListing(listingAddress common.Address) error {
 	}
 
 	if listing == nil {
-		// TODO(IS) : persist new listing by getting values to initialize from the contract
-		return fmt.Errorf("No listing with listingAddress: %v", listingAddress)
+		tcrAddress := event.ContractAddress()
+		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
+		if err != nil {
+			return fmt.Errorf("Error persisting listing: %v", err)
+		}
 	}
 	// NOTE(IS): In dApp, this is delete[listing], check which other fields we match with.
 	listing.SetUnstakedDeposit(big.NewInt(0))
@@ -665,7 +683,7 @@ func (t *TcrEventProcessor) resetListing(listingAddress common.Address) error {
 	return t.listingPersister.UpdateListing(listing, updatedFields)
 }
 
-func (t *TcrEventProcessor) persistNewListingFromApplication(event *crawlermodel.Event,
+func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	listingAddress common.Address) error {
 
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, t.client)
@@ -787,4 +805,64 @@ func (t *TcrEventProcessor) newAppealFromAppealRequested(event *crawlermodel.Eve
 	)
 	err = t.appealPersister.CreateAppeal(appeal)
 	return err
+}
+
+// In the event that there is no persisted listing, we can create a new listing using data
+// obtained by calling the smart contract.
+func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.Address,
+	tcrAddress common.Address) (*model.Listing, error) {
+	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, t.client)
+	if newsErr != nil {
+		return nil, fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
+	}
+	name, nameErr := newsroom.Name(&bind.CallOpts{})
+	if nameErr != nil {
+		return nil, fmt.Errorf("Error getting Name from Newsroom contract: %v ", nameErr)
+	}
+
+	url := ""
+
+	ownerAddr, err := newsroom.Owner(&bind.CallOpts{})
+	if err != nil {
+		return nil, err
+	}
+	ownerAddresses := []common.Address{ownerAddr}
+
+	listing := model.NewListing(&model.NewListingParams{
+		Name:            name,
+		ContractAddress: listingAddress,
+		URL:             url,
+		Owner:           ownerAddr,
+		OwnerAddresses:  ownerAddresses,
+		// NOTE(IS): If this isn't from an event we wouldn't know these dates:
+		// CreatedDateTs:     event.Timestamp(),
+		// ApplicationDateTs: event.Timestamp(),
+		// ApprovalDateTs:    approvalDateEmptyValue,
+		LastUpdatedDateTs: crawlerutils.CurrentEpochSecsInInt64(),
+	})
+	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating TCR contract: err: %v", err)
+	}
+	listingFromContract, err := tcrContract.Listings(&bind.CallOpts{}, listingAddress)
+	listing.SetAppExpiry(listingFromContract.ApplicationExpiry)
+	listing.SetUnstakedDeposit(listingFromContract.UnstakedDeposit)
+	listing.SetWhitelisted(listingFromContract.Whitelisted)
+	listing.SetChallengeID(listingFromContract.ChallengeID)
+
+	err = t.listingPersister.CreateListing(listing)
+
+	return listing, err
+}
+
+// In the event that there is no persisted Challenge, we can create a new listing using data
+// obtained by calling the smart contract.
+func (t *TcrEventProcessor) persistNewChallengeFromContract() error {
+	return nil
+}
+
+// In the event that there is no persisted Challenge, we can create a new listing using data
+// obtained by calling the smart contract.
+func (t *TcrEventProcessor) persistNewAppealFromContract() error {
+	return nil
 }

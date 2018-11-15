@@ -159,7 +159,6 @@ func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermo
 	}
 
 	// Store the new revision
-	// NOTE(IS): Should this exist already if already triggered by an event?
 	revision := model.NewContentRevision(
 		listingAddress,
 		articlePayload,
