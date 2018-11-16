@@ -328,8 +328,9 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
+	tcrAddress := event.ContractAddress()
+
 	if listing == nil {
-		tcrAddress := event.ContractAddress()
 		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
 		if err != nil {
 			return fmt.Errorf("Error persisting listing: %v", err)
@@ -339,7 +340,7 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 	if err != nil {
 		return err
 	}
-	tcrAddress := event.ContractAddress()
+
 	reward, err := t.getRewardFromTCRContract(tcrAddress, challengeID)
 	if err != nil {
 		return err
@@ -354,12 +355,16 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 		return fmt.Errorf("Error updating listing: %v", err)
 	}
 
-	return t.processChallengeResolution(event, tcrAddress)
+	return t.processChallengeResolution(event, tcrAddress, listingAddress)
 }
 
 func (t *TcrEventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Event) error {
 	tcrAddress := event.ContractAddress()
-	return t.processChallengeResolution(event, tcrAddress)
+	listingAddress, err := t.listingAddressFromEvent(event)
+	if err != nil {
+		return err
+	}
+	return t.processChallengeResolution(event, tcrAddress, listingAddress)
 }
 
 func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) error {
@@ -372,27 +377,30 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
+
 	if existingChallenge == nil {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
-		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
+		// NOTE(IS): This event doesn't emit listingAddress. Put empty address for now
+		listingAddress := common.Address{}
+		existingChallenge, err = t.persistNewChallengeFromContract(tcrAddress, challengeID, listingAddress)
+		if err != nil {
+			return fmt.Errorf("Error persisting challenge: %v", err)
+		}
 	}
 
 	// NOTE(IS) Have to get totaltokens through contract call, so get all data this way
-	challenge, err := t.getChallengeFromTCRContract(tcrAddress, challengeID)
+	challengeRes, err := t.getChallengeFromTCRContract(tcrAddress, challengeID)
 	if err != nil {
 		return fmt.Errorf("Error getting challenge from contract: %v", err)
 	}
-	totalTokens := challenge.TotalTokens
-	existingChallenge.SetTotalTokens(totalTokens)
-	rewardPool := challenge.RewardPool
-	existingChallenge.SetRewardPool(rewardPool)
+	existingChallenge.SetTotalTokens(challengeRes.TotalTokens)
+	existingChallenge.SetRewardPool(challengeRes.RewardPool)
 	updatedFields := []string{rewardPoolFieldName, totalTokensFieldName}
 
 	return t.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
 }
 
 func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event,
-	tcrAddress common.Address) error {
+	tcrAddress common.Address, listingAddress common.Address) error {
 	payload := event.EventPayload()
 	resolved := true
 	challengeID, err := t.challengeIDFromEvent(event)
@@ -408,8 +416,10 @@ func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event
 		return err
 	}
 	if existingChallenge == nil {
-		// TODO(IS): If no challenge returned, create new challenge, for now skip
-		return fmt.Errorf("No existing challenge found in persistence for id %v", challengeID)
+		existingChallenge, err = t.persistNewChallengeFromContract(tcrAddress, challengeID, listingAddress)
+		if err != nil {
+			return fmt.Errorf("Error persisting challenge: %v", err)
+		}
 	}
 	existingChallenge.SetResolved(resolved)
 	existingChallenge.SetTotalTokens(totalTokens.(*big.Int))
@@ -492,7 +502,6 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 	}
 
 	if listing == nil {
-		tcrAddress := event.ContractAddress()
 		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
 		if err != nil {
 			return fmt.Errorf("Error persisting listing: %v", err)
@@ -514,8 +523,7 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 }
 
 func (t *TcrEventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.Event) error {
-	// TODO(IS): change this name
-	return t.persistNewAppealChallenge(event)
+	return t.newAppealChallenge(event)
 }
 
 func (t *TcrEventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.Event) error {
@@ -548,7 +556,7 @@ func (t *TcrEventProcessor) updateChallengeWithOverturnedData(event *crawlermode
 	return t.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
 }
 
-func (t *TcrEventProcessor) persistNewAppealChallenge(event *crawlermodel.Event) error {
+func (t *TcrEventProcessor) newAppealChallenge(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	statement, ok := payload["Data"]
 	if !ok {
@@ -654,7 +662,6 @@ func (t *TcrEventProcessor) getChallengeFromTCRContract(tcrAddress common.Addres
 }
 
 func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddress common.Address) error {
-	// Based on certain events this resets the listing values.
 	// This corresponds to delete listings[listingAddress] in the dApp.
 	listing, err := t.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != model.ErrPersisterNoResults {
@@ -685,7 +692,8 @@ func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddre
 
 func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	listingAddress common.Address) error {
-
+	// TODO(IS): We should make sure an existing listing doesn't already exist
+	// which might happen if the events were out of order
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, t.client)
 	if newsErr != nil {
 		return fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
@@ -845,6 +853,9 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 		return nil, fmt.Errorf("Error creating TCR contract: err: %v", err)
 	}
 	listingFromContract, err := tcrContract.Listings(&bind.CallOpts{}, listingAddress)
+	if err != nil {
+		return nil, fmt.Errorf("Error calling Listings from TCR contract: err: %v", err)
+	}
 	listing.SetAppExpiry(listingFromContract.ApplicationExpiry)
 	listing.SetUnstakedDeposit(listingFromContract.UnstakedDeposit)
 	listing.SetWhitelisted(listingFromContract.Whitelisted)
@@ -857,12 +868,40 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 
 // In the event that there is no persisted Challenge, we can create a new listing using data
 // obtained by calling the smart contract.
-func (t *TcrEventProcessor) persistNewChallengeFromContract() error {
-	return nil
+func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Address,
+	challengeID *big.Int, listingAddress common.Address) (*model.Challenge, error) {
+	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating TCR contract: err: %v", err)
+	}
+	challengeRes, err := tcrContract.Challenges(&bind.CallOpts{}, challengeID)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving challenges: err: %v", err)
+	}
+	requestAppealExpiry, err := tcrContract.ChallengeRequestAppealExpiries(&bind.CallOpts{}, challengeID)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving requestAppealExpiries: err: %v", err)
+	}
+	// TODO(IS): If not getting statement from Challenge event, is there a way to get statement?
+	statement := ""
+	challenge := model.NewChallenge(
+		challengeID,
+		listingAddress,
+		statement,
+		challengeRes.RewardPool,
+		challengeRes.Challenger,
+		challengeRes.Resolved,
+		challengeRes.Stake,
+		challengeRes.TotalTokens,
+		requestAppealExpiry,
+		crawlerutils.CurrentEpochSecsInInt64())
+
+	err = t.challengePersister.CreateChallenge(challenge)
+	return challenge, err
 }
 
 // In the event that there is no persisted Challenge, we can create a new listing using data
 // obtained by calling the smart contract.
-func (t *TcrEventProcessor) persistNewAppealFromContract() error {
-	return nil
+func (t *TcrEventProcessor) persistNewAppealFromContract() (*model.Appeal, error) {
+	return nil, nil
 }
