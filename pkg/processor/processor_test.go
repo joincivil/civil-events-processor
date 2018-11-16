@@ -259,7 +259,6 @@ func (t *TestPersister) UpdateGovernanceEvent(govEvent *model.GovernanceEvent, u
 	}
 	for index, event := range events {
 		if event.GovernanceEventType() == govEvent.GovernanceEventType() &&
-			event.SenderAddress() == govEvent.SenderAddress() &&
 			event.CreationDateTs() == govEvent.CreationDateTs() {
 			events[index] = govEvent
 		}
@@ -278,7 +277,6 @@ func (t *TestPersister) DeleteGovernanceEvent(govEvent *model.GovernanceEvent) e
 	updatedEvents := []*model.GovernanceEvent{}
 	for _, event := range events {
 		if event.GovernanceEventType() != govEvent.GovernanceEventType() ||
-			event.SenderAddress() != govEvent.SenderAddress() ||
 			event.CreationDateTs() != govEvent.CreationDateTs() {
 			updatedEvents = append(updatedEvents, event)
 		}
