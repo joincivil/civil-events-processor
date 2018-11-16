@@ -40,8 +40,7 @@ func NewEventProcessor(client bind.ContractBackend, listingPersister model.Listi
 // EventProcessor handles the processing of raw events into aggregated data
 // for use via the API.
 type EventProcessor struct {
-	client bind.ContractBackend
-	// govEventPersister      model.GovernanceEventPersister
+	client                 bind.ContractBackend
 	tcrEventProcessor      *TcrEventProcessor
 	plcrEventProcessor     *PlcrEventProcessor
 	newsroomEventProcessor *NewsroomEventProcessor
