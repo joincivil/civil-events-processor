@@ -476,8 +476,10 @@ func (t *TcrEventProcessor) processTCRAppealGranted(event *crawlermodel.Event) e
 		return err
 	}
 	if existingAppeal == nil {
-		// TODO(IS): create new appeal
-		return fmt.Errorf("No existing appeal found in persistence for id %v", challengeID)
+		existingAppeal, err = t.persistNewAppealFromContract(tcrAddress, challengeID)
+		if err != nil {
+			return fmt.Errorf("Error persisting appeal for id %v", challengeID)
+		}
 	}
 	existingAppeal.SetAppealOpenToChallengeExpiry(appealOpenToChallengeExpiry)
 	existingAppeal.SetAppealGranted(appealGranted)
@@ -609,8 +611,10 @@ func (t *TcrEventProcessor) newAppealChallenge(event *crawlermodel.Event) error 
 		return err
 	}
 	if existingAppeal == nil {
-		// TODO(IS): create new appeal
-		return fmt.Errorf("No existing appeal found in persistence for id %v", challengeID)
+		existingAppeal, err = t.persistNewAppealFromContract(tcrAddress, challengeID)
+		if err != nil {
+			return fmt.Errorf("Error persisting appeal for id %v", challengeID)
+		}
 	}
 
 	existingAppeal.SetAppealChallengeID(appealChallengeID.(*big.Int))
@@ -842,7 +846,7 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 		URL:             url,
 		Owner:           ownerAddr,
 		OwnerAddresses:  ownerAddresses,
-		// NOTE(IS): If this isn't from an event we wouldn't know these dates:
+		// NOTE(IS): If this isn't from an application event we wouldn't know these dates:
 		// CreatedDateTs:     event.Timestamp(),
 		// ApplicationDateTs: event.Timestamp(),
 		// ApprovalDateTs:    approvalDateEmptyValue,
@@ -902,6 +906,33 @@ func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Ad
 
 // In the event that there is no persisted Challenge, we can create a new listing using data
 // obtained by calling the smart contract.
-func (t *TcrEventProcessor) persistNewAppealFromContract() (*model.Appeal, error) {
-	return nil, nil
+func (t *TcrEventProcessor) persistNewAppealFromContract(tcrAddress common.Address,
+	challengeID *big.Int) (*model.Appeal, error) {
+	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating TCR contract: err: %v", err)
+	}
+	statement := ""
+	appealRes, err := tcrContract.Appeals(&bind.CallOpts{}, challengeID)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving appeals: err: %v", err)
+	}
+	appeal := model.NewAppeal(
+		challengeID,
+		appealRes.Requester,
+		appealRes.AppealFeePaid,
+		appealRes.AppealPhaseExpiry,
+		appealRes.AppealGranted,
+		statement,
+		crawlerutils.CurrentEpochSecsInInt64(),
+	)
+	// Fix these: 0 is not big int
+	if appealRes.AppealChallengeID.Uint64() != 0 {
+		appeal.SetAppealChallengeID(appealRes.AppealChallengeID)
+	}
+	if appealRes.AppealOpenToChallengeExpiry.Uint64() != 0 {
+		appeal.SetAppealOpenToChallengeExpiry(appealRes.AppealOpenToChallengeExpiry)
+	}
+	err = t.appealPersister.CreateAppeal(appeal)
+	return appeal, err
 }
