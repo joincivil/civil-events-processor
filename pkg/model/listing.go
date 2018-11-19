@@ -8,11 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// ListingUpdateCriteria is a set of criteria used to update a listing about criteria
-type ListingUpdateCriteria struct {
-	UnstakedDeposit *big.Int
-}
-
 // ResetListingFieldsEvents is the list of governance events emitted that reset fields in the Listing
 // model to 0 when UpdateStatus() is called
 // NOTE(IS): This is just a union of ResetChallengeIDEvents and ResetAppExpiryEvents

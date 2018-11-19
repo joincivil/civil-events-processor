@@ -19,28 +19,47 @@ func isStringInSlice(slice []string, target string) bool {
 }
 
 // NewEventProcessor is a convenience function to init an EventProcessor
-func NewEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
-	revisionPersister model.ContentRevisionPersister, govEventPersister model.GovernanceEventPersister,
-	challengePersister model.ChallengePersister, pollPersister model.PollPersister, appealPersister model.AppealPersister,
-	contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
-	civilMetadataScraper model.CivilMetadataScraper) *EventProcessor {
-	tcrEventProcessor := NewTcrEventProcessor(client, listingPersister, challengePersister, appealPersister,
-		govEventPersister)
-	plcrEventProcessor := NewPlcrEventProcessor(client, pollPersister)
-	newsroomEventProcessor := NewNewsroomEventProcessor(client, listingPersister, revisionPersister,
-		contentScraper, metadataScraper, civilMetadataScraper)
+func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
+	tcrEventProcessor := NewTcrEventProcessor(
+		params.Client,
+		params.ListingPersister,
+		params.ChallengePersister,
+		params.AppealPersister,
+		params.GovEventPersister)
+	plcrEventProcessor := NewPlcrEventProcessor(
+		params.Client,
+		params.PollPersister)
+	newsroomEventProcessor := NewNewsroomEventProcessor(
+		params.Client,
+		params.ListingPersister,
+		params.RevisionPersister,
+		params.ContentScraper,
+		params.MetadataScraper,
+		params.CivilMetadataScraper)
 	return &EventProcessor{
-		client:                 client,
 		tcrEventProcessor:      tcrEventProcessor,
 		plcrEventProcessor:     plcrEventProcessor,
 		newsroomEventProcessor: newsroomEventProcessor,
 	}
 }
 
+// NewEventProcessorParams defines the params needed to be passed to the processor
+type NewEventProcessorParams struct {
+	Client               bind.ContractBackend
+	ListingPersister     model.ListingPersister
+	RevisionPersister    model.ContentRevisionPersister
+	GovEventPersister    model.GovernanceEventPersister
+	ChallengePersister   model.ChallengePersister
+	PollPersister        model.PollPersister
+	AppealPersister      model.AppealPersister
+	ContentScraper       model.ContentScraper
+	MetadataScraper      model.MetadataScraper
+	CivilMetadataScraper model.CivilMetadataScraper
+}
+
 // EventProcessor handles the processing of raw events into aggregated data
 // for use via the API.
 type EventProcessor struct {
-	client                 bind.ContractBackend
 	tcrEventProcessor      *TcrEventProcessor
 	plcrEventProcessor     *PlcrEventProcessor
 	newsroomEventProcessor *NewsroomEventProcessor

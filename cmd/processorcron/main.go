@@ -134,18 +134,20 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 		}
 		defer client.Close()
 
-		proc := processor.NewEventProcessor(
-			client,
-			persisters.listing,
-			persisters.contentRevision,
-			persisters.governanceEvent,
-			persisters.challenge,
-			persisters.poll,
-			persisters.appeal,
-			helpers.ContentScraper(config),
-			helpers.MetadataScraper(config),
-			helpers.CivilMetadataScraper(config),
-		)
+		processorParams := &processor.NewEventProcessorParams{
+			Client:               client,
+			ListingPersister:     persisters.listing,
+			RevisionPersister:    persisters.contentRevision,
+			GovEventPersister:    persisters.governanceEvent,
+			ChallengePersister:   persisters.challenge,
+			PollPersister:        persisters.poll,
+			AppealPersister:      persisters.appeal,
+			ContentScraper:       helpers.ContentScraper(config),
+			MetadataScraper:      helpers.MetadataScraper(config),
+			CivilMetadataScraper: helpers.CivilMetadataScraper(config),
+		}
+
+		proc := processor.NewEventProcessor(processorParams)
 		err = proc.Process(events)
 		if err != nil {
 			log.Errorf("Error retrieving events: err: %v", err)

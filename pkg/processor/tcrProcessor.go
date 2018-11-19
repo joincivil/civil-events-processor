@@ -767,6 +767,10 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	listingAddress common.Address) error {
 	// TODO(IS): We should make sure an existing listing doesn't already exist
 	// which might happen if the events were out of order
+	// If events were out of order, we shouldn't update other fields except: (?)
+	// CreatedDateTs:     event.Timestamp(),
+	// ApplicationDateTs: event.Timestamp(),
+	// ApprovalDateTs:    approvalDateEmptyValue,
 
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, t.client)
 	if newsErr != nil {
@@ -889,10 +893,11 @@ func (t *TcrEventProcessor) newAppealFromAppealRequested(event *crawlermodel.Eve
 	return err
 }
 
-// In the event that there is no persisted listing, we can create a new listing using data
-// obtained by calling the smart contract.
 func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.Address,
 	tcrAddress common.Address) (*model.Listing, error) {
+	// NOTE: In the event that there is no persisted listing, we can create a new listing using data
+	// obtained by calling the smart contract
+
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, t.client)
 	if newsErr != nil {
 		return nil, fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)

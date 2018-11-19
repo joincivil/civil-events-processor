@@ -253,59 +253,42 @@ func (n *NewsroomEventProcessor) retrieveOrCreateListingForNewsroomEvent(event *
 	if listing != nil {
 		return listing, nil
 	}
-	// If a listing doesn't exist, create a new one. This shouldn't happen if events are ordered
-	err = n.persistNewListing(
-		listingAddress,
-		false,
-		model.GovernanceStateNone,
-		event.Timestamp(),
-		event.Timestamp(),
-		approvalDateEmptyValue,
-	)
-	if err != nil {
-		return nil, err
-	}
-	listing, err = n.listingPersister.ListingByAddress(listingAddress)
-	if err != nil && err != model.ErrPersisterNoResults {
-		return nil, err
-	}
-	if listing == nil {
-		return nil, errors.New("Failed to create a listing")
-	}
-	return listing, nil
+	// If a listing doesn't exist, create a new one from contract. This shouldn't happen if events are ordered
+	listing, err = n.persistNewListing(listingAddress)
+	return listing, err
 }
 
-// NOTE: This should be the function that is called to get data from contract
-// in the case events are out of order.
-func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address,
-	whitelisted bool, lastGovernanceState model.GovernanceState, creationDate int64,
-	applicationDate int64, approvalDate int64) error {
+func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address) (*model.Listing, error) {
+	// NOTE: This should be the function that is called to get data from contract
+	// in the case events are out of order and persists a listing
+
 	// TODO(PN): How do I get the URL of the site?
 	url := ""
+
 	// charter is the first content item in the newsroom contract
 	charterContentID := big.NewInt(defaultCharterContentID)
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, n.client)
 	if newsErr != nil {
-		return fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
+		return nil, fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
 	}
 	name, nameErr := newsroom.Name(&bind.CallOpts{})
 	if nameErr != nil {
-		return fmt.Errorf("Error getting Name from Newsroom contract: %v ", nameErr)
+		return nil, fmt.Errorf("Error getting Name from Newsroom contract: %v ", nameErr)
 	}
-	// NOTE: We should get this revision as an event, and only use this if events are not in order
+
 	revisionCount, countErr := newsroom.RevisionCount(&bind.CallOpts{}, charterContentID)
 	if countErr != nil {
-		return fmt.Errorf("Error getting RevisionCount from Newsroom contract: %v ", countErr)
+		return nil, fmt.Errorf("Error getting RevisionCount from Newsroom contract: %v ", countErr)
 	}
 	if revisionCount.Int64() <= 0 {
-		return fmt.Errorf("Error there are no revisions for the charter: addr: %v", listingAddress)
+		return nil, fmt.Errorf("Error there are no revisions for the charter: addr: %v", listingAddress)
 	}
 
 	// latest revision should be total revisions - 1 for index
 	latestRevisionID := big.NewInt(revisionCount.Int64() - 1)
 	charterContent, contErr := newsroom.GetRevision(&bind.CallOpts{}, charterContentID, latestRevisionID)
 	if contErr != nil {
-		return fmt.Errorf("Error getting charter revision from Newsroom contract: %v ", contErr)
+		return nil, fmt.Errorf("Error getting charter revision from Newsroom contract: %v ", contErr)
 	}
 
 	charter := model.NewCharter(&model.CharterParams{
@@ -321,28 +304,29 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 	charterAuthorAddr := charterContent.Author
 	ownerAddr, err := newsroom.Owner(&bind.CallOpts{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	ownerAddresses := []common.Address{ownerAddr}
 	contributorAddresses := []common.Address{charterAuthorAddr}
-
+	// NOTE(IS): The values in newlistingparams which aren't initialized will initialize to nil
+	// values. We can't get this data from the tcr contract since we don't have a TCR address.
 	listing := model.NewListing(&model.NewListingParams{
-		Name:                 name,
-		ContractAddress:      listingAddress,
-		Whitelisted:          whitelisted,
-		LastState:            lastGovernanceState,
-		URL:                  url,
-		Charter:              charter,
-		Owner:                ownerAddr,
+		Name:            name,
+		ContractAddress: listingAddress,
+		// Whitelisted:          whitelisted,
+		// LastState:            lastGovernanceState,
+		URL:     url,
+		Charter: charter,
+		// Owner:                ownerAddr,
 		OwnerAddresses:       ownerAddresses,
 		ContributorAddresses: contributorAddresses,
-		CreatedDateTs:        creationDate,
-		ApplicationDateTs:    applicationDate,
-		ApprovalDateTs:       approvalDate,
-		LastUpdatedDateTs:    crawlerutils.CurrentEpochSecsInInt64(),
+		// CreatedDateTs:        creationDate,
+		// ApplicationDateTs:    applicationDate,
+		// ApprovalDateTs:       approvalDate,
+		LastUpdatedDateTs: crawlerutils.CurrentEpochSecsInInt64(),
 	})
 	err = n.listingPersister.CreateListing(listing)
-	return err
+	return listing, err
 }
 
 func (n *NewsroomEventProcessor) scrapeData(metadataURL string) (
