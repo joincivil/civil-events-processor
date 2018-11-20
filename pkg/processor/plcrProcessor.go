@@ -40,7 +40,8 @@ func (p *PlcrEventProcessor) isValidPLCRContractEventName(name string) bool {
 	return isStringInSlice(eventNames, name)
 }
 
-func (p *PlcrEventProcessor) process(event *crawlermodel.Event) (bool, error) {
+// Process processes Plcr Events into aggregated data
+func (p *PlcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	if !p.isValidPLCRContractEventName(event.EventType()) {
 		return false, nil
 	}

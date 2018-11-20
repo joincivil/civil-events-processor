@@ -53,7 +53,8 @@ type NewsroomEventProcessor struct {
 	civilMetadataScraper model.CivilMetadataScraper
 }
 
-func (n *NewsroomEventProcessor) process(event *crawlermodel.Event) (bool, error) {
+// Process processes Newsroom Events into aggregated data
+func (n *NewsroomEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	if !n.isValidNewsroomContractEventName(event.EventType()) {
 		return false, nil
 	}

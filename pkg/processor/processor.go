@@ -74,21 +74,21 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			log.Errorf("Nil event found, should not be nil")
 			continue
 		}
-		ran, err = e.newsroomEventProcessor.process(event)
+		ran, err = e.newsroomEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing newsroom event: err: %v\n", err)
 		}
 		if ran {
 			continue
 		}
-		ran, err = e.tcrEventProcessor.process(event)
+		ran, err = e.tcrEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
 		if ran {
 			continue
 		}
-		_, err = e.plcrEventProcessor.process(event)
+		_, err = e.plcrEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing plcr event: err: %v\n", err)
 		}

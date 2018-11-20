@@ -80,7 +80,8 @@ func (t *TcrEventProcessor) challengeIDFromEvent(event *crawlermodel.Event) (*bi
 	return challengeIDInterface.(*big.Int), nil
 }
 
-func (t *TcrEventProcessor) process(event *crawlermodel.Event) (bool, error) {
+// Process processes TcrEvents into aggregated data
+func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	if !t.isValidCivilTCRContractEventName(event.EventType()) {
 		return false, nil
 	}
@@ -181,11 +182,13 @@ func (t *TcrEventProcessor) process(event *crawlermodel.Event) (bool, error) {
 
 	case "TouchAndRemoved":
 		log.Infof("Handling TouchAndRemoved for %v\n", listingAddress.Hex())
-		// For this only update lastGovernanceEvent in listing
+		err = t.updateListingWithLastGovState(listingAddress, tcrAddress,
+			model.GovernanceStateTouchRemoved)
 
 	case "ListingWithdrawn":
 		log.Infof("Handling ListingWithdrawn for %v\n", listingAddress.Hex())
-		// For this only update lastGovernanceEvent in listing
+		err = t.updateListingWithLastGovState(listingAddress, tcrAddress,
+			model.GovernanceStateListingWithdrawn)
 
 	default:
 		ran = false
@@ -281,26 +284,19 @@ func (t *TcrEventProcessor) processTCRDepositWithdrawal(event *crawlermodel.Even
 		return err
 	}
 
-	unstakedDeposit := existingListing.UnstakedDeposit()
 	payload := event.EventPayload()
 
 	if govState == model.GovernanceStateWithdrawal {
-		withdrew, ok := payload["Withdrew"]
-		if !ok {
-			return errors.New("No withdrew field found")
-		}
-		unstakedDeposit.Sub(unstakedDeposit, withdrew.(*big.Int))
 		existingListing.SetLastGovernanceState(model.GovernanceStateWithdrawal)
 	} else if govState == model.GovernanceStateDeposit {
-		deposit, ok := payload["Deposit"]
-		if !ok {
-			return errors.New("No deposit field found")
-		}
-		unstakedDeposit.Add(unstakedDeposit, deposit.(*big.Int))
 		existingListing.SetLastGovernanceState(model.GovernanceStateDeposit)
 	}
+	unstakedDeposit, ok := payload["UnstakedDeposit"]
+	if !ok {
+		return errors.New("No UnstakedDeposit field found")
+	}
 
-	existingListing.SetUnstakedDeposit(unstakedDeposit)
+	existingListing.SetUnstakedDeposit(unstakedDeposit.(*big.Int))
 	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName}
 	return t.listingPersister.UpdateListing(existingListing, updatedFields)
 }
