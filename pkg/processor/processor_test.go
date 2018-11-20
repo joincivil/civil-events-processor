@@ -39,6 +39,16 @@ type TestPersister struct {
 	timestamp  int64
 }
 
+func indexAddressInSlice(slice []common.Address, target common.Address) int {
+	// if address in slice return idx, else return -1
+	for idx, addr := range slice {
+		if target.Hex() == addr.Hex() {
+			return idx
+		}
+	}
+	return -1
+}
+
 // ListingsByCriteria returns a slice of Listings based on ListingCriteria
 func (t *TestPersister) ListingsByCriteria(criteria *model.ListingCriteria) ([]*model.Listing, error) {
 	listings := make([]*model.Listing, len(t.listings))
@@ -198,6 +208,7 @@ func (t *TestPersister) DeleteContentRevision(revision *model.ContentRevision) e
 // GovernanceEventsByCriteria retrieves content revisions by GovernanceEventCriteria
 func (t *TestPersister) GovernanceEventsByCriteria(criteria *model.GovernanceEventCriteria) (
 	[]*model.GovernanceEvent, error) {
+	// This is more of a placeholder
 	events := make([]*model.GovernanceEvent, len(t.govEvents))
 	index := 0
 	for _, event := range t.govEvents {
@@ -305,11 +316,24 @@ func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []int) ([]*model.C
 
 // ChallengesByListingAddress gets a list of challenges by listing
 func (t *TestPersister) ChallengesByListingAddress(addr common.Address) ([]*model.Challenge, error) {
-	challenges := make([]*model.Challenge, len(t.challenges))
-	index := 0
-	for _, val := range t.challenges {
-		challenges[index] = val
-		index++
+	challenges := []*model.Challenge{}
+	for _, chal := range t.challenges {
+		listingAddress := chal.ListingAddress()
+		if listingAddress.Hex() == addr.Hex() {
+			challenges = append(challenges, chal)
+		}
+	}
+	return challenges, nil
+}
+
+func (t *TestPersister) ChallengesByListingAddresses(addr []common.Address) ([][]*model.Challenge, error) {
+	challenges := make([][]*model.Challenge, len(addr))
+	for _, chal := range t.challenges {
+		listingAddress := chal.ListingAddress()
+		addrIdx := indexAddressInSlice(addr, listingAddress)
+		if addrIdx != -1 {
+			challenges[addrIdx] = append(challenges[addrIdx], chal)
+		}
 	}
 	return challenges, nil
 }
@@ -444,124 +468,19 @@ func (t *TestScraper) ScrapeMetadata(uri string) (*model.ScraperContentMetadata,
 // 		t.Fatalf("Unable to setup the contracts: %v", err)
 // 	}
 // 	persister := &TestPersister{}
-// 	scraper := &TestScraper{}
-// 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-// 		persister, persister, scraper, scraper, scraper)
-
-// 	applied1 := &contract.CivilTCRContractApplication{
-// 		ListingAddress: contracts.NewsroomAddr,
-// 		Deposit:        big.NewInt(1000),
-// 		AppEndDate:     big.NewInt(1653860896),
-// 		Data:           "DATA",
-// 		Applicant:      common.HexToAddress(testAddress),
-// 		Raw: types.Log{
-// 			Address:     common.HexToAddress(testAddress),
-// 			Topics:      []common.Hash{},
-// 			Data:        []byte{},
-// 			BlockNumber: 8888888,
-// 			TxHash:      common.Hash{},
-// 			TxIndex:     2,
-// 			BlockHash:   common.Hash{},
-// 			Index:       2,
-// 			Removed:     false,
-// 		},
+// 	testParams := &processor.NewEventProcessorParams{
+// 		Client:               contracts.Client,
+// 		ListingPersister:     persister,
+// 		RevisionPersister:    persister,
+// 		GovEventPersister:    persister,
+// 		ChallengePersister:   persister,
+// 		PollPersister:        persister,
+// 		AppealPersister:      persister,
+// 		ContentScraper:       persister,
+// 		MetadataScraper:      persister,
+// 		CivilMetadataScraper: persister,
 // 	}
-// 	applied2 := &contract.CivilTCRContractApplication{
-// 		ListingAddress: contracts.NewsroomAddr,
-// 		Deposit:        big.NewInt(1000),
-// 		AppEndDate:     big.NewInt(1653860896),
-// 		Data:           "DATA",
-// 		Applicant:      common.HexToAddress(testAddress),
-// 		Raw: types.Log{
-// 			Address:     common.HexToAddress(testAddress),
-// 			Topics:      []common.Hash{},
-// 			Data:        []byte{},
-// 			BlockNumber: 8888890,
-// 			TxHash:      common.Hash{},
-// 			TxIndex:     4,
-// 			BlockHash:   common.Hash{},
-// 			Index:       7,
-// 			Removed:     false,
-// 		},
-// 	}
-// 	revision1 := &contract.NewsroomContractRevisionUpdated{
-// 		Editor:     common.HexToAddress(editorAddress),
-// 		ContentId:  big.NewInt(0),
-// 		RevisionId: big.NewInt(0),
-// 		Uri:        "http://joincivil.com/1",
-// 		Raw: types.Log{
-// 			Address:     contracts.NewsroomAddr,
-// 			Topics:      []common.Hash{},
-// 			Data:        []byte{},
-// 			BlockNumber: 888889,
-// 			TxHash:      common.Hash{},
-// 			TxIndex:     3,
-// 			BlockHash:   common.Hash{},
-// 			Index:       4,
-// 			Removed:     false,
-// 		},
-// 	}
-
-// 	events := []*crawlermodel.Event{}
-// 	event1, _ := crawlermodel.NewEventFromContractEvent(
-// 		"_Application",
-// 		"CivilTCRContract",
-// 		contracts.CivilTcrAddr,
-// 		applied1,
-// 		utils.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Filterer,
-// 	)
-// 	events = append(events, event1)
-// 	event2, _ := crawlermodel.NewEventFromContractEvent(
-// 		"RevisionUpdated",
-// 		"NewsroomContract",
-// 		contracts.NewsroomAddr,
-// 		revision1,
-// 		utils.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Watcher,
-// 	)
-// 	events = append(events, event2)
-// 	event3, _ := crawlermodel.NewEventFromContractEvent(
-// 		"_Application",
-// 		"CivilTCRContract",
-// 		contracts.CivilTcrAddr,
-// 		applied2,
-// 		utils.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Filterer,
-// 	)
-// 	events = append(events, event3)
-// 	err = proc.Process(events)
-// 	if err != nil {
-// 		t.Errorf("Should not have failed processing events: err: %v", err)
-// 	}
-// 	if len(persister.listings) == 0 {
-// 		t.Error("Should have seen at least 1 listing")
-// 	}
-// 	if len(persister.revisions) == 0 {
-// 		t.Error("Should have seen at least 1 revision")
-// 	}
-// 	if len(persister.govEvents) == 0 {
-// 		t.Error("Should have seen at least 1 governance event")
-// 	}
-// 	listing := persister.listings[contracts.NewsroomAddr.Hex()]
-// 	if listing.LastGovernanceState() != model.GovernanceStateApplied {
-// 		t.Errorf("Listing should have had governance state of applied")
-// 	}
-// 	if listing.Whitelisted() {
-// 		t.Errorf("Should not be whitelisted")
-// 	}
-// 	if listing.Charter().URI() != "newsroom.com/charter" {
-// 		t.Errorf("Listing charter URI is not correct")
-// 	}
-// 	if listing.ContractAddress() != contracts.NewsroomAddr {
-// 		t.Errorf("Should have the correct newsroom address")
-// 	}
-// 	if len(listing.OwnerAddresses()) <= 0 {
-// 		t.Errorf("Should have at least one owner address")
-// 	}
-// 	if !reflect.DeepEqual(listing.UnstakedDeposit(), big.NewInt(1000)) {
-// 		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
-// 	}
+// 	proc := processor.NewEventProcessor(testParams)
 // }
 
 // func TestEventProcessorChallenge(t *testing.T) {
@@ -695,89 +614,6 @@ func (t *TestScraper) ScrapeMetadata(uri string) (*model.ScraperContentMetadata,
 // 	}
 // 	if len(listing.OwnerAddresses()) <= 0 {
 // 		t.Errorf("Should have at least one owner address")
-// 	}
-// }
-
-// func TestEventProcessorAppWhitelisted(t *testing.T) {
-// 	contracts, err := contractutils.SetupAllTestContracts()
-// 	if err != nil {
-// 		t.Fatalf("Unable to setup the contracts: %v", err)
-// 	}
-// 	persister := &TestPersister{}
-// 	scraper := &TestScraper{}
-// 	proc := processor.NewEventProcessor(contracts.Client, persister, persister, persister, persister,
-// 		persister, persister, scraper, scraper, scraper)
-
-// 	whitelisted1 := &contract.CivilTCRContractApplicationWhitelisted{
-// 		ListingAddress: contracts.NewsroomAddr,
-// 		Raw: types.Log{
-// 			Address:     common.HexToAddress(testAddress),
-// 			Topics:      []common.Hash{},
-// 			Data:        []byte{},
-// 			BlockNumber: 8888895,
-// 			TxHash:      common.Hash{},
-// 			TxIndex:     8,
-// 			BlockHash:   common.Hash{},
-// 			Index:       7,
-// 			Removed:     false,
-// 		},
-// 	}
-
-// 	events := []*crawlermodel.Event{}
-// 	event1, _ := crawlermodel.NewEventFromContractEvent(
-// 		"_ApplicationWhitelisted",
-// 		"CivilTCRContract",
-// 		contracts.CivilTcrAddr,
-// 		whitelisted1,
-// 		utils.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Watcher,
-// 	)
-// 	events = append(events, event1)
-
-// 	err = proc.Process(events)
-// 	if err != nil {
-// 		t.Errorf("Should not have failed processing events: err: %v", err)
-// 	}
-// 	if len(persister.listings) == 0 {
-// 		t.Error("Should have seen at least 1 listing")
-// 	}
-// 	if len(persister.govEvents) == 0 {
-// 		t.Error("Should have seen at least 1 governance event")
-// 	}
-// 	listing := persister.listings[contracts.NewsroomAddr.Hex()]
-// 	if listing.LastGovernanceState() != model.GovernanceStateAppWhitelisted {
-// 		t.Errorf("Listing should have had governance state of whitelisted")
-// 	}
-// 	if !listing.Whitelisted() {
-// 		t.Errorf("Should have been whitelisted")
-// 	}
-// 	if listing.Charter().URI() != "newsroom.com/charter" {
-// 		t.Errorf("Listing charter URI is not correct")
-// 	}
-// 	if listing.ContractAddress() != contracts.NewsroomAddr {
-// 		t.Errorf("Should have the correct newsroom address")
-// 	}
-// 	if len(listing.OwnerAddresses()) <= 0 {
-// 		t.Errorf("Should have at least one owner address")
-// 	}
-
-// 	events = []*crawlermodel.Event{}
-// 	event1, _ = crawlermodel.NewEventFromContractEvent(
-// 		"_ApplicationWhitelisted",
-// 		"CivilTCRContract",
-// 		contracts.CivilTcrAddr,
-// 		whitelisted1,
-// 		utils.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Watcher,
-// 	)
-// 	events = append(events, event1)
-// 	err = proc.Process(events)
-// 	if err != nil {
-// 		t.Errorf("Should not have failed processing events: err: %v", err)
-// 	}
-// 	listing = persister.listings[contracts.NewsroomAddr.Hex()]
-// 	if listing.LastGovernanceState() != model.GovernanceStateAppWhitelisted {
-// 		t.Errorf("Listing should have had governance state of whitelisted")
 // 	}
 // }
 
