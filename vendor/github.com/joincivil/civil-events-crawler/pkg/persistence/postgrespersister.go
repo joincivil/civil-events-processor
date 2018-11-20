@@ -111,7 +111,7 @@ func (p *PostgresPersister) CreateTables() error {
 
 // CreateIndices creates the indices for DB if they don't exist
 func (p *PostgresPersister) CreateIndices() error {
-	indexQuery := postgres.EventTableIndices()
+	indexQuery := postgres.CreateEventTableIndices()
 	_, err := p.db.Exec(indexQuery)
 	return err
 }
@@ -169,7 +169,9 @@ func (p *PostgresPersister) retrieveEventsQuery(tableName string, criteria *mode
 		queryBuf.WriteString(" event_type = :eventtype") // nolint: gosec
 	}
 	if criteria.Reverse {
-		queryBuf.WriteString(" ORDER BY timestamp DESC") // nolint: gosec
+		queryBuf.WriteString(" ORDER BY id DESC") // nolint: gosec
+	} else {
+		queryBuf.WriteString(" ORDER BY id") // nolint: gosec
 	}
 	if criteria.Offset > 0 {
 		queryBuf.WriteString(" OFFSET :offset") // nolint: gosec
