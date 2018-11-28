@@ -330,17 +330,14 @@ func (t *TcrEventProcessor) processTCRListingRemoved(event *crawlermodel.Event,
 
 func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
-
 	existingListing, err := t.getExistingListing(tcrAddress, listingAddress)
 	if err != nil {
 		return err
 	}
-
 	challengeID, err := t.challengeIDFromEvent(event)
 	if err != nil {
 		return err
 	}
-
 	reward, err := t.getRewardFromTCRContract(tcrAddress, challengeID)
 	if err != nil {
 		return err
@@ -408,7 +405,6 @@ func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event
 	if err != nil {
 		return err
 	}
-
 	existingChallenge.SetResolved(resolved)
 	existingChallenge.SetTotalTokens(totalTokens.(*big.Int))
 	updatedFields := []string{resolvedFieldName, totalTokensFieldName}
@@ -434,7 +430,7 @@ func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event
 }
 
 func (t *TcrEventProcessor) processTCRAppealRequested(event *crawlermodel.Event,
-	tcrAddress common.Address, listingAddress common.Address) error {
+	listingAddress common.Address, tcrAddress common.Address) error {
 	err := t.newAppealFromAppealRequested(event)
 	if err != nil {
 		return fmt.Errorf("Error processing AppealRequested: %v", err)
@@ -445,7 +441,7 @@ func (t *TcrEventProcessor) processTCRAppealRequested(event *crawlermodel.Event,
 }
 
 func (t *TcrEventProcessor) processTCRAppealGranted(event *crawlermodel.Event,
-	tcrAddress common.Address, listingAddress common.Address) error {
+	listingAddress common.Address, tcrAddress common.Address) error {
 	challengeID, err := t.challengeIDFromEvent(event)
 	if err != nil {
 		return err
@@ -480,19 +476,19 @@ func (t *TcrEventProcessor) processTCRAppealGranted(event *crawlermodel.Event,
 }
 
 func (t *TcrEventProcessor) processTCRFailedChallengeOverturned(event *crawlermodel.Event,
-	tcrAddress common.Address, listingAddress common.Address) error {
+	listingAddress common.Address, tcrAddress common.Address) error {
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateFailedChallengeOverturned)
 	if err != nil {
 		return err
 	}
-	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress)
+	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress, false)
 }
 
 func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawlermodel.Event,
-	tcrAddress common.Address, listingAddress common.Address) error {
+	listingAddress common.Address, tcrAddress common.Address) error {
 
-	err := t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress)
+	err := t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress, false)
 	if err != nil {
 		return err
 	}
@@ -518,7 +514,7 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 }
 
 func (t *TcrEventProcessor) processTCRGrantedAppealChallenged(event *crawlermodel.Event,
-	tcrAddress common.Address, listingAddress common.Address) error {
+	listingAddress common.Address, tcrAddress common.Address) error {
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateGrantedAppealChallenged)
 	if err != nil {
@@ -528,37 +524,47 @@ func (t *TcrEventProcessor) processTCRGrantedAppealChallenged(event *crawlermode
 }
 
 func (t *TcrEventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.Event,
-	tcrAddress common.Address, listingAddress common.Address) error {
+	listingAddress common.Address, tcrAddress common.Address) error {
 	//NOTE(IS) in sol files, Appeal: overturned = TRUE, we don't have an overturned field.
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateGrantedAppealOverturned)
 	if err != nil {
 		return err
 	}
-	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress)
+	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress, true)
 }
 
 func (t *TcrEventProcessor) processTCRGrantedAppealConfirmed(event *crawlermodel.Event,
-	tcrAddress common.Address, listingAddress common.Address) error {
+	listingAddress common.Address, tcrAddress common.Address) error {
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateGrantedAppealConfirmed)
 	if err != nil {
 		return err
 	}
-	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress)
+	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress, true)
 }
 
 func (t *TcrEventProcessor) updateChallengeWithOverturnedData(event *crawlermodel.Event,
-	tcrAddress common.Address, listingAddress common.Address) error {
+	tcrAddress common.Address, listingAddress common.Address, appealChallenge bool) error {
 	eventPayload := event.EventPayload()
 	totalTokens, ok := eventPayload["TotalTokens"]
 	if !ok {
 		return errors.New("Error getting totalTokens from event payload")
 	}
-	challengeID, err := t.challengeIDFromEvent(event)
-	if err != nil {
-		return err
+	var challengeID *big.Int
+	var err error
+	if appealChallenge {
+		challengeID, ok = eventPayload["AppealChallengeID"].(*big.Int)
+		if !ok {
+			return errors.New("No appealChallengeID found")
+		}
+	} else {
+		challengeID, err = t.challengeIDFromEvent(event)
+		if err != nil {
+			return err
+		}
 	}
+
 	resolved := true
 	existingChallenge, err := t.getExistingChallenge(challengeID, tcrAddress, listingAddress)
 	if err != nil {
@@ -680,7 +686,6 @@ func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddre
 	existingListing.SetUnstakedDeposit(big.NewInt(0))
 	existingListing.SetAppExpiry(big.NewInt(0))
 	existingListing.SetWhitelisted(false)
-	existingListing.SetUnstakedDeposit(big.NewInt(0))
 	existingListing.SetChallengeID(big.NewInt(0))
 	existingListing.SetLastGovernanceState(govState)
 	updatedFields := []string{
@@ -717,7 +722,6 @@ func (t *TcrEventProcessor) getExistingListing(tcrAddress common.Address,
 	if err != nil && err != model.ErrPersisterNoResults {
 		return nil, err
 	}
-
 	if listing == nil {
 		listing, err = t.persistNewListingFromContract(listingAddress, tcrAddress)
 		if err != nil {
@@ -744,7 +748,6 @@ func (t *TcrEventProcessor) getExistingAppeal(challengeID *big.Int,
 
 func (t *TcrEventProcessor) updateListingWithLastGovState(listingAddress common.Address,
 	tcrAddress common.Address, govState model.GovernanceState) error {
-
 	listing, err := t.getExistingListing(tcrAddress, listingAddress)
 	if err != nil {
 		return err
