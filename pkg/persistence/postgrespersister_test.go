@@ -10,15 +10,16 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
-	"github.com/joincivil/civil-events-processor/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 	"math/big"
 	mathrand "math/rand"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 )
 
 const (
@@ -744,6 +745,35 @@ func TestListingsByCriteria(t *testing.T) {
 	}
 	if !reflect.DeepEqual(listingsFromDB[0].ChallengeID(), big.NewInt(0)) {
 		t.Error("Listing should have challengeID = 0")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		Offset: 0,
+		Count:  10,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 6 {
+		t.Error("Number of listings should be 6")
+	}
+	if listingsFromDB[0].ContractAddress().Hex() != modelListingWhitelistedActiveChallenge.ContractAddress().Hex() {
+		t.Error("First listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[1].ContractAddress().Hex() != modelListingRejected.ContractAddress().Hex() {
+		t.Error("Second listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[2].ContractAddress().Hex() != modelListingApplicationPhase.ContractAddress().Hex() {
+		t.Error("Third listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[3].ContractAddress().Hex() != modelListingWhitelisted.ContractAddress().Hex() {
+		t.Error("Fourth listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[4].ContractAddress().Hex() != modelListingNoChallenge.ContractAddress().Hex() {
+		t.Error("Fifth listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[5].ContractAddress().Hex() != modelListingPastApplicationPhase.ContractAddress().Hex() {
+		t.Error("Last listing is incorrect, ordering might be wrong")
 	}
 
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
