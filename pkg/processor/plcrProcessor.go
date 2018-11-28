@@ -117,7 +117,7 @@ func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event) erro
 		return fmt.Errorf("No poll with ID: %v", pollID)
 	}
 	var updatedFields []string
-	if choice == 1 {
+	if choice.(*big.Int).Int64() == 1 {
 		votesFor, ok := payload["VotesFor"]
 		if !ok {
 			return errors.New("No votesFor found")

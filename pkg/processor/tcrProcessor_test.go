@@ -602,7 +602,6 @@ func setupTcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *TestPers
 }
 
 func TestTcrEventProcessor(t *testing.T) {
-	// here should test all events and then count that the numbers in persistence adds up.
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	listingAddress := contracts.NewsroomAddr.Hex()
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
