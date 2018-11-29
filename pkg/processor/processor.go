@@ -3,12 +3,13 @@ package processor
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	log "github.com/golang/glog"
-	"math/big"
-	"strings"
 
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
@@ -280,11 +281,9 @@ func (e *EventProcessor) processCivilTCREvent(event *crawlermodel.Event) (bool, 
 		return false, nil
 	}
 
-	var err error
-	ran := true
 	eventName := strings.Trim(event.EventType(), " _")
 
-	ran, err = e.processCivilTCRApplicationListingEvent(event, eventName)
+	ran, err := e.processCivilTCRApplicationListingEvent(event, eventName)
 	if !ran {
 		ran, err = e.processCivilTCRChallengeEvent(event, eventName)
 	}
