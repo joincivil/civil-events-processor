@@ -14,13 +14,6 @@ var (
 	addressesOneString = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d,0xDFe273082089bB7f70Ee36Eebcde64832FE97E55"
 )
 
-func TestListCommonAddressToListString(t *testing.T) {
-
-}
-
-func TestListStringToListCommonAddress(t *testing.T) {
-}
-
 func TestListCommonAddressesToString(t *testing.T) {
 	stringConverted := postgres.ListCommonAddressesToString(addressesCommon)
 	if stringConverted != addressesOneString {
