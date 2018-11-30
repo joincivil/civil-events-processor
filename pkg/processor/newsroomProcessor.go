@@ -142,6 +142,7 @@ func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermo
 	if err != nil {
 		return fmt.Errorf("Error creating newsroom contract: err: %v", err)
 	}
+
 	content, err := newsroom.GetContent(&bind.CallOpts{}, contentID.(*big.Int))
 	if err != nil {
 		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
@@ -212,8 +213,11 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 		return err
 	}
 
-	if revision.ContractRevisionID().Cmp(listing.Charter().RevisionID()) == 0 {
-		return fmt.Errorf("Not updating listing charter, revision ids are the same")
+	if listing.Charter() != nil {
+		fmt.Println("here")
+		if revision.ContractRevisionID().Cmp(listing.Charter().RevisionID()) == 0 {
+			return fmt.Errorf("Not updating listing charter, revision ids are the same")
+		}
 	}
 
 	newsroom, newsErr := contract.NewNewsroomContract(revision.ListingAddress(), n.client)
@@ -233,7 +237,7 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 	updatedFields := []string{"Charter"}
 	updatedCharter := model.NewCharter(&model.CharterParams{
 		URI:         revision.RevisionURI(),
-		ContentID:   listing.Charter().ContentID(),
+		ContentID:   revision.ContractContentID(),
 		RevisionID:  revision.ContractRevisionID(),
 		Signature:   charterContent.Signature,
 		Author:      charterContent.Author,
