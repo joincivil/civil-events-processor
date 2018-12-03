@@ -114,7 +114,7 @@ func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event) erro
 	}
 	if poll == nil {
 		// TODO(IS): create new poll. If getting events in order, this shouldn't happen.
-		return fmt.Errorf("No poll with ID: %v", pollID)
+		return fmt.Errorf("Error persisting poll: no poll with ID: %v", pollID)
 	}
 	var updatedFields []string
 	if choice.(*big.Int).Int64() == 1 {

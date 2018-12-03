@@ -307,8 +307,6 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 		Timestamp:   charterContent.Timestamp,
 	})
 
-	fmt.Println("Charter data while persisting new listing:", charter)
-
 	charterAuthorAddr := charterContent.Author
 	ownerAddr, err := newsroom.Owner(&bind.CallOpts{})
 	if err != nil {

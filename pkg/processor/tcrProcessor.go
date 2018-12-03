@@ -25,7 +25,7 @@ const (
 	rewardPoolFieldName      = "RewardPool"
 	stakeFieldName           = "Stake"
 	resolvedFieldName        = "Resolved"
-	totalTokensFieldName     = "totalTokens"
+	totalTokensFieldName     = "TotalTokens"
 	appExpiryFieldName       = "AppExpiry"
 
 	appealChallengeIDFieldName           = "AppealChallengeID"
@@ -382,6 +382,7 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	if err != nil {
 		return fmt.Errorf("Error getting challenge from contract: %v", err)
 	}
+	fmt.Println(challengeRes.TotalTokens)
 	existingChallenge.SetTotalTokens(challengeRes.TotalTokens)
 	existingChallenge.SetRewardPool(challengeRes.RewardPool)
 	updatedFields := []string{rewardPoolFieldName, totalTokensFieldName}
