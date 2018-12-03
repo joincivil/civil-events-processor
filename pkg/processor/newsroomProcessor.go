@@ -214,7 +214,6 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 	}
 
 	if listing.Charter() != nil {
-		fmt.Println("here")
 		if revision.ContractRevisionID().Cmp(listing.Charter().RevisionID()) == 0 {
 			return fmt.Errorf("Not updating listing charter, revision ids are the same")
 		}
@@ -264,7 +263,7 @@ func (n *NewsroomEventProcessor) retrieveOrCreateListingForNewsroomEvent(event *
 }
 
 func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address) (*model.Listing, error) {
-	// NOTE: This should be the function that is called to get data from contract
+	// NOTE: This is the function that is called to get data from newsroom contract
 	// in the case events are out of order and persists a listing
 
 	// TODO(PN): How do I get the URL of the site?

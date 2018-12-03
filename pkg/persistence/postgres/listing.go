@@ -159,11 +159,15 @@ func (l *Listing) DbToListingData() *model.Listing {
 	unstakedDeposit.SetString(strconv.FormatFloat(l.UnstakedDeposit, 'f', -1, 64), 10)
 
 	challengeID := big.NewInt(l.ChallengeID)
-	//TODO: check that this will work if charter is empty json
+
 	charter := &model.Charter{}
-	err := charter.FromMap(l.Charter)
-	if err != nil {
-		log.Errorf("Error decoding map to charter: err: %v", err)
+	if len(l.Charter) != 0 {
+		err := charter.FromMap(l.Charter)
+		if err != nil {
+			log.Errorf("Error decoding map to charter: err: %v", err)
+		}
+	} else {
+		charter = nil
 	}
 
 	testListingParams := &model.NewListingParams{

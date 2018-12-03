@@ -371,6 +371,7 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	}
 	tcrAddress := event.ContractAddress()
 	// NOTE(IS): This event doesn't emit listingAddress. Put empty address for now
+	// TODO(IS): Make sure this can get updated with a later event.
 	listingAddress := common.Address{}
 	existingChallenge, err := t.getExistingChallenge(challengeID, tcrAddress, listingAddress)
 	if err != nil {
@@ -895,7 +896,7 @@ func (t *TcrEventProcessor) newAppealFromAppealRequested(event *crawlermodel.Eve
 func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.Address,
 	tcrAddress common.Address) (*model.Listing, error) {
 	// NOTE: In the event that there is no persisted listing, we can create a new listing using data
-	// obtained by calling the smart contract
+	// obtained by calling tcr contract
 
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, t.client)
 	if newsErr != nil {
