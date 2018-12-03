@@ -122,8 +122,10 @@ func NewListing(listing *model.Listing) *Listing {
 	} else {
 		challengeID = nilChallengeID
 	}
-
-	charter := crawlerpg.JsonbPayload(listing.Charter().AsMap())
+	var charter crawlerpg.JsonbPayload
+	if listing.Charter() != nil {
+		charter = crawlerpg.JsonbPayload(listing.Charter().AsMap())
+	}
 
 	return &Listing{
 		Name:                 listing.Name(),
@@ -157,7 +159,7 @@ func (l *Listing) DbToListingData() *model.Listing {
 	unstakedDeposit.SetString(strconv.FormatFloat(l.UnstakedDeposit, 'f', -1, 64), 10)
 
 	challengeID := big.NewInt(l.ChallengeID)
-
+	//TODO: check that this will work if charter is empty json
 	charter := &model.Charter{}
 	err := charter.FromMap(l.Charter)
 	if err != nil {
