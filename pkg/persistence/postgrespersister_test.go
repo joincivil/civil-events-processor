@@ -10,15 +10,16 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
-	"github.com/joincivil/civil-events-processor/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 	"math/big"
 	mathrand "math/rand"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 )
 
 const (
@@ -46,6 +47,9 @@ func randomHex(n int) (string, error) {
 
 func setupDBConnection() (*PostgresPersister, error) {
 	postgresPersister, err := NewPostgresPersister(postgresHost, postgresPort, postgresUser, postgresPswd, postgresDBName)
+	if err != nil {
+		fmt.Errorf("Error setting up new persister: err: %v", err)
+	}
 	err = postgresPersister.CreateTables()
 	if err != nil {
 		fmt.Errorf("Error setting up tables in db: %v", err)
@@ -308,6 +312,9 @@ func TestCreateListing(t *testing.T) {
 	// check that listing is there
 	var numRowsb int
 	err = persister.db.QueryRow(`SELECT COUNT(*) FROM listing_test`).Scan(&numRowsb)
+	if err != nil {
+		t.Errorf("Error querying row: err: %v", err)
+	}
 	if numRowsb != 1 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
 	}
@@ -525,7 +532,7 @@ func TestListingByAddressesInOrder(t *testing.T) {
 	}
 
 	// Empty input results
-	dbListings, err = persister.listingsByAddressesFromTableInOrder([]common.Address{}, tableName)
+	_, err = persister.listingsByAddressesFromTableInOrder([]common.Address{}, tableName)
 	if err == nil {
 		t.Errorf("Should have received an error on listing addresses")
 	}
@@ -747,6 +754,35 @@ func TestListingsByCriteria(t *testing.T) {
 	}
 
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		Offset: 0,
+		Count:  10,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 6 {
+		t.Error("Number of listings should be 6")
+	}
+	if listingsFromDB[0].ContractAddress().Hex() != modelListingWhitelistedActiveChallenge.ContractAddress().Hex() {
+		t.Error("First listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[1].ContractAddress().Hex() != modelListingRejected.ContractAddress().Hex() {
+		t.Error("Second listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[2].ContractAddress().Hex() != modelListingApplicationPhase.ContractAddress().Hex() {
+		t.Error("Third listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[3].ContractAddress().Hex() != modelListingWhitelisted.ContractAddress().Hex() {
+		t.Error("Fourth listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[4].ContractAddress().Hex() != modelListingNoChallenge.ContractAddress().Hex() {
+		t.Error("Fifth listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[5].ContractAddress().Hex() != modelListingPastApplicationPhase.ContractAddress().Hex() {
+		t.Error("Last listing is incorrect, ordering might be wrong")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
 		ActiveChallenge: true,
 	}, tableName)
 	if err != nil {
@@ -847,6 +883,9 @@ func TestCreateContentRevision(t *testing.T) {
 	// check row is there
 	var numRowsb int
 	err = persister.db.QueryRow(`SELECT COUNT(*) FROM content_revision_test`).Scan(&numRowsb)
+	if err != nil {
+		t.Errorf("Error querying row: err: %v", err)
+	}
 	if numRowsb != 1 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
 	}
@@ -1324,6 +1363,9 @@ func TestGovernanceEventByChallengeID(t *testing.T) {
 	// Try with just one ID
 	challengeIDs := []int{challengeID}
 	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
+	if err != nil {
+		t.Errorf("error getting gov events by challenge ids: %v", err)
+	}
 
 	if len(govEvents) != 1 {
 		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
@@ -1347,6 +1389,9 @@ func TestGovernanceEventByChallengeID(t *testing.T) {
 	}
 
 	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
+	if err != nil {
+		t.Errorf("error getting gov events by challenge ids: %v", err)
+	}
 	if len(govEvents) != 6 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1359,7 +1404,7 @@ func TestGovernanceEventByChallengeID(t *testing.T) {
 		}
 	}
 
-	govEvents, err = persister.govEventsByChallengeIDsFromTable([]int{}, tableName)
+	_, err = persister.govEventsByChallengeIDsFromTable([]int{}, tableName)
 	if err == nil {
 		t.Errorf("Should have received an error on empty challenges ID")
 	}
@@ -1399,7 +1444,9 @@ func TestGovernanceEventByChallengeIDOrder(t *testing.T) {
 	// Try with just one ID
 	challengeIDs := []int{challengeID}
 	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-
+	if err != nil {
+		t.Errorf("error getting gov events by challenge ids: %v", err)
+	}
 	if len(govEvents) != 1 {
 		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
 	}
@@ -1423,6 +1470,9 @@ func TestGovernanceEventByChallengeIDOrder(t *testing.T) {
 
 	challengeIDs = shuffleInts(challengeIDs)
 	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
+	if err != nil {
+		t.Errorf("error getting gov events from challenge ids: %v", err)
+	}
 	if len(govEvents) != 6 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1439,6 +1489,9 @@ func TestGovernanceEventByChallengeIDOrder(t *testing.T) {
 	challengeIDs = append(challengeIDs, nilID)
 	challengeIDs = shuffleInts(challengeIDs)
 	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
+	if err != nil {
+		t.Errorf("error getting by challenge ids: %v", err)
+	}
 	if len(govEvents) != 7 {
 		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
 	}
@@ -1486,7 +1539,9 @@ func TestNilChallenges(t *testing.T) {
 	// Try with just one ID
 	challengeIDs := []int{0}
 	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-
+	if err != nil {
+		t.Errorf("error retrieving challenge ids: %v", err)
+	}
 	if len(govEvents) != 1 {
 		t.Errorf("Should have only returned 1 listing")
 	}
@@ -1501,7 +1556,9 @@ func TestNilChallenges(t *testing.T) {
 	// Try with just one ID
 	challengeIDs = []int{0, 300}
 	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-
+	if err != nil {
+		t.Errorf("error retrieving got events by challenges ids: err: %v", err)
+	}
 	if len(govEvents) != 2 {
 		t.Errorf("Should have only returned 1 listing")
 	}
@@ -1622,7 +1679,7 @@ func TestGetChallenge(t *testing.T) {
 		t.Error("Mismatch in ts")
 	}
 
-	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder(
+	_, err = persister.challengesByChallengeIDsInTableInOrder(
 		[]int{}, challengeTestTableName)
 	if err == nil {
 		t.Errorf("Should have received an error on empty challenges ID")
@@ -1712,7 +1769,7 @@ func TestGetChallengesForListingAddresses(t *testing.T) {
 		}
 	}
 
-	listingChallenges, err = persister.challengesByListingAddressesInTable(
+	_, err = persister.challengesByListingAddressesInTable(
 		[]common.Address{},
 		challengeTestTableName,
 	)

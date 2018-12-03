@@ -204,7 +204,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e64c2c360e2c78abd183cf0f60f754862f1304e844975fc8d46932a79a8e391b"
+  digest = "1:3d07678931afe969d2772b9803c424e2217c778875227ca28206fdb269cab473"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -216,7 +216,7 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "cf6d31f292d016a3c2f76fcd28a4eedf2f2e4c17"
+  revision = "3300dd19b05d113f2ffd10f9467e82f91079acb6"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
