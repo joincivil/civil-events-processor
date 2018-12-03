@@ -177,8 +177,7 @@ func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermo
 		return err
 	}
 
-	// If the revision is for the charter, need to update the data in the
-	// listing.
+	// If the revision is for the charter, need to update the data in the listing.
 	if contentID.(*big.Int).Int64() == defaultCharterContentID {
 		err = n.updateListingCharterRevision(revision)
 	}
@@ -213,11 +212,13 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 		return err
 	}
 
-	if listing.Charter() != nil {
-		if revision.ContractRevisionID().Cmp(listing.Charter().RevisionID()) == 0 {
-			return fmt.Errorf("Not updating listing charter, revision ids are the same")
-		}
-	}
+	// NOTE(IS): Commenting this out. This doesn't check if charter data is correct and if
+	// events are out of order it will be incorrect.
+	// if listing.Charter() != nil {
+	// 	if revision.ContractRevisionID().Cmp(listing.Charter().RevisionID()) == 0 {
+	// 		return fmt.Errorf("Not updating listing charter, revision ids are the same")
+	// 	}
+	// }
 
 	newsroom, newsErr := contract.NewNewsroomContract(revision.ListingAddress(), n.client)
 	if newsErr != nil {
@@ -258,6 +259,7 @@ func (n *NewsroomEventProcessor) retrieveOrCreateListingForNewsroomEvent(event *
 		return listing, nil
 	}
 	// If a listing doesn't exist, create a new one from contract. This shouldn't happen if events are ordered
+	log.Infof("Listing not found in persistence for %v, events may be processed out of order\n", listingAddress.Hex())
 	listing, err = n.persistNewListing(listingAddress)
 	return listing, err
 }
@@ -304,6 +306,8 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 		ContentHash: charterContent.ContentHash,
 		Timestamp:   charterContent.Timestamp,
 	})
+
+	fmt.Println("Charter data while persisting new listing:", charter)
 
 	charterAuthorAddr := charterContent.Author
 	ownerAddr, err := newsroom.Owner(&bind.CallOpts{})
