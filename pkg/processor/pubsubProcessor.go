@@ -24,6 +24,7 @@ type PubSubMessage struct {
 	TxHash string `json:"txHash"`
 }
 
+// TODO(jorgelo): Put this in configuration.
 const pubsubTopic = "goverance-events-staging"
 
 func (e *EventProcessor) pubSubBuildPayload(event *crawlermodel.Event) (*crawlerutils.GooglePubSubMsg, error) {

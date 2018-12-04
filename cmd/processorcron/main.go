@@ -49,6 +49,7 @@ func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermode
 
 func initPubSub(config *utils.ProcessorConfig) (*crawlerutils.GooglePubSub, error) {
 
+	// TODO(jorgelo): Put "project id" in configuration.
 	pubsub, err := crawlerutils.NewGooglePubSub("civil-media")
 
 	if err != nil {
