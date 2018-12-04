@@ -5,6 +5,7 @@ import (
 	log "github.com/golang/glog"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 )
@@ -25,7 +26,8 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.ListingPersister,
 		params.ChallengePersister,
 		params.AppealPersister,
-		params.GovEventPersister)
+		params.GovEventPersister,
+	)
 	plcrEventProcessor := NewPlcrEventProcessor(
 		params.Client,
 		params.PollPersister)
@@ -40,6 +42,7 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		tcrEventProcessor:      tcrEventProcessor,
 		plcrEventProcessor:     plcrEventProcessor,
 		newsroomEventProcessor: newsroomEventProcessor,
+		googlePubSub:           params.GooglePubSub,
 	}
 }
 
@@ -55,6 +58,7 @@ type NewEventProcessorParams struct {
 	ContentScraper       model.ContentScraper
 	MetadataScraper      model.MetadataScraper
 	CivilMetadataScraper model.CivilMetadataScraper
+	GooglePubSub         *crawlerutils.GooglePubSub
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
@@ -63,6 +67,7 @@ type EventProcessor struct {
 	tcrEventProcessor      *TcrEventProcessor
 	plcrEventProcessor     *PlcrEventProcessor
 	newsroomEventProcessor *NewsroomEventProcessor
+	googlePubSub           *crawlerutils.GooglePubSub
 }
 
 // Process runs the processor with the given set of raw CivilEvents
@@ -86,6 +91,15 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
 		if ran {
+			log.Info("About to process event")
+			err = e.pubSub(event)
+
+			log.Info("Event done.")
+
+			if err != nil {
+				log.Errorf("Error publishing to pubsub: err %v\n", err)
+			}
+
 			continue
 		}
 		_, err = e.plcrEventProcessor.Process(event)
