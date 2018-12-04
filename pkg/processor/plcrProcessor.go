@@ -40,6 +40,15 @@ func (p *PlcrEventProcessor) isValidPLCRContractEventName(name string) bool {
 	return isStringInSlice(eventNames, name)
 }
 
+func (p *PlcrEventProcessor) pollIDFromEvent(event *crawlermodel.Event) (*big.Int, error) {
+	payload := event.EventPayload()
+	pollID, ok := payload["PollID"]
+	if !ok {
+		return nil, errors.New("Unable to find the poll ID in the payload")
+	}
+	return pollID.(*big.Int), nil
+}
+
 // Process processes Plcr Events into aggregated data
 func (p *PlcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	if !p.isValidPLCRContractEventName(event.EventType()) {
@@ -49,13 +58,17 @@ func (p *PlcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	var err error
 	ran := true
 	eventName := strings.Trim(event.EventType(), " _")
+	pollID, err := p.pollIDFromEvent(event)
+	if err != nil {
+		log.Infof("Error retrieving pollID: %v", err)
+	}
 	// Handling all the actionable events from PLCR Contract
 	switch eventName {
 	case "PollCreated":
-		log.Infof("Handling PollCreated for %v\n", event.ContractAddress().Hex())
+		log.Infof("Handling PollCreated for pollID %v\n", pollID)
 		err = p.processPollCreated(event)
 	case "VoteRevealed":
-		log.Infof("Handling VoteRevealed for %v\n", event.ContractAddress().Hex())
+		log.Infof("Handling VoteRevealed for pollID %v\n", pollID)
 		err = p.processVoteRevealed(event)
 	}
 	return ran, err
@@ -78,15 +91,15 @@ func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event) error
 		return errors.New("No revealEndDate found")
 	}
 
-	pollID, ok := payload["PollID"]
-	if !ok {
-		return errors.New("No pollID found")
+	pollID, err := p.pollIDFromEvent(event)
+	if err != nil {
+		log.Infof("Error retrieving pollID: %v", err)
 	}
 	votesFor := big.NewInt(0)
 	votesAgainst := big.NewInt(0)
 
 	poll := model.NewPoll(
-		pollID.(*big.Int),
+		pollID,
 		commitEndDate.(*big.Int),
 		revealEndDate.(*big.Int),
 		voteQuorum.(*big.Int),
@@ -94,21 +107,20 @@ func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event) error
 		votesAgainst,
 		crawlerutils.CurrentEpochSecsInInt64(),
 	)
-	err := p.pollPersister.CreatePoll(poll)
-	return err
+	return p.pollPersister.CreatePoll(poll)
 }
 
 func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
-	pollID, ok := payload["PollID"]
-	if !ok {
-		return errors.New("No pollID found")
-	}
 	choice, ok := payload["Choice"]
 	if !ok {
 		return errors.New("No choice found")
 	}
-	poll, err := p.pollPersister.PollByPollID(int(pollID.(*big.Int).Int64()))
+	pollID, err := p.pollIDFromEvent(event)
+	if err != nil {
+		log.Infof("Error retrieving pollID: %v", err)
+	}
+	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
 		return err
 	}
