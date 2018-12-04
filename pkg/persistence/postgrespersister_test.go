@@ -1042,7 +1042,6 @@ Helpers for governance_event table tests:
 
 func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, common.Address, string, common.Hash) {
 	var listingAddr common.Address
-	address2, _ := randomHex(32)
 	if randListing {
 		address1, _ := randomHex(32)
 		listingAddr = common.HexToAddress(address1)
@@ -1051,7 +1050,6 @@ func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, commo
 		listingAddr = common.HexToAddress(testAddress)
 	}
 
-	senderAddress := common.HexToAddress(address2)
 	metadata := model.Metadata{}
 	governanceEventType := "governanceeventtypehere"
 	creationDateTs := crawlerutils.CurrentEpochSecsInInt64()
@@ -1063,7 +1061,7 @@ func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, commo
 	txIndex := uint(4)
 	blockHash := common.Hash{}
 	index := uint(2)
-	testGovernanceEvent := model.NewGovernanceEvent(listingAddr, senderAddress, metadata, governanceEventType,
+	testGovernanceEvent := model.NewGovernanceEvent(listingAddr, metadata, governanceEventType,
 		creationDateTs, lastUpdatedDateTs, eventHash, blockNumber, txHash, txIndex, blockHash, index)
 	return testGovernanceEvent, listingAddr, eventHash, txHash
 }
@@ -1303,21 +1301,20 @@ func TestChallengeQuery(t *testing.T) {
 
 	challengeIDs := []int{1, 2, 3}
 	query := persister.govEventsByChallengeIDQuery(govTestTableName, challengeIDs)
-	correctQuery := "SELECT listing_address, sender_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1','2','3');"
+	correctQuery := "SELECT listing_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1','2','3');"
 	if query != correctQuery {
-		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", query, correctQuery)
+		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", correctQuery, query)
 	}
 	challengeIDs2 := []int{1}
 	query2 := persister.govEventsByChallengeIDQuery(govTestTableName, challengeIDs2)
-	correctQuery2 := "SELECT listing_address, sender_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1');"
+	correctQuery2 := "SELECT listing_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1');"
 	if query2 != correctQuery2 {
-		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", query2, correctQuery2)
+		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", correctQuery2, query2)
 	}
 }
 
 func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEvent, int) {
 	var listingAddr common.Address
-	address2, _ := randomHex(32)
 	if randListing {
 		address1, _ := randomHex(32)
 		listingAddr = common.HexToAddress(address1)
@@ -1326,7 +1323,6 @@ func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEve
 		listingAddr = common.HexToAddress(testAddress)
 	}
 	challengeID := mathrand.Intn(100)
-	senderAddress := common.HexToAddress(address2)
 	metadata := model.Metadata{
 		"Data":           "ipfs://QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH",
 		"Challenger":     "0xe562d05067eded7a722ed73b9ebfaaedc60970a1",
@@ -1344,7 +1340,7 @@ func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEve
 	txIndex := uint(4)
 	blockHash := common.Hash{}
 	index := uint(2)
-	testGovernanceEvent := model.NewGovernanceEvent(listingAddr, senderAddress, metadata, governanceEventType,
+	testGovernanceEvent := model.NewGovernanceEvent(listingAddr, metadata, governanceEventType,
 		creationDateTs, lastUpdatedDateTs, eventHash, blockNumber, txHash, txIndex, blockHash, index)
 	return testGovernanceEvent, challengeID
 }
@@ -2047,6 +2043,26 @@ func TestUpdateAppeal(t *testing.T) {
 		t.Errorf("Error updating appeal table")
 	}
 }
+
+// func TestAppealByChallengeIDEmptyResults(t *testing.T) {
+// 	persister, err := setupTestTable(appealTestTableName)
+// 	if err != nil {
+// 		t.Errorf("Error connecting to DB: %v", err)
+// 	}
+// 	defer deleteTestTable(t, persister, appealTestTableName)
+// 	_, challengeID := createAndSaveTestAppeal(t, persister, true)
+
+// 	_, err = persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64()) + 1}, appealTestTableName)
+// 	// TODO(IS): Change this so model.ErrPersisterNoResults is being used correctly!
+// 	// Even though this challengeID doesn't exist err == nil
+// 	if err == nil {
+// 		t.Error("Should have received an error on appeals")
+// 	}
+// 	// // Empty input results
+// 	// if err != model.ErrPersisterNoResults {
+// 	// 	t.Errorf("Should have received an ErrPersisterNoResults on empty listing addresses: err: %v", err)
+// 	// }
+// }
 
 /*
 All tests for cron table:
