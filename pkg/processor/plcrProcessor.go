@@ -58,23 +58,28 @@ func (p *PlcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	var err error
 	ran := true
 	eventName := strings.Trim(event.EventType(), " _")
-	pollID, err := p.pollIDFromEvent(event)
-	if err != nil {
-		log.Infof("Error retrieving pollID: %v", err)
-	}
 	// Handling all the actionable events from PLCR Contract
 	switch eventName {
 	case "PollCreated":
+		pollID, pollIDerr := p.pollIDFromEvent(event)
+		if pollIDerr != nil {
+			log.Infof("Error retrieving pollID: %v", err)
+		}
 		log.Infof("Handling PollCreated for pollID %v\n", pollID)
-		err = p.processPollCreated(event)
+		err = p.processPollCreated(event, pollID)
 	case "VoteRevealed":
+		pollID, pollIDerr := p.pollIDFromEvent(event)
+		if pollIDerr != nil {
+			log.Infof("Error retrieving pollID: %v", err)
+		}
 		log.Infof("Handling VoteRevealed for pollID %v\n", pollID)
-		err = p.processVoteRevealed(event)
+		err = p.processVoteRevealed(event, pollID)
 	}
 	return ran, err
 }
 
-func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event) error {
+func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event,
+	pollID *big.Int) error {
 	payload := event.EventPayload()
 	voteQuorum, ok := payload["VoteQuorum"]
 	if !ok {
@@ -89,11 +94,6 @@ func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event) error
 	revealEndDate, ok := payload["RevealEndDate"]
 	if !ok {
 		return errors.New("No revealEndDate found")
-	}
-
-	pollID, err := p.pollIDFromEvent(event)
-	if err != nil {
-		log.Infof("Error retrieving pollID: %v", err)
 	}
 	votesFor := big.NewInt(0)
 	votesAgainst := big.NewInt(0)
@@ -110,15 +110,12 @@ func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event) error
 	return p.pollPersister.CreatePoll(poll)
 }
 
-func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
+func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
+	pollID *big.Int) error {
 	payload := event.EventPayload()
 	choice, ok := payload["Choice"]
 	if !ok {
 		return errors.New("No choice found")
-	}
-	pollID, err := p.pollIDFromEvent(event)
-	if err != nil {
-		log.Infof("Error retrieving pollID: %v", err)
 	}
 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
 	if err != nil && err != model.ErrPersisterNoResults {
