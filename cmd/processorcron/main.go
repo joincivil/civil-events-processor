@@ -2,15 +2,17 @@ package main
 
 import (
 	"flag"
-	log "github.com/golang/glog"
 	"os"
 	"runtime"
 	"time"
+
+	log "github.com/golang/glog"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/robfig/cron"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/model"
@@ -43,6 +45,23 @@ func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermode
 		return persister.UpdateTimestampForCron(lastTs)
 	}
 	return nil
+}
+
+func initPubSub(config *utils.ProcessorConfig) (*crawlerutils.GooglePubSub, error) {
+
+	pubsub, err := crawlerutils.NewGooglePubSub("civil-media")
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = pubsub.StartPublishers()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return pubsub, nil
 }
 
 type initializedPersisters struct {
@@ -119,6 +138,7 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 	events, err := persisters.event.RetrieveEvents(
 		&crawlermodel.RetrieveEventsCriteria{
 			FromTs: lastTs,
+			Count:  1,
 		},
 	)
 	if err != nil {
@@ -134,6 +154,13 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 		}
 		defer client.Close()
 
+		pubsub, err := initPubSub(config)
+
+		if err != nil {
+			log.Errorf("Error initializing pubsub: err: %v", err)
+			return
+		}
+
 		proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
 			Client:               client,
 			ListingPersister:     persisters.listing,
@@ -145,6 +172,7 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 			ContentScraper:       helpers.ContentScraper(config),
 			MetadataScraper:      helpers.MetadataScraper(config),
 			CivilMetadataScraper: helpers.CivilMetadataScraper(config),
+			GooglePubSub:         pubsub,
 		})
 		err = proc.Process(events)
 		if err != nil {
