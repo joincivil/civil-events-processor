@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	listingNameFieldName = "Name"
-	ownerFieldName       = "OwnerAddresses"
+	listingNameFieldName    = "Name"
+	ownerAddressesFieldName = "OwnerAddresses"
 
 	defaultCharterContentID = 0
 	// approvalDateNoUpdate    = int64(-1)
@@ -201,7 +201,7 @@ func (n *NewsroomEventProcessor) processNewsroomOwnershipTransferred(event *craw
 	}
 	listing.RemoveOwnerAddress(previousOwner.(common.Address))
 	listing.AddOwnerAddress(newOwner.(common.Address))
-	updatedFields = append(updatedFields, ownerFieldName)
+	updatedFields = append(updatedFields, ownerAddressesFieldName)
 	err = n.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }

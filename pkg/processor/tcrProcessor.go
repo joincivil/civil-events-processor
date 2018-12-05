@@ -18,15 +18,17 @@ import (
 )
 
 const (
-	challengeIDFieldName     = "ChallengeID"
-	unstakedDepositFieldName = "UnstakedDeposit"
-	whitelistedFieldName     = "Whitelisted"
-	lastGovStateFieldName    = "LastGovernanceState"
-	rewardPoolFieldName      = "RewardPool"
-	stakeFieldName           = "Stake"
-	resolvedFieldName        = "Resolved"
-	totalTokensFieldName     = "TotalTokens"
-	appExpiryFieldName       = "AppExpiry"
+	challengeIDFieldName          = "ChallengeID"
+	unstakedDepositFieldName      = "UnstakedDeposit"
+	whitelistedFieldName          = "Whitelisted"
+	lastGovStateFieldName         = "LastGovernanceState"
+	rewardPoolFieldName           = "RewardPool"
+	stakeFieldName                = "Stake"
+	resolvedFieldName             = "Resolved"
+	totalTokensFieldName          = "TotalTokens"
+	appExpiryFieldName            = "AppExpiry"
+	ownerAddressFieldName         = "OwnerAddress"
+	contributorAddressesFieldName = "ContributorAddresses"
 
 	appealChallengeIDFieldName           = "AppealChallengeID"
 	appealOpenToChallengeExpiryFieldName = "AppealOpenToChallengeExpiry"
@@ -254,6 +256,8 @@ func (t *TcrEventProcessor) processTCRChallenge(event *crawlermodel.Event,
 	if err != nil {
 		return err
 	}
+	// TODO(IS): Check if a Challenge already exists. if it does, update data. This might happen
+	// if events are out of order
 	err = t.challengePersister.CreateChallenge(challenge)
 	if err != nil {
 		return fmt.Errorf("Error persisting new Challenge: %v", err)
@@ -304,7 +308,6 @@ func (t *TcrEventProcessor) processTCRDepositWithdrawal(event *crawlermodel.Even
 func (t *TcrEventProcessor) processTCRApplicationWhitelisted(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
 	// NOTE(IS): The Dapp changes challengeID to 0 here but we keep this as -1 because it hasn't been challenged yet
-
 	whitelisted := true
 
 	existingListing, err := t.getExistingListing(tcrAddress, listingAddress)
@@ -377,12 +380,11 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	if err != nil {
 		return err
 	}
-	// NOTE(IS) Have to get totaltokens through contract call, so get all data this way
+	// NOTE(IS): Have to get totaltokens through contract call, so get all data this way
 	challengeRes, err := t.getChallengeFromTCRContract(tcrAddress, challengeID)
 	if err != nil {
 		return fmt.Errorf("Error getting challenge from contract: %v", err)
 	}
-	fmt.Println(challengeRes.TotalTokens)
 	existingChallenge.SetTotalTokens(challengeRes.TotalTokens)
 	existingChallenge.SetRewardPool(challengeRes.RewardPool)
 	updatedFields := []string{rewardPoolFieldName, totalTokensFieldName}
@@ -416,7 +418,7 @@ func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event
 		return err
 	}
 	if appealNotGranted {
-		// NOTE(IS) Have to get stake through contract call, so get all data this way
+		// NOTE(IS): Have to get stake through contract call, so get all data this way
 		challenge, err := t.getChallengeFromTCRContract(tcrAddress, challengeID)
 		if err != nil {
 			return fmt.Errorf("Error getting challenge from contract: %v", err)
@@ -527,7 +529,7 @@ func (t *TcrEventProcessor) processTCRGrantedAppealChallenged(event *crawlermode
 
 func (t *TcrEventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
-	//NOTE(IS) in sol files, Appeal: overturned = TRUE, we don't have an overturned field.
+	// NOTE(IS): in sol files, Appeal: overturned = TRUE, we don't have an overturned field.
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateGrantedAppealOverturned)
 	if err != nil {
@@ -678,25 +680,28 @@ func (t *TcrEventProcessor) getChallengeFromTCRContract(tcrAddress common.Addres
 
 func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddress common.Address,
 	govState model.GovernanceState, tcrAddress common.Address) error {
-	// This corresponds to delete listings[listingAddress] in the dApp.
-
+	// NOTE(IS): This corresponds to delete listings[listingAddress] in the dApp.
 	existingListing, err := t.getExistingListing(tcrAddress, listingAddress)
 	if err != nil {
 		return err
 	}
-	// NOTE(IS): In dApp, this is delete[listing], check which other fields we match with.
 	existingListing.SetUnstakedDeposit(big.NewInt(0))
 	existingListing.SetAppExpiry(big.NewInt(0))
 	existingListing.SetWhitelisted(false)
 	existingListing.SetChallengeID(big.NewInt(0))
 	existingListing.SetLastGovernanceState(govState)
+	existingListing.ResetOwnerAddresses()
+	existingListing.ResetContributorAddresses()
 	updatedFields := []string{
 		unstakedDepositFieldName,
 		appExpiryFieldName,
 		whitelistedFieldName,
 		unstakedDepositFieldName,
 		challengeIDFieldName,
-		lastGovStateFieldName}
+		lastGovStateFieldName,
+		ownerAddressesFieldName,
+		ownerAddressFieldName,
+		contributorAddressesFieldName}
 	return t.listingPersister.UpdateListing(existingListing, updatedFields)
 }
 
@@ -766,12 +771,6 @@ func (t *TcrEventProcessor) updateListingWithLastGovState(listingAddress common.
 
 func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	listingAddress common.Address) error {
-	// TODO(IS): We should make sure an existing listing doesn't already exist
-	// which might happen if the events were out of order
-	// If events were out of order, we shouldn't update other fields except: (?)
-	// CreatedDateTs:     event.Timestamp(),
-	// ApplicationDateTs: event.Timestamp(),
-	// ApprovalDateTs:    approvalDateEmptyValue,
 
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, t.client)
 	if newsErr != nil {
@@ -808,7 +807,12 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
 	listing.SetAppExpiry(appExpiry)
 	listing.SetUnstakedDeposit(unstakedDeposit)
-	return t.listingPersister.CreateListing(listing)
+	err = t.listingPersister.CreateListing(listing)
+	if err != nil {
+		return fmt.Errorf("Error creating new listing in persistence: %v", err)
+	}
+	// TODO(IS): If listing already exists (if events are out of order) make sure you update
+	return err
 }
 
 func (t *TcrEventProcessor) newChallengeFromChallenge(event *crawlermodel.Event,
@@ -852,7 +856,7 @@ func (t *TcrEventProcessor) newChallengeFromChallenge(event *crawlermodel.Event,
 }
 
 func (t *TcrEventProcessor) newAppealFromAppealRequested(event *crawlermodel.Event) error {
-	// This creates a new appeal to an existing challenge (not granted yet)
+	// NOTE(IS): This creates a new appeal to an existing challenge (not granted yet)
 	payload := event.EventPayload()
 	statement, ok := payload["Data"]
 	if !ok {
@@ -890,13 +894,15 @@ func (t *TcrEventProcessor) newAppealFromAppealRequested(event *crawlermodel.Eve
 		statement.(string),
 		crawlerutils.CurrentEpochSecsInInt64(),
 	)
+	// TODO(IS): Check if an appeal already exists. if it does, update data
+
 	err = t.appealPersister.CreateAppeal(appeal)
 	return err
 }
 
 func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.Address,
 	tcrAddress common.Address) (*model.Listing, error) {
-	// NOTE: In the event that there is no persisted listing, we can create a new listing using data
+	// NOTE(IS): In the event that there is no persisted listing, we can create a new listing using data
 	// obtained by calling tcr contract
 
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, t.client)
@@ -915,17 +921,14 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 		return nil, err
 	}
 	ownerAddresses := []common.Address{ownerAddr}
-
+	// NOTE(IS): If this isn't from an application event we wouldn't know:
+	// createdDateTs, applicationDateTs, approvalDateTs
 	listing := model.NewListing(&model.NewListingParams{
-		Name:            name,
-		ContractAddress: listingAddress,
-		URL:             url,
-		Owner:           ownerAddr,
-		OwnerAddresses:  ownerAddresses,
-		// NOTE(IS): If this isn't from an application event we wouldn't know these dates:
-		// CreatedDateTs:     event.Timestamp(),
-		// ApplicationDateTs: event.Timestamp(),
-		// ApprovalDateTs:    approvalDateEmptyValue,
+		Name:              name,
+		ContractAddress:   listingAddress,
+		URL:               url,
+		Owner:             ownerAddr,
+		OwnerAddresses:    ownerAddresses,
 		LastUpdatedDateTs: crawlerutils.CurrentEpochSecsInInt64(),
 	})
 	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
@@ -946,10 +949,11 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 	return listing, err
 }
 
-// In the event that there is no persisted Challenge, we can create a new listing using data
-// obtained by calling the smart contract.
 func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Address,
 	challengeID *big.Int, listingAddress common.Address) (*model.Challenge, error) {
+	// NOTE(IS): In the event that there is no persisted Challenge, we can create a new listing using data
+	// obtained by calling the smart contract.
+
 	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating TCR contract: err: %v", err)
@@ -980,10 +984,10 @@ func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Ad
 	return challenge, err
 }
 
-// In the event that there is no persisted Challenge, we can create a new listing using data
-// obtained by calling the smart contract.
 func (t *TcrEventProcessor) persistNewAppealFromContract(tcrAddress common.Address,
 	challengeID *big.Int) (*model.Appeal, error) {
+	// NOTE(IS): In the event that there is no persisted Appeal, we can create a new appeal using data
+	// obtained by calling the smart contract.
 	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating TCR contract: err: %v", err)
@@ -1009,6 +1013,7 @@ func (t *TcrEventProcessor) persistNewAppealFromContract(tcrAddress common.Addre
 	if appealRes.AppealOpenToChallengeExpiry.Uint64() != 0 {
 		appeal.SetAppealOpenToChallengeExpiry(appealRes.AppealOpenToChallengeExpiry)
 	}
+
 	err = t.appealPersister.CreateAppeal(appeal)
 	return appeal, err
 }

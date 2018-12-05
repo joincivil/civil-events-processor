@@ -705,6 +705,15 @@ func TestProcessTCRApplicationRemoved(t *testing.T) {
 	if !reflect.DeepEqual(listing.ChallengeID(), big.NewInt(0)) {
 		t.Errorf("ChallengeID value is not correct: %v", listing.ChallengeID())
 	}
+	if !reflect.DeepEqual(listing.OwnerAddresses(), []common.Address{}) {
+		t.Errorf("OwnerAddresses value is not correct: %v", listing.OwnerAddresses())
+	}
+	if !reflect.DeepEqual(listing.Owner(), common.Address{}) {
+		t.Errorf("OwnerAddress value is not correct: %v", listing.Owner())
+	}
+	if !reflect.DeepEqual(listing.ContributorAddresses(), []common.Address{}) {
+		t.Errorf("ContributorAddresses value is not correct %v", listing.ContributorAddresses())
+	}
 }
 
 func TestProcessTCRDepositWithdrawal(t *testing.T) {
@@ -749,7 +758,15 @@ func TestProcessTCRListingRemoved(t *testing.T) {
 	if !reflect.DeepEqual(listing.ChallengeID(), big.NewInt(0)) {
 		t.Errorf("ChallengeID value is not correct: %v", listing.ChallengeID())
 	}
-
+	if !reflect.DeepEqual(listing.OwnerAddresses(), []common.Address{}) {
+		t.Errorf("OwnerAddresses value is not correct: %v", listing.OwnerAddresses())
+	}
+	if !reflect.DeepEqual(listing.Owner(), common.Address{}) {
+		t.Errorf("OwnerAddress value is not correct: %v", listing.Owner())
+	}
+	if !reflect.DeepEqual(listing.ContributorAddresses(), []common.Address{}) {
+		t.Errorf("ContributorAddresses value is not correct %v", listing.ContributorAddresses())
+	}
 }
 
 func TestProcessTCRChallenge(t *testing.T) {
