@@ -295,9 +295,9 @@ func (t *TcrEventProcessor) processTCRDepositWithdrawal(event *crawlermodel.Even
 	} else if govState == model.GovernanceStateDeposit {
 		existingListing.SetLastGovernanceState(model.GovernanceStateDeposit)
 	}
-	unstakedDeposit, ok := payload["UnstakedDeposit"]
+	unstakedDeposit, ok := payload["NewTotal"]
 	if !ok {
-		return errors.New("No UnstakedDeposit field found")
+		return errors.New("No NewTotal field found")
 	}
 
 	existingListing.SetUnstakedDeposit(unstakedDeposit.(*big.Int))
