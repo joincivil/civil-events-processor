@@ -195,7 +195,7 @@ func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	}
 
 	govErr := t.persistGovernanceEvent(event, eventName)
-	if err != nil {
+	if govErr != nil {
 		return ran, govErr
 	}
 	return ran, err
@@ -382,7 +382,6 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	if err != nil {
 		return fmt.Errorf("Error getting challenge from contract: %v", err)
 	}
-	fmt.Println(challengeRes.TotalTokens)
 	existingChallenge.SetTotalTokens(challengeRes.TotalTokens)
 	existingChallenge.SetRewardPool(challengeRes.RewardPool)
 	updatedFields := []string{rewardPoolFieldName, totalTokensFieldName}
@@ -694,7 +693,6 @@ func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddre
 		unstakedDepositFieldName,
 		appExpiryFieldName,
 		whitelistedFieldName,
-		unstakedDepositFieldName,
 		challengeIDFieldName,
 		lastGovStateFieldName}
 	return t.listingPersister.UpdateListing(existingListing, updatedFields)

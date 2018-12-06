@@ -368,6 +368,7 @@ func (p *PostgresPersister) listingsByCriteriaFromTable(criteria *model.ListingC
 	tableName string) ([]*model.Listing, error) {
 	dbListings := []postgres.Listing{}
 	queryString := p.listingsByCriteriaQuery(criteria, tableName)
+
 	nstmt, err := p.db.PrepareNamed(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("Error preparing query with sqlx: %v", err)

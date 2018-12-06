@@ -816,8 +816,19 @@ func TestListingsByCriteria(t *testing.T) {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
 	if len(listingsFromDB) != 3 {
-		t.Errorf("Two listings should have been returned but there are %v", len(listingsFromDB))
+		t.Errorf("Three listings should have been returned but there are %v", len(listingsFromDB))
 	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		WhitelistedOnly: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 3 {
+		t.Errorf("Three listings should have been returned but there are %v", len(listingsFromDB))
+	}
+
 }
 
 /*
