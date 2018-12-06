@@ -27,8 +27,14 @@ const (
 	resolvedFieldName             = "Resolved"
 	totalTokensFieldName          = "TotalTokens"
 	appExpiryFieldName            = "AppExpiry"
-	ownerAddressFieldName         = "OwnerAddress"
+	ownerAddressFieldName         = "Owner"
 	contributorAddressesFieldName = "ContributorAddresses"
+
+	nameFieldName            = "Name"
+	contractAddressFieldName = "ContractAddress"
+	createdDateTsFieldName   = "CreatedDateTs"
+	applicationDateFieldName = "ApplicationDateTs"
+	approvalDateFieldName    = "ApprovalDateTs"
 
 	appealChallengeIDFieldName           = "AppealChallengeID"
 	appealOpenToChallengeExpiryFieldName = "AppealOpenToChallengeExpiry"
@@ -806,11 +812,32 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
 	listing.SetAppExpiry(appExpiry)
 	listing.SetUnstakedDeposit(unstakedDeposit)
-	err = t.listingPersister.CreateListing(listing)
+
+	existingListing, err := t.listingPersister.ListingByAddress(listingAddress)
 	if err != nil {
-		return fmt.Errorf("Error creating new listing in persistence: %v", err)
+		return fmt.Errorf("Error retrieving persisted listing: %v", err)
 	}
-	// TODO(IS): If listing already exists (if events are out of order) make sure you update
+	if existingListing != nil {
+		updatedFields := []string{
+			nameFieldName,
+			contractAddressFieldName,
+			whitelistedFieldName,
+			lastGovStateFieldName,
+			ownerAddressFieldName,
+			ownerAddressesFieldName,
+			createdDateTsFieldName,
+			applicationDateFieldName,
+			approvalDateFieldName}
+		err = t.listingPersister.UpdateListing(listing, updatedFields)
+		if err != nil {
+			return fmt.Errorf("Error updating listing in persistence %v", err)
+		}
+	} else {
+		err = t.listingPersister.CreateListing(listing)
+		if err != nil {
+			return fmt.Errorf("Error creating new listing in persistence: %v", err)
+		}
+	}
 	return err
 }
 
