@@ -705,6 +705,15 @@ func TestProcessTCRApplicationRemoved(t *testing.T) {
 	if !reflect.DeepEqual(listing.ChallengeID(), big.NewInt(0)) {
 		t.Errorf("ChallengeID value is not correct: %v", listing.ChallengeID())
 	}
+	if !reflect.DeepEqual(listing.OwnerAddresses(), []common.Address{}) {
+		t.Errorf("OwnerAddresses value is not correct: %v", listing.OwnerAddresses())
+	}
+	if !reflect.DeepEqual(listing.Owner(), common.Address{}) {
+		t.Errorf("OwnerAddress value is not correct: %v", listing.Owner())
+	}
+	if !reflect.DeepEqual(listing.ContributorAddresses(), []common.Address{}) {
+		t.Errorf("ContributorAddresses value is not correct %v", listing.ContributorAddresses())
+	}
 }
 
 func TestProcessTCRDepositWithdrawal(t *testing.T) {
@@ -715,14 +724,14 @@ func TestProcessTCRDepositWithdrawal(t *testing.T) {
 	eventPayload := event.EventPayload()
 	withdrawal := eventPayload["NewTotal"]
 	listing := persister.listings[listingAddress]
-	if reflect.DeepEqual(listing.UnstakedDeposit(), withdrawal.(*big.Int)) {
+	if !reflect.DeepEqual(listing.UnstakedDeposit(), withdrawal.(*big.Int)) {
 		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
 	}
 	event = createAndProcDepositEvent(t, contracts, tcrProc)
 	eventPayload = event.EventPayload()
 	deposit := eventPayload["NewTotal"]
 	listing = persister.listings[listingAddress]
-	if reflect.DeepEqual(listing.UnstakedDeposit(), deposit.(*big.Int)) {
+	if !reflect.DeepEqual(listing.UnstakedDeposit(), deposit.(*big.Int)) {
 		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
 	}
 
@@ -749,7 +758,15 @@ func TestProcessTCRListingRemoved(t *testing.T) {
 	if !reflect.DeepEqual(listing.ChallengeID(), big.NewInt(0)) {
 		t.Errorf("ChallengeID value is not correct: %v", listing.ChallengeID())
 	}
-
+	if !reflect.DeepEqual(listing.OwnerAddresses(), []common.Address{}) {
+		t.Errorf("OwnerAddresses value is not correct: %v", listing.OwnerAddresses())
+	}
+	if !reflect.DeepEqual(listing.Owner(), common.Address{}) {
+		t.Errorf("OwnerAddress value is not correct: %v", listing.Owner())
+	}
+	if !reflect.DeepEqual(listing.ContributorAddresses(), []common.Address{}) {
+		t.Errorf("ContributorAddresses value is not correct %v", listing.ContributorAddresses())
+	}
 }
 
 func TestProcessTCRChallenge(t *testing.T) {
@@ -801,26 +818,25 @@ func TestProcessTCRChallenge(t *testing.T) {
 func TestProcessTCRChallengeFailed(t *testing.T) {
 	// Listing: unstakedDeposit,  lastUpdatedDateTs (whitelisted will be changed upon _ApplicationWhitelisted event)
 	// Challenge: resolved, totalTokens. If appeal is requested and not granted, have to update: rewardPool, stake
-	contracts, _, tcrProc := setupTcrProcessor(t)
+	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
-	// listingAddress := contracts.NewsroomAddr.Hex()
+	listingAddress := contracts.NewsroomAddr.Hex()
 	// listing := persister.listings[listingAddress]
 	// unstakedDeposit := listing.UnstakedDeposit()
+
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
-	// challengeFailedEvent := createAndProcChallenge1Failed(t, contracts, tcrProc)
-	// challengeFailedEventPayload := challengeFailedEvent.EventPayload()
-	// listing = persister.listings[listingAddress]
-	// The following won't change bc of error. Need to use simulated backend
-	// if listing.LastGovernanceState() != model.GovernanceStateChallengeFailed {
-	// 	t.Errorf("Listing should have had governance state of challengefailed %v", listing.LastGovernanceState())
-	// }
-	// challenge := persister.challenges[int(challengeID1.Int64())]
-	// TODO: These values need to be tested using simulated backend bc they currently don't change.
+	challengeFailedEvent := createAndProcChallenge1Failed(t, contracts, tcrProc)
+	challengeFailedEventPayload := challengeFailedEvent.EventPayload()
+
+	listing := persister.listings[listingAddress]
+	if listing.LastGovernanceState() != model.GovernanceStateChallengeFailed {
+		t.Errorf("Listing should have had governance state of challengefailed %v", listing.LastGovernanceState())
+	}
+	challenge := persister.challenges[int(challengeID1.Int64())]
+	if challenge.TotalTokens() != challengeFailedEventPayload["TotalTokens"] {
+		t.Errorf("Challenge TotalTokens is not correct %v, %v", challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
+	}
 	// fmt.Println(unstakedDeposit)
-	// fmt.Println(challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
-	// if challenge.TotalTokens() != challengeFailedEventPayload["TotalTokens"] {
-	// 	t.Errorf("Challenge TotalTokens is not correct %v, %v", challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
-	// }
 	// Test for case where appeal is requested and not granted: Need simulated backend to test this
 }
 
@@ -834,20 +850,24 @@ func TestProcessTCRChallengeSucceeded(t *testing.T) {
 	// unstakedDeposit := listing.UnstakedDeposit()
 
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
-	_ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
-	// challengeSucceededEventPayload := challengeSucceededEvent.EventPayload()
+	challengeSucceededEvent := createAndProcChallenge1Succeeded(t, contracts, tcrProc)
+	challengeSucceededEventPayload := challengeSucceededEvent.EventPayload()
 
 	listing := persister.listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateChallengeSucceeded {
 		t.Errorf("Listing should have had governance state of challengesucceeded")
 	}
 
-	// challenge := persister.challenges[int(challengeID1.Int64())]
+	challenge := persister.challenges[int(challengeID1.Int64())]
 	// Need simulated backend to test
-	// fmt.Println(challenge.TotalTokens(), challengeSucceededEventPayload["TotalTokens"])
-	// fmt.Println(challenge.Resolved())
+	if challenge.TotalTokens() != challengeSucceededEventPayload["TotalTokens"] {
+		t.Error("Challenge TotalTokens value is not correct")
+	}
+	if !challenge.Resolved() {
+		t.Error("Challenge resolved value is not correct")
+	}
 
-	// Test for case where appeal is requested and not granted: Need simulated backend to test this
+	// Test for case where appeal is requested and not granted
 }
 
 func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
@@ -856,7 +876,7 @@ func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
-	// listing := persister.listings[listingAddress]
+
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
 	_ = createAndProcChallenge1Failed(t, contracts, tcrProc)
 
@@ -881,8 +901,8 @@ func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 	// Listing: unstakedDeposit, Changes made in whitelistApplication() call
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
-	// listingAddress := contracts.NewsroomAddr.Hex()
-	// listing := persister.listings[listingAddress]
+	listingAddress := contracts.NewsroomAddr.Hex()
+	listing := persister.listings[listingAddress]
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
 	_ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
 
@@ -897,10 +917,10 @@ func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 		t.Error("Challenge Resolved should be true")
 	}
 
-	//TODO: need simulated backend for calculating reward and checking unstakeddeposit for listing
-	// if listing.LastGovernanceState() != model.GovernanceStateSuccessfulChallengeOverturned {
-	// 	t.Errorf("Listing should have had governance state of successfulchallengeoverturned %v", listing.LastGovernanceState())
-	// }
+	if listing.LastGovernanceState() != model.GovernanceStateSuccessfulChallengeOverturned {
+		t.Errorf("Listing should have had governance state of successfulchallengeoverturned %v", listing.LastGovernanceState())
+	}
+	//unstaked deposit value check
 
 }
 
