@@ -247,39 +247,39 @@ func createAndProcChallenge1(t *testing.T, contracts *contractutils.AllTestContr
 	return event
 }
 
-// func createAndProcChallenge1Failed(t *testing.T, contracts *contractutils.AllTestContracts,
-// 	tcrProc *processor.TcrEventProcessor) *crawlermodel.Event {
-// 	challenge1Failed := &contract.CivilTCRContractChallengeFailed{
-// 		ListingAddress: contracts.NewsroomAddr,
-// 		ChallengeID:    challengeID1,
-// 		RewardPool:     big.NewInt(100),
-// 		TotalTokens:    big.NewInt(100),
-// 		Raw: types.Log{
-// 			Address:     common.HexToAddress(testAddress),
-// 			Topics:      []common.Hash{},
-// 			Data:        []byte{},
-// 			BlockNumber: 8888900,
-// 			TxHash:      common.Hash{},
-// 			TxIndex:     4,
-// 			BlockHash:   common.Hash{},
-// 			Index:       7,
-// 			Removed:     false,
-// 		},
-// 	}
-// 	event, _ := crawlermodel.NewEventFromContractEvent(
-// 		"_ChallengeFailed",
-// 		"CivilTCRContract",
-// 		contracts.CivilTcrAddr,
-// 		challenge1Failed,
-// 		utils.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Filterer,
-// 	)
-// 	_, err := tcrProc.Process(event)
-// 	if err != nil {
-// 		t.Errorf("Should not have failed processing events: err: %v", err)
-// 	}
-// 	return event
-// }
+func createAndProcChallenge1Failed(t *testing.T, contracts *contractutils.AllTestContracts,
+	tcrProc *processor.TcrEventProcessor) *crawlermodel.Event {
+	challenge1Failed := &contract.CivilTCRContractChallengeFailed{
+		ListingAddress: contracts.NewsroomAddr,
+		ChallengeID:    challengeID1,
+		RewardPool:     big.NewInt(100),
+		TotalTokens:    big.NewInt(100),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888900,
+			TxHash:      common.Hash{},
+			TxIndex:     4,
+			BlockHash:   common.Hash{},
+			Index:       7,
+			Removed:     false,
+		},
+	}
+	event, _ := crawlermodel.NewEventFromContractEvent(
+		"_ChallengeFailed",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		challenge1Failed,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	_, err := tcrProc.Process(event)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	return event
+}
 
 func createAndProcChallenge1Succeeded(t *testing.T, contracts *contractutils.AllTestContracts,
 	tcrProc *processor.TcrEventProcessor) *crawlermodel.Event {
@@ -315,73 +315,73 @@ func createAndProcChallenge1Succeeded(t *testing.T, contracts *contractutils.All
 	return event
 }
 
-// func createAndProcFailedChallenge1Overturned(t *testing.T, contracts *contractutils.AllTestContracts,
-// 	tcrProc *processor.TcrEventProcessor) *crawlermodel.Event {
-// 	failedChallenge1Overturned := &contract.CivilTCRContractFailedChallengeOverturned{
-// 		ListingAddress: contracts.NewsroomAddr,
-// 		ChallengeID:    challengeID1,
-// 		RewardPool:     big.NewInt(100),
-// 		TotalTokens:    big.NewInt(100),
-// 		Raw: types.Log{
-// 			Address:     common.HexToAddress(testAddress),
-// 			Topics:      []common.Hash{},
-// 			Data:        []byte{},
-// 			BlockNumber: 8888900,
-// 			TxHash:      common.Hash{},
-// 			TxIndex:     5,
-// 			BlockHash:   common.Hash{},
-// 			Index:       8,
-// 			Removed:     false,
-// 		},
-// 	}
-// 	event, _ := crawlermodel.NewEventFromContractEvent(
-// 		"_FailedChallengeOverturned",
-// 		"CivilTCRContract",
-// 		contracts.CivilTcrAddr,
-// 		failedChallenge1Overturned,
-// 		utils.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Filterer,
-// 	)
-// 	_, err := tcrProc.Process(event)
-// 	if err != nil {
-// 		t.Errorf("Should not have failed processing events: err: %v", err)
-// 	}
-// 	return event
-// }
+func createAndProcFailedChallenge1Overturned(t *testing.T, contracts *contractutils.AllTestContracts,
+	tcrProc *processor.TcrEventProcessor) *crawlermodel.Event {
+	failedChallenge1Overturned := &contract.CivilTCRContractFailedChallengeOverturned{
+		ListingAddress: contracts.NewsroomAddr,
+		ChallengeID:    challengeID1,
+		RewardPool:     big.NewInt(100),
+		TotalTokens:    big.NewInt(100),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888900,
+			TxHash:      common.Hash{},
+			TxIndex:     5,
+			BlockHash:   common.Hash{},
+			Index:       8,
+			Removed:     false,
+		},
+	}
+	event, _ := crawlermodel.NewEventFromContractEvent(
+		"_FailedChallengeOverturned",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		failedChallenge1Overturned,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	_, err := tcrProc.Process(event)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	return event
+}
 
-// func createAndProcSuccessfulChallenge1Overturned(t *testing.T, contracts *contractutils.AllTestContracts,
-// 	tcrProc *processor.TcrEventProcessor) *crawlermodel.Event {
-// 	successfulChallenge1Overturned := &contract.CivilTCRContractSuccessfulChallengeOverturned{
-// 		ListingAddress: contracts.NewsroomAddr,
-// 		ChallengeID:    challengeID1,
-// 		RewardPool:     big.NewInt(100),
-// 		TotalTokens:    big.NewInt(100),
-// 		Raw: types.Log{
-// 			Address:     common.HexToAddress(testAddress),
-// 			Topics:      []common.Hash{},
-// 			Data:        []byte{},
-// 			BlockNumber: 8888900,
-// 			TxHash:      common.Hash{},
-// 			TxIndex:     4,
-// 			BlockHash:   common.Hash{},
-// 			Index:       7,
-// 			Removed:     false,
-// 		},
-// 	}
-// 	event, _ := crawlermodel.NewEventFromContractEvent(
-// 		"_SuccessfulChallengeOverturned",
-// 		"CivilTCRContract",
-// 		contracts.CivilTcrAddr,
-// 		successfulChallenge1Overturned,
-// 		utils.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Filterer,
-// 	)
-// 	_, err := tcrProc.Process(event)
-// 	if err != nil {
-// 		t.Errorf("Should not have failed processing events: err: %v", err)
-// 	}
-// 	return event
-// }
+func createAndProcSuccessfulChallenge1Overturned(t *testing.T, contracts *contractutils.AllTestContracts,
+	tcrProc *processor.TcrEventProcessor) *crawlermodel.Event {
+	successfulChallenge1Overturned := &contract.CivilTCRContractSuccessfulChallengeOverturned{
+		ListingAddress: contracts.NewsroomAddr,
+		ChallengeID:    challengeID1,
+		RewardPool:     big.NewInt(100),
+		TotalTokens:    big.NewInt(100),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888900,
+			TxHash:      common.Hash{},
+			TxIndex:     4,
+			BlockHash:   common.Hash{},
+			Index:       7,
+			Removed:     false,
+		},
+	}
+	event, _ := crawlermodel.NewEventFromContractEvent(
+		"_SuccessfulChallengeOverturned",
+		"CivilTCRContract",
+		contracts.CivilTcrAddr,
+		successfulChallenge1Overturned,
+		utils.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	_, err := tcrProc.Process(event)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	return event
+}
 
 func createAndProcAppealGranted(t *testing.T, contracts *contractutils.AllTestContracts,
 	tcrProc *processor.TcrEventProcessor) *crawlermodel.Event {
@@ -818,26 +818,25 @@ func TestProcessTCRChallenge(t *testing.T) {
 func TestProcessTCRChallengeFailed(t *testing.T) {
 	// Listing: unstakedDeposit,  lastUpdatedDateTs (whitelisted will be changed upon _ApplicationWhitelisted event)
 	// Challenge: resolved, totalTokens. If appeal is requested and not granted, have to update: rewardPool, stake
-	contracts, _, tcrProc := setupTcrProcessor(t)
+	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
-	// listingAddress := contracts.NewsroomAddr.Hex()
+	listingAddress := contracts.NewsroomAddr.Hex()
 	// listing := persister.listings[listingAddress]
 	// unstakedDeposit := listing.UnstakedDeposit()
+
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
-	// challengeFailedEvent := createAndProcChallenge1Failed(t, contracts, tcrProc)
-	// challengeFailedEventPayload := challengeFailedEvent.EventPayload()
-	// listing = persister.listings[listingAddress]
-	// The following won't change bc of error. Need to use simulated backend
-	// if listing.LastGovernanceState() != model.GovernanceStateChallengeFailed {
-	// 	t.Errorf("Listing should have had governance state of challengefailed %v", listing.LastGovernanceState())
-	// }
-	// challenge := persister.challenges[int(challengeID1.Int64())]
-	// TODO: These values need to be tested using simulated backend bc they currently don't change.
+	challengeFailedEvent := createAndProcChallenge1Failed(t, contracts, tcrProc)
+	challengeFailedEventPayload := challengeFailedEvent.EventPayload()
+
+	listing := persister.listings[listingAddress]
+	if listing.LastGovernanceState() != model.GovernanceStateChallengeFailed {
+		t.Errorf("Listing should have had governance state of challengefailed %v", listing.LastGovernanceState())
+	}
+	challenge := persister.challenges[int(challengeID1.Int64())]
+	if challenge.TotalTokens() != challengeFailedEventPayload["TotalTokens"] {
+		t.Errorf("Challenge TotalTokens is not correct %v, %v", challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
+	}
 	// fmt.Println(unstakedDeposit)
-	// fmt.Println(challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
-	// if challenge.TotalTokens() != challengeFailedEventPayload["TotalTokens"] {
-	// 	t.Errorf("Challenge TotalTokens is not correct %v, %v", challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
-	// }
 	// Test for case where appeal is requested and not granted: Need simulated backend to test this
 }
 
@@ -851,75 +850,77 @@ func TestProcessTCRChallengeSucceeded(t *testing.T) {
 	// unstakedDeposit := listing.UnstakedDeposit()
 
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
-	_ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
-	// challengeSucceededEventPayload := challengeSucceededEvent.EventPayload()
+	challengeSucceededEvent := createAndProcChallenge1Succeeded(t, contracts, tcrProc)
+	challengeSucceededEventPayload := challengeSucceededEvent.EventPayload()
 
 	listing := persister.listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateChallengeSucceeded {
 		t.Errorf("Listing should have had governance state of challengesucceeded")
 	}
 
-	// challenge := persister.challenges[int(challengeID1.Int64())]
+	challenge := persister.challenges[int(challengeID1.Int64())]
 	// Need simulated backend to test
-	// fmt.Println(challenge.TotalTokens(), challengeSucceededEventPayload["TotalTokens"])
-	// fmt.Println(challenge.Resolved())
+	if challenge.TotalTokens() != challengeSucceededEventPayload["TotalTokens"] {
+		t.Error("Challenge TotalTokens value is not correct")
+	}
+	if !challenge.Resolved() {
+		t.Error("Challenge resolved value is not correct")
+	}
 
-	// Test for case where appeal is requested and not granted: Need simulated backend to test this
+	// Test for case where appeal is requested and not granted
 }
 
-// NOTE(IS): need simulated backend fot this test
 func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
 	// Challenge: resolved, totaltokens
 	// Listing: No changes (On resetListing call, changes will be made depending on conditions)
-	contracts, _, tcrProc := setupTcrProcessor(t)
+	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
-	// listingAddress := contracts.NewsroomAddr.Hex()
-	// listing := persister.listings[listingAddress]
+	listingAddress := contracts.NewsroomAddr.Hex()
+
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
-	// _ = createAndProcChallenge1Failed(t, contracts, tcrProc)
+	_ = createAndProcChallenge1Failed(t, contracts, tcrProc)
 
-	// challengeOverturnedEvent := createAndProcFailedChallenge1Overturned(t, contracts, tcrProc)
+	challengeOverturnedEvent := createAndProcFailedChallenge1Overturned(t, contracts, tcrProc)
 
-	// challengeOverturnedEventPayload := challengeOverturnedEvent.EventPayload()
-	// listing := persister.listings[listingAddress]
-	// if listing.LastGovernanceState() != model.GovernanceStateFailedChallengeOverturned {
-	// 	t.Errorf("Listing should have had governance state of failedchallengeoverturned %v", listing.LastGovernanceState())
-	// }
-	// challenge := persister.challenges[int(challengeID1.Int64())]
-	// if challenge.TotalTokens() != challengeOverturnedEventPayload["TotalTokens"] {
-	// 	t.Errorf("Challenge TotalTokens is not correct %v %v", challenge.TotalTokens(), challengeOverturnedEventPayload["TotalTokens"])
-	// }
-	// if !challenge.Resolved() {
-	// 	t.Error("Challenge Resolved should be true")
-	// }
+	challengeOverturnedEventPayload := challengeOverturnedEvent.EventPayload()
+	listing := persister.listings[listingAddress]
+	if listing.LastGovernanceState() != model.GovernanceStateFailedChallengeOverturned {
+		t.Errorf("Listing should have had governance state of failedchallengeoverturned %v", listing.LastGovernanceState())
+	}
+	challenge := persister.challenges[int(challengeID1.Int64())]
+	if challenge.TotalTokens() != challengeOverturnedEventPayload["TotalTokens"] {
+		t.Errorf("Challenge TotalTokens is not correct %v %v", challenge.TotalTokens(), challengeOverturnedEventPayload["TotalTokens"])
+	}
+	if !challenge.Resolved() {
+		t.Error("Challenge Resolved should be true")
+	}
 }
 
-// NOTE(IS): need simulated backend fot this test
 func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 	// Challenge: resolved, totalTokens
 	// Listing: unstakedDeposit, Changes made in whitelistApplication() call
-	contracts, _, tcrProc := setupTcrProcessor(t)
+	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
-	// listingAddress := contracts.NewsroomAddr.Hex()
-	// listing := persister.listings[listingAddress]
+	listingAddress := contracts.NewsroomAddr.Hex()
+	listing := persister.listings[listingAddress]
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
-	// _ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
+	_ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
 
-	// challengeOverturnedEvent := createAndProcSuccessfulChallenge1Overturned(t, contracts, tcrProc)
-	// challengeOverturnedEventPayload := challengeOverturnedEvent.EventPayload()
+	challengeOverturnedEvent := createAndProcSuccessfulChallenge1Overturned(t, contracts, tcrProc)
+	challengeOverturnedEventPayload := challengeOverturnedEvent.EventPayload()
 
-	// challenge := persister.challenges[int(challengeID1.Int64())]
-	// if challenge.TotalTokens() != challengeOverturnedEventPayload["TotalTokens"] {
-	// 	t.Errorf("Challenge TotalTokens is not correct %v %v", challenge.TotalTokens(), challengeOverturnedEventPayload["TotalTokens"])
-	// }
-	// if !challenge.Resolved() {
-	// 	t.Error("Challenge Resolved should be true")
-	// }
+	challenge := persister.challenges[int(challengeID1.Int64())]
+	if challenge.TotalTokens() != challengeOverturnedEventPayload["TotalTokens"] {
+		t.Errorf("Challenge TotalTokens is not correct %v %v", challenge.TotalTokens(), challengeOverturnedEventPayload["TotalTokens"])
+	}
+	if !challenge.Resolved() {
+		t.Error("Challenge Resolved should be true")
+	}
 
-	//TODO: need simulated backend for calculating reward and checking unstakeddeposit for listing
-	// if listing.LastGovernanceState() != model.GovernanceStateSuccessfulChallengeOverturned {
-	// 	t.Errorf("Listing should have had governance state of successfulchallengeoverturned %v", listing.LastGovernanceState())
-	// }
+	if listing.LastGovernanceState() != model.GovernanceStateSuccessfulChallengeOverturned {
+		t.Errorf("Listing should have had governance state of successfulchallengeoverturned %v", listing.LastGovernanceState())
+	}
+	//unstaked deposit value check
 
 }
 

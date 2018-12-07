@@ -201,7 +201,7 @@ func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	default:
 		ran = false
 	}
-
+	// TODO(IS): If there is an error above and govErr, only govErr is returned. Fix this.
 	govErr := t.persistGovernanceEvent(event, eventName)
 	if govErr != nil {
 		return ran, govErr
@@ -343,16 +343,12 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 	if err != nil {
 		return err
 	}
-	challengeID, err := t.challengeIDFromEvent(event)
+	// NOTE(IS): We can create our own function to get the reward, but for now just make a contract
+	// call for unstakedDeposit.
+	unstakedDeposit, err := t.getUnstakedDepositFromContract(tcrAddress, listingAddress)
 	if err != nil {
 		return err
 	}
-	reward, err := t.getRewardFromTCRContract(tcrAddress, challengeID)
-	if err != nil {
-		return err
-	}
-	unstakedDeposit := existingListing.UnstakedDeposit()
-	unstakedDeposit.Add(unstakedDeposit, reward)
 	existingListing.SetUnstakedDeposit(unstakedDeposit)
 	existingListing.SetLastGovernanceState(model.GovernanceStateChallengeFailed)
 	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName}
@@ -507,17 +503,15 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 		return err
 	}
 
-	challengeID, err := t.challengeIDFromEvent(event)
+	// NOTE(IS): We can create our own function to get the reward, but for now just make a contract
+	// call for unstakedDeposit.
+	unstakedDeposit, err := t.getUnstakedDepositFromContract(tcrAddress, listingAddress)
 	if err != nil {
 		return err
 	}
-	unstakedDeposit := existingListing.UnstakedDeposit()
-	reward, err := t.getRewardFromTCRContract(tcrAddress, challengeID)
-	if err != nil {
-		return err
-	}
-	unstakedDeposit.Add(unstakedDeposit, reward)
-	existingListing.SetLastGovernanceState(model.GovernanceStateFailedChallengeOverturned)
+	existingListing.SetUnstakedDeposit(unstakedDeposit)
+
+	existingListing.SetLastGovernanceState(model.GovernanceStateSuccessfulChallengeOverturned)
 	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName}
 	return t.listingPersister.UpdateListing(existingListing, updatedFields)
 
@@ -656,17 +650,18 @@ func (t *TcrEventProcessor) checkAppealNotGranted(challengeID *big.Int) (bool, e
 	return false, nil
 }
 
-func (t *TcrEventProcessor) getRewardFromTCRContract(tcrAddress common.Address,
-	challengeID *big.Int) (*big.Int, error) {
-	tcrContract, tcrErr := contract.NewCivilTCRContract(tcrAddress, t.client)
-	if tcrErr != nil {
-		return nil, fmt.Errorf("Error creating TCR contract: err: %v", tcrErr)
+func (t *TcrEventProcessor) getUnstakedDepositFromContract(tcrAddress common.Address,
+	listingAddress common.Address) (*big.Int, error) {
+	// NOTE(IS): We could also calculate the reward on our side,
+	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
+	if err != nil {
+		return nil, fmt.Errorf("Error calling TCR contract %v", err)
 	}
-	reward, rewardErr := tcrContract.DetermineReward(&bind.CallOpts{}, challengeID)
-	if rewardErr != nil {
-		return nil, fmt.Errorf("Error getting reward: err: %v", rewardErr)
+	listingFromContract, err := tcrContract.Listings(&bind.CallOpts{}, listingAddress)
+	if err != nil {
+		return nil, fmt.Errorf("Error calling Listings from TCR contract: err: %v", err)
 	}
-	return reward, nil
+	return listingFromContract.UnstakedDeposit, nil
 }
 
 func (t *TcrEventProcessor) getChallengeFromTCRContract(tcrAddress common.Address, challengeID *big.Int) (*struct {
@@ -818,6 +813,8 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 		return fmt.Errorf("Error retrieving persisted listing: %v", err)
 	}
 	if existingListing != nil {
+		// NOTE(IS): Adding the following log for debugging for now, can delete later
+		log.Infof("Existing listing in persistence for this application event %v", listingAddress.Hex())
 		updatedFields := []string{
 			nameFieldName,
 			contractAddressFieldName,
@@ -827,7 +824,9 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 			ownerAddressesFieldName,
 			createdDateTsFieldName,
 			applicationDateFieldName,
-			approvalDateFieldName}
+			approvalDateFieldName,
+			appExpiryFieldName,
+			unstakedDepositFieldName}
 		err = t.listingPersister.UpdateListing(listing, updatedFields)
 		if err != nil {
 			return fmt.Errorf("Error updating listing in persistence %v", err)
