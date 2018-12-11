@@ -51,16 +51,16 @@ func DbFieldNameFromModelName(exampleStruct interface{}, fieldName string) (stri
 }
 
 // StructFieldsForQuery is a generic Insert statement for any table
-// spec="" is used to specify table name, i.e. "l" to get "l.name", etc.
-func StructFieldsForQuery(exampleStruct interface{}, colon bool, spec string) (string, string) {
+// tablePrefix="" is used to specify table name, i.e. "l" to get "l.name", etc.
+func StructFieldsForQuery(exampleStruct interface{}, colon bool, tablePrefix string) (string, string) {
 	var fields bytes.Buffer
 	var fieldsWithColon bytes.Buffer
 	valStruct := reflect.ValueOf(exampleStruct)
 	typeOf := valStruct.Type()
 	for i := 0; i < valStruct.NumField(); i++ {
 		dbFieldName := typeOf.Field(i).Tag.Get("db")
-		if spec != "" {
-			fields.WriteString(fmt.Sprintf("%v.", spec)) // nolint: gosec
+		if tablePrefix != "" {
+			fields.WriteString(fmt.Sprintf("%v.", tablePrefix)) // nolint: gosec
 		}
 		fields.WriteString(dbFieldName) // nolint: gosec
 		if colon {

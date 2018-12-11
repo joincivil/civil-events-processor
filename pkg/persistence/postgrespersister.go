@@ -4,6 +4,7 @@ package persistence // import "github.com/joincivil/civil-events-processor/pkg/p
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	// log "github.com/golang/glog"
@@ -367,7 +368,10 @@ func (p *PostgresPersister) updateDBQueryBuffer(updatedFields []string, tableNam
 func (p *PostgresPersister) listingsByCriteriaFromTable(criteria *model.ListingCriteria,
 	tableName string, joinTableName string) ([]*model.Listing, error) {
 	dbListings := []postgres.Listing{}
-	queryString := p.listingsByCriteriaQuery(criteria, tableName, joinTableName)
+	queryString, err := p.listingsByCriteriaQuery(criteria, tableName, joinTableName)
+	if err != nil {
+		return nil, err
+	}
 	nstmt, err := p.db.PrepareNamed(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("Error preparing query with sqlx: %v", err)
@@ -464,7 +468,7 @@ func (p *PostgresPersister) listingByAddressFromTable(address common.Address, ta
 }
 
 func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCriteria,
-	tableName string, joinTableName string) string {
+	tableName string, joinTableName string) (string, error) {
 	queryBuf := bytes.NewBufferString("SELECT ")
 	var fieldNames string
 	if criteria.ActiveChallenge && criteria.CurrentApplication {
@@ -477,16 +481,6 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 	queryBuf.WriteString(" FROM ")   // nolint: gosec
 	queryBuf.WriteString(tableName)  // nolint: gosec
 
-	if criteria.ActiveChallenge && criteria.CurrentApplication {
-		// NOTE: this doesn't work bc u need the l. in front of all listing values.
-		joinQuery := fmt.Sprintf(" l LEFT JOIN %v c ON l.challenge_id=c.challenge_id ", joinTableName) // nolint: gosec
-		queryBuf.WriteString(joinQuery)                                                                // nolint: gosec
-	}
-
-	if criteria.CreatedFromTs > 0 {
-		queryBuf.WriteString(" WHERE creation_timestamp > :created_fromts") // nolint: gosec
-	}
-
 	if criteria.WhitelistedOnly {
 		p.addWhereAnd(queryBuf)
 		queryBuf.WriteString(" whitelisted = true") // nolint: gosec
@@ -496,10 +490,14 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 		queryBuf.WriteString(" whitelisted = false AND challenge_id = 0") // nolint: gosec
 
 	} else if criteria.ActiveChallenge && criteria.CurrentApplication {
-		p.addWhereAnd(queryBuf)
-		joinQueryContinued := fmt.Sprintf(` (l.challenge_id > 0 AND c.resolved=false)
-			OR (l.app_expiry > 0 AND l.whitelisted = false AND l.challenge_id <= 0) `) // nolint: gosec
-		queryBuf.WriteString(joinQueryContinued) // nolint: gosec
+		if joinTableName == "" {
+			return "", errors.New("Expecting joinTable Name, cannot construct query string")
+		}
+
+		joinQuery := fmt.Sprintf(` l LEFT JOIN %v c ON l.challenge_id=c.challenge_id WHERE
+			(l.challenge_id > 0 AND c.resolved=false) 
+			OR (l.app_expiry > 0 AND l.whitelisted = false AND l.challenge_id <= 0)`, joinTableName) // nolint: gosec
+		queryBuf.WriteString(joinQuery) // nolint: gosec
 
 	} else if criteria.ActiveChallenge {
 		p.addWhereAnd(queryBuf)
@@ -525,7 +523,7 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 	if criteria.Count > 0 {
 		queryBuf.WriteString(" LIMIT :count") // nolint: gosec
 	}
-	return queryBuf.String()
+	return queryBuf.String(), nil
 }
 
 func (p *PostgresPersister) listingByAddressesQuery(tableName string) string {
