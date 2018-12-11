@@ -66,7 +66,7 @@ type PostgresPersister struct {
 
 // ListingsByCriteria returns a slice of Listings by ListingCriteria sorted by creation ts
 func (p *PostgresPersister) ListingsByCriteria(criteria *model.ListingCriteria) ([]*model.Listing, error) {
-	return p.listingsByCriteriaFromTable(criteria, listingTableName)
+	return p.listingsByCriteriaFromTable(criteria, listingTableName, challengeTableName)
 }
 
 // ListingsByAddresses returns a slice of Listings in order based on addresses
@@ -341,7 +341,7 @@ func (p *PostgresPersister) CreateIndices() error {
 }
 
 func (p *PostgresPersister) insertIntoDBQueryString(tableName string, dbModelStruct interface{}) string {
-	fieldNames, fieldNamesColon := postgres.StructFieldsForQuery(dbModelStruct, true)
+	fieldNames, fieldNamesColon := postgres.StructFieldsForQuery(dbModelStruct, true, "")
 	queryString := fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s);", tableName, fieldNames, fieldNamesColon) // nolint: gosec
 	return queryString
 }
@@ -365,10 +365,9 @@ func (p *PostgresPersister) updateDBQueryBuffer(updatedFields []string, tableNam
 }
 
 func (p *PostgresPersister) listingsByCriteriaFromTable(criteria *model.ListingCriteria,
-	tableName string) ([]*model.Listing, error) {
+	tableName string, joinTableName string) ([]*model.Listing, error) {
 	dbListings := []postgres.Listing{}
-	queryString := p.listingsByCriteriaQuery(criteria, tableName)
-
+	queryString := p.listingsByCriteriaQuery(criteria, tableName, joinTableName)
 	nstmt, err := p.db.PrepareNamed(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("Error preparing query with sqlx: %v", err)
@@ -465,12 +464,25 @@ func (p *PostgresPersister) listingByAddressFromTable(address common.Address, ta
 }
 
 func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCriteria,
-	tableName string) string {
+	tableName string, joinTableName string) string {
 	queryBuf := bytes.NewBufferString("SELECT ")
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Listing{}, false)
+	var fieldNames string
+	if criteria.ActiveChallenge && criteria.CurrentApplication {
+		fieldNames, _ = postgres.StructFieldsForQuery(postgres.Listing{}, false, "l")
+	} else {
+		fieldNames, _ = postgres.StructFieldsForQuery(postgres.Listing{}, false, "")
+	}
+
 	queryBuf.WriteString(fieldNames) // nolint: gosec
 	queryBuf.WriteString(" FROM ")   // nolint: gosec
 	queryBuf.WriteString(tableName)  // nolint: gosec
+
+	if criteria.ActiveChallenge && criteria.CurrentApplication {
+		// NOTE: this doesn't work bc u need the l. in front of all listing values.
+		joinQuery := fmt.Sprintf(" l LEFT JOIN %v c ON l.challenge_id=c.challenge_id ", joinTableName) // nolint: gosec
+		queryBuf.WriteString(joinQuery)                                                                // nolint: gosec
+	}
+
 	if criteria.CreatedFromTs > 0 {
 		queryBuf.WriteString(" WHERE creation_timestamp > :created_fromts") // nolint: gosec
 	}
@@ -485,8 +497,9 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 
 	} else if criteria.ActiveChallenge && criteria.CurrentApplication {
 		p.addWhereAnd(queryBuf)
-		queryBuf.WriteString( // nolint: gosec
-			" (challenge_id > 0) OR (app_expiry > 0 AND whitelisted = false AND challenge_id <= 0)") // nolint: gosec
+		joinQueryContinued := fmt.Sprintf(` (l.challenge_id > 0 AND c.resolved=false)
+			OR (l.app_expiry > 0 AND l.whitelisted = false AND l.challenge_id <= 0) `) // nolint: gosec
+		queryBuf.WriteString(joinQueryContinued) // nolint: gosec
 
 	} else if criteria.ActiveChallenge {
 		p.addWhereAnd(queryBuf)
@@ -516,7 +529,7 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 }
 
 func (p *PostgresPersister) listingByAddressesQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Listing{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Listing{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE contract_address IN (?);", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
@@ -597,7 +610,7 @@ func (p *PostgresPersister) contentRevisionFromTable(address common.Address, con
 }
 
 func (p *PostgresPersister) contentRevisionQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE (listing_address=$1 AND contract_content_id=$2 AND contract_revision_id=$3)", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
@@ -617,7 +630,7 @@ func (p *PostgresPersister) contentRevisionsFromTable(address common.Address, co
 }
 
 func (p *PostgresPersister) contentRevisionsQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE (listing_address=$1 AND contract_content_id=$2)", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
@@ -646,7 +659,7 @@ func (p *PostgresPersister) contentRevisionsByCriteriaFromTable(criteria *model.
 func (p *PostgresPersister) contentRevisionsByCriteriaQuery(criteria *model.ContentRevisionCriteria,
 	tableName string) string {
 	queryBuf := bytes.NewBufferString("SELECT ")
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.ContentRevision{}, false, "")
 	queryBuf.WriteString(fieldNames) // nolint: gosec
 	queryBuf.WriteString(" FROM ")   // nolint: gosec
 	queryBuf.WriteString(tableName)  // nolint: gosec
@@ -795,7 +808,7 @@ func (p *PostgresPersister) scanGovEvents(rows *sqlx.Rows) ([]*model.GovernanceE
 }
 
 func (p *PostgresPersister) governanceEventsByTxHashQuery(txHash common.Hash, tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false, "")
 	queryString := fmt.Sprintf( // nolint: gosec
 		"SELECT %s FROM %s WHERE block_data @> '{\"txHash\": \"%s\" }'",
 		fieldNames,
@@ -806,13 +819,13 @@ func (p *PostgresPersister) governanceEventsByTxHashQuery(txHash common.Hash, ta
 }
 
 func (p *PostgresPersister) govEventsQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE listing_address=$1", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
 
 func (p *PostgresPersister) govEventsByChallengeIDQuery(tableName string, challengeIDs []int) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false, "")
 	var idbuf bytes.Buffer
 	for _, id := range challengeIDs {
 		idbuf.WriteString(fmt.Sprintf("'%d',", id)) // nolint: gosec
@@ -862,7 +875,7 @@ func (p *PostgresPersister) governanceEventsByCriteriaFromTable(criteria *model.
 func (p *PostgresPersister) governanceEventsByCriteriaQuery(criteria *model.GovernanceEventCriteria,
 	tableName string) string {
 	queryBuf := bytes.NewBufferString("SELECT ")
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.GovernanceEvent{}, false, "")
 	queryBuf.WriteString(fieldNames) // nolint: gosec
 	queryBuf.WriteString(" FROM ")   // nolint: gosec
 	queryBuf.WriteString(tableName)  // nolint: gosec
@@ -1014,7 +1027,7 @@ func (p *PostgresPersister) challengesByChallengeIDsInTableInOrder(challengeIDs 
 }
 
 func (p *PostgresPersister) challengesByChallengeIDsQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Challenge{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE challenge_id IN (?);", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
@@ -1074,7 +1087,7 @@ func (p *PostgresPersister) challengesByListingAddressesInTable(addrs []common.A
 // challengesByListingAddressesQuery returns the query string to retrieved a list of
 // challenges for a list of listing addresses
 func (p *PostgresPersister) challengesByListingAddressesQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Challenge{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
 	queryString := fmt.Sprintf( // nolint: gosec
 		"SELECT %s FROM %s WHERE listing_address IN (?)",
 		fieldNames,
@@ -1110,7 +1123,7 @@ func (p *PostgresPersister) challengesByListingAddressInTable(addr common.Addres
 // challengesByListingAddressQuery returns the query string to retrieved a list of
 // challenges for a listing sorted by challenge_id
 func (p *PostgresPersister) challengesByListingAddressQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Challenge{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
 	queryString := fmt.Sprintf( // nolint: gosec
 		"SELECT %s FROM %s WHERE listing_address = $1 ORDER BY challenge_id;",
 		fieldNames,
@@ -1199,7 +1212,7 @@ func (p *PostgresPersister) pollsByPollIDsInTableInOrder(pollIDs []int, pollTabl
 }
 
 func (p *PostgresPersister) pollByPollIDsQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Poll{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Poll{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE poll_id IN (?);", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
@@ -1285,7 +1298,7 @@ func (p *PostgresPersister) appealsByChallengeIDsInTableInOrder(challengeIDs []i
 }
 
 func (p *PostgresPersister) appealsByChallengeIDsQuery(tableName string) string {
-	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Appeal{}, false)
+	fieldNames, _ := postgres.StructFieldsForQuery(postgres.Appeal{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE original_challenge_id IN (?);", fieldNames, tableName) // nolint: gosec
 	return queryString
 }

@@ -60,20 +60,35 @@ func TestDbFieldNameFromModelName(t *testing.T) {
 
 func TestGetAllStructFieldsForQuery(t *testing.T) {
 	listing := postgres.Listing{}
-	structFieldsString, structFieldsString2 := postgres.StructFieldsForQuery(listing, false)
+	structFieldsString, structFieldsString2 := postgres.StructFieldsForQuery(listing, false, "")
 	if structFieldsString != "name, contract_address, whitelisted, last_governance_state, url, charter, owner_addresses, owner, contributor_addresses, creation_timestamp, application_timestamp, approval_timestamp, last_updated_timestamp, app_expiry, unstaked_deposit, challenge_id" {
 		t.Errorf("Generated structFieldString is not what it should be.")
 	}
 	if structFieldsString2 != "" {
 		t.Errorf("Structfield must be empty but it isn't")
 	}
-	structFieldsString3, structFieldsString4 := postgres.StructFieldsForQuery(listing, true)
+	structFieldsString3, structFieldsString4 := postgres.StructFieldsForQuery(listing, true, "")
 	if structFieldsString3 != "name, contract_address, whitelisted, last_governance_state, url, charter, owner_addresses, owner, contributor_addresses, creation_timestamp, application_timestamp, approval_timestamp, last_updated_timestamp, app_expiry, unstaked_deposit, challenge_id" {
 		t.Errorf("Generated structFieldString is not what it should be: %v", structFieldsString3)
 	}
 	if structFieldsString4 != ":name, :contract_address, :whitelisted, :last_governance_state, :url, :charter, :owner_addresses, :owner, :contributor_addresses, :creation_timestamp, :application_timestamp, :approval_timestamp, :last_updated_timestamp, :app_expiry, :unstaked_deposit, :challenge_id" {
 		t.Errorf("Generated structFieldString with colon is not what it should be: %v", structFieldsString4)
 	}
+	structFieldsString5, structFieldsString6 := postgres.StructFieldsForQuery(listing, false, "l")
+	if structFieldsString5 != "l.name, l.contract_address, l.whitelisted, l.last_governance_state, l.url, l.charter, l.owner_addresses, l.owner, l.contributor_addresses, l.creation_timestamp, l.application_timestamp, l.approval_timestamp, l.last_updated_timestamp, l.app_expiry, l.unstaked_deposit, l.challenge_id" {
+		t.Errorf("Generated structFieldString is not what it should be: %v", structFieldsString5)
+	}
+	if structFieldsString6 != "" {
+		t.Errorf("Structfield must be empty but it isn't")
+	}
+	structFieldsString7, structFieldsString8 := postgres.StructFieldsForQuery(listing, true, "l")
+	if structFieldsString7 != "l.name, l.contract_address, l.whitelisted, l.last_governance_state, l.url, l.charter, l.owner_addresses, l.owner, l.contributor_addresses, l.creation_timestamp, l.application_timestamp, l.approval_timestamp, l.last_updated_timestamp, l.app_expiry, l.unstaked_deposit, l.challenge_id" {
+		t.Errorf("Generated structFieldString is not what it should be: %v", structFieldsString7)
+	}
+	if structFieldsString8 != ":name, :contract_address, :whitelisted, :last_governance_state, :url, :charter, :owner_addresses, :owner, :contributor_addresses, :creation_timestamp, :application_timestamp, :approval_timestamp, :last_updated_timestamp, :app_expiry, :unstaked_deposit, :challenge_id" {
+		t.Errorf("Structfield must be empty but it isn't")
+	}
+
 }
 
 func TestBigIntToFloat64(t *testing.T) {

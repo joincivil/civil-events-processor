@@ -684,13 +684,21 @@ func TestDeleteListing(t *testing.T) {
 
 func TestListingsByCriteria(t *testing.T) {
 	tableName := "listing_test"
+	joinTableName := "challenge_test"
 	persister, err := setupTestTable(tableName)
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
+
+	_, err = setupTestTable(joinTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
 	defer deleteTestTable(t, persister, tableName)
+
 	// whitelisted modellisting with active challenge
 	modelListingWhitelistedActiveChallenge, _ := setupSampleListing()
+	challenge := setupChallengeByChallengeID(10, false)
 	// Create another modelListing that was rejected after challenge succeeded
 	modelListingRejected, _ := setupSampleListing()
 	modelListingRejected.SetWhitelisted(false)
@@ -736,10 +744,14 @@ func TestListingsByCriteria(t *testing.T) {
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
+	err = persister.createChallengeInTable(challenge, joinTableName)
+	if err != nil {
+		t.Errorf("error saving challenge: %v", err)
+	}
 
 	listingsFromDB, err := persister.listingsByCriteriaFromTable(&model.ListingCriteria{
 		RejectedOnly: true,
-	}, tableName)
+	}, tableName, joinTableName)
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
@@ -756,7 +768,7 @@ func TestListingsByCriteria(t *testing.T) {
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
 		Offset: 0,
 		Count:  10,
-	}, tableName)
+	}, tableName, joinTableName)
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
@@ -784,7 +796,7 @@ func TestListingsByCriteria(t *testing.T) {
 
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
 		ActiveChallenge: true,
-	}, tableName)
+	}, tableName, joinTableName)
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
@@ -800,7 +812,7 @@ func TestListingsByCriteria(t *testing.T) {
 
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
 		CurrentApplication: true,
-	}, tableName)
+	}, tableName, joinTableName)
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
@@ -811,7 +823,7 @@ func TestListingsByCriteria(t *testing.T) {
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
 		ActiveChallenge:    true,
 		CurrentApplication: true,
-	}, tableName)
+	}, tableName, joinTableName)
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
@@ -819,9 +831,26 @@ func TestListingsByCriteria(t *testing.T) {
 		t.Errorf("Three listings should have been returned but there are %v", len(listingsFromDB))
 	}
 
+	// Update active challenge listing resolved = true
+	challenge.SetResolved(true)
+	err = persister.updateChallengeInTable(challenge, []string{"Resolved"}, joinTableName)
+	if err != nil {
+		t.Errorf("Error updating challenge: %v", err)
+	}
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		ActiveChallenge:    true,
+		CurrentApplication: true,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) != 2 {
+		t.Errorf("Two listings should have been returned but there are %v", len(listingsFromDB))
+	}
+
 	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
 		WhitelistedOnly: true,
-	}, tableName)
+	}, tableName, joinTableName)
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
@@ -1588,6 +1617,23 @@ func TestNilChallenges(t *testing.T) {
 /*
 All tests for challenge table:
 */
+func setupChallengeByChallengeID(challengeIDInt int, resolved bool) *model.Challenge {
+	listingAddr := common.HexToAddress(testAddress)
+	challengeID := big.NewInt(int64(challengeIDInt))
+	statement := ""
+	address2, _ := randomHex(32)
+	challenger := common.HexToAddress(address2)
+	stake := new(big.Int)
+	stake.SetString("100000000000000000000", 10)
+	rewardPool := new(big.Int)
+	rewardPool.SetString("50000000000000000000", 10)
+	totalTokens := big.NewInt(232323223232)
+
+	requestAppealExpiry := big.NewInt(1231312)
+	testChallenge := model.NewChallenge(challengeID, listingAddr, statement, rewardPool,
+		challenger, resolved, stake, totalTokens, requestAppealExpiry, int64(1212141313))
+	return testChallenge
+}
 
 func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 	var listingAddr common.Address

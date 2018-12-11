@@ -51,14 +51,17 @@ func DbFieldNameFromModelName(exampleStruct interface{}, fieldName string) (stri
 }
 
 // StructFieldsForQuery is a generic Insert statement for any table
-// TODO(IS): gosec linting errors for bytes.buffer use here. figure out if it's inefficient
-func StructFieldsForQuery(exampleStruct interface{}, colon bool) (string, string) {
+// spec="" is used to specify table name, i.e. "l" to get "l.name", etc.
+func StructFieldsForQuery(exampleStruct interface{}, colon bool, spec string) (string, string) {
 	var fields bytes.Buffer
 	var fieldsWithColon bytes.Buffer
 	valStruct := reflect.ValueOf(exampleStruct)
 	typeOf := valStruct.Type()
 	for i := 0; i < valStruct.NumField(); i++ {
 		dbFieldName := typeOf.Field(i).Tag.Get("db")
+		if spec != "" {
+			fields.WriteString(fmt.Sprintf("%v.", spec)) // nolint: gosec
+		}
 		fields.WriteString(dbFieldName) // nolint: gosec
 		if colon {
 			fieldsWithColon.WriteString(":")         // nolint: gosec
