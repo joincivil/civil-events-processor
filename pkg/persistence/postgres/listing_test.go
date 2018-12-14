@@ -3,11 +3,13 @@ package postgres_test
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
-	crawlerpg "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
-	"math/big"
+	cpostgres "github.com/joincivil/go-common/pkg/persistence/postgres"
+
 	// "reflect"
 	"testing"
 )
@@ -108,7 +110,7 @@ func TestNewDBListingNoCharter(t *testing.T) {
 }
 
 func TestEqualEmptyJsonB(t *testing.T) {
-	var emptyJsonb crawlerpg.JsonbPayload
+	var emptyJsonb cpostgres.JsonbPayload
 	if len(emptyJsonb) != 0 {
 		t.Error("Not equal")
 	}

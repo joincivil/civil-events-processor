@@ -2,17 +2,21 @@ package processor_test
 
 import (
 	// "fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
-	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
-	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	"github.com/joincivil/civil-events-crawler/pkg/utils"
-	"github.com/joincivil/civil-events-processor/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
+	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
+	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+
+	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/processor"
+
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 var (
@@ -45,7 +49,7 @@ func createAndProcAppEvent(t *testing.T, contracts *contractutils.AllTestContrac
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		application,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -75,7 +79,7 @@ func createAndProcAppWhitelistedEvent(t *testing.T, contracts *contractutils.All
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		whitelisted1,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -108,7 +112,7 @@ func createAndProcDepositEvent(t *testing.T, contracts *contractutils.AllTestCon
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		deposit,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -141,7 +145,7 @@ func createAndProcWithdrawalEvent(t *testing.T, contracts *contractutils.AllTest
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		withdrawal,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -171,7 +175,7 @@ func createAndProcAppRemoved(t *testing.T, contracts *contractutils.AllTestContr
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appRemoved,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -201,7 +205,7 @@ func createAndProcListingRemoved(t *testing.T, contracts *contractutils.AllTestC
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		listingRemoved,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -237,7 +241,7 @@ func createAndProcChallenge1(t *testing.T, contracts *contractutils.AllTestContr
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -271,7 +275,7 @@ func createAndProcChallenge1Failed(t *testing.T, contracts *contractutils.AllTes
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1Failed,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -305,7 +309,7 @@ func createAndProcChallenge1Succeeded(t *testing.T, contracts *contractutils.All
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1Succeeded,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -339,7 +343,7 @@ func createAndProcFailedChallenge1Overturned(t *testing.T, contracts *contractut
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		failedChallenge1Overturned,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -373,7 +377,7 @@ func createAndProcSuccessfulChallenge1Overturned(t *testing.T, contracts *contra
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		successfulChallenge1Overturned,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -405,7 +409,7 @@ func createAndProcAppealGranted(t *testing.T, contracts *contractutils.AllTestCo
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealGranted,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -440,7 +444,7 @@ func createAndProcAppealRequested(t *testing.T, contracts *contractutils.AllTest
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealRequested,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -474,7 +478,7 @@ func createAndProcGrantedAppealChallenged(t *testing.T, contracts *contractutils
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealChallenged,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -509,7 +513,7 @@ func createAndProcGrantedAppealConfirmed(t *testing.T, contracts *contractutils.
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealConfirmed,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -544,7 +548,7 @@ func createAndProcGrantedAppealOverturned(t *testing.T, contracts *contractutils
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealOverturned,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -575,7 +579,7 @@ func createAndProcTouchAndRemovedEvent(t *testing.T, contracts *contractutils.Al
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		touchAndRemoved,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)

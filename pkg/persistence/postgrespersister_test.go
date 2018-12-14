@@ -17,9 +17,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
+
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 const (
@@ -706,7 +708,7 @@ func TestListingsByCriteria(t *testing.T) {
 	modelListingRejected.SetAppExpiry(big.NewInt(0))
 	// modelListing that is still in application phase, not whitelisted
 	modelListingApplicationPhase, _ := setupSampleListingUnchallenged()
-	appExpiry := big.NewInt(crawlerutils.CurrentEpochSecsInInt64() + 100)
+	appExpiry := big.NewInt(ctime.CurrentEpochSecsInInt64() + 100)
 	modelListingApplicationPhase.SetAppExpiry(appExpiry)
 	// modellisting that is whitelisted, never had a challenge
 	modelListingWhitelisted, _ := setupSampleListingUnchallenged()
@@ -716,7 +718,7 @@ func TestListingsByCriteria(t *testing.T) {
 	modelListingNoChallenge.SetChallengeID(big.NewInt(0))
 	// modelListing that passed application phase but not challenged so ready to be whitelisted
 	modelListingPastApplicationPhase, _ := setupSampleListingUnchallenged()
-	appExpiry = big.NewInt(crawlerutils.CurrentEpochSecsInInt64() - 100)
+	appExpiry = big.NewInt(ctime.CurrentEpochSecsInInt64() - 100)
 	modelListingPastApplicationPhase.SetAppExpiry(appExpiry)
 
 	// save to test table
@@ -879,7 +881,7 @@ func setupSampleContentRevision(listingAddr common.Address, contractContentID *b
 	editorAddress := common.HexToAddress(address3)
 	contractRevisionID := big.NewInt(mathrand.Int63())
 	revisionURI := "revisionURI"
-	revisionDateTs := crawlerutils.CurrentEpochSecsInInt64()
+	revisionDateTs := ctime.CurrentEpochSecsInInt64()
 	testContentRevision := model.NewContentRevision(listingAddr, payload, payloadHash, editorAddress,
 		contractContentID, contractRevisionID, revisionURI, revisionDateTs)
 	return testContentRevision, listingAddr, contractContentID, contractRevisionID
@@ -1092,8 +1094,8 @@ func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, commo
 
 	metadata := model.Metadata{}
 	governanceEventType := "governanceeventtypehere"
-	creationDateTs := crawlerutils.CurrentEpochSecsInInt64()
-	lastUpdatedDateTs := crawlerutils.CurrentEpochSecsInInt64() + 1
+	creationDateTs := ctime.CurrentEpochSecsInInt64()
+	lastUpdatedDateTs := ctime.CurrentEpochSecsInInt64() + 1
 	eventHash, _ := randomHex(5)
 	blockNumber := uint64(88888)
 	tHash, _ := randomHex(5)
@@ -1236,11 +1238,11 @@ func TestGovEventsByCriteria(t *testing.T) {
 	for i := 1; i <= 30; i++ {
 		// TODO: just set timestamp for event bc there is still a probability these times won't be what you think.
 		if i < 20 {
-			timeStart = crawlerutils.CurrentEpochSecsInInt64()
+			timeStart = ctime.CurrentEpochSecsInInt64()
 		}
 		if i == 20 {
 			time.Sleep(1 * time.Second)
-			timeMiddle = crawlerutils.CurrentEpochSecsInInt64()
+			timeMiddle = ctime.CurrentEpochSecsInInt64()
 		}
 		modelGovernanceEvent, listingAddr, _, _ = createAndSaveTestGovEvent(t, persister, true)
 	}
@@ -1371,8 +1373,8 @@ func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEve
 		"RevealEndDate":  1527268603,
 		"ListingAddress": "0xa28ca9c9a7979c33cf73d3f406cd765e2d68c965"}
 	governanceEventType := "Challenge"
-	creationDateTs := crawlerutils.CurrentEpochSecsInInt64()
-	lastUpdatedDateTs := crawlerutils.CurrentEpochSecsInInt64() + 1
+	creationDateTs := ctime.CurrentEpochSecsInInt64()
+	lastUpdatedDateTs := ctime.CurrentEpochSecsInInt64() + 1
 	eventHash, _ := randomHex(5)
 	blockNumber := uint64(88888)
 	tHash, _ := randomHex(5)

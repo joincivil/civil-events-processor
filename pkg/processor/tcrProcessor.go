@@ -13,8 +13,9 @@ import (
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 	"github.com/joincivil/civil-events-processor/pkg/model"
+
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 const (
@@ -239,7 +240,7 @@ func (t *TcrEventProcessor) persistGovernanceEvent(event *crawlermodel.Event, ev
 		event.EventPayload(),
 		event.EventType(),
 		event.Timestamp(),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		event.Hash(),
 		logPayload.BlockNumber,
 		logPayload.TxHash,
@@ -618,7 +619,7 @@ func (t *TcrEventProcessor) newAppealChallenge(event *crawlermodel.Event,
 		challengeRes.Stake,
 		challengeRes.TotalTokens,
 		requestAppealExpiry,
-		crawlerutils.CurrentEpochSecsInInt64())
+		ctime.CurrentEpochSecsInInt64())
 
 	err = t.challengePersister.CreateChallenge(newAppealChallenge)
 	if err != nil {
@@ -800,7 +801,7 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 		CreatedDateTs:     event.Timestamp(),
 		ApplicationDateTs: event.Timestamp(),
 		ApprovalDateTs:    approvalDateEmptyValue,
-		LastUpdatedDateTs: crawlerutils.CurrentEpochSecsInInt64(),
+		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
 	})
 
 	appExpiry := event.EventPayload()["AppEndDate"].(*big.Int)
@@ -875,7 +876,7 @@ func (t *TcrEventProcessor) newChallengeFromChallenge(event *crawlermodel.Event,
 		challengeRes.Stake,
 		challengeRes.TotalTokens,
 		requestAppealExpiry,
-		crawlerutils.CurrentEpochSecsInInt64())
+		ctime.CurrentEpochSecsInInt64())
 
 	return challenge, nil
 }
@@ -917,7 +918,7 @@ func (t *TcrEventProcessor) newAppealFromAppealRequested(event *crawlermodel.Eve
 		appealPhaseExpiry,
 		appealGranted,
 		statement.(string),
-		crawlerutils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 	)
 	// TODO(IS): Check if an appeal already exists. if it does, update data
 
@@ -954,7 +955,7 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 		URL:               url,
 		Owner:             ownerAddr,
 		OwnerAddresses:    ownerAddresses,
-		LastUpdatedDateTs: crawlerutils.CurrentEpochSecsInInt64(),
+		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
 	})
 	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
 	if err != nil {
@@ -1003,7 +1004,7 @@ func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Ad
 		challengeRes.Stake,
 		challengeRes.TotalTokens,
 		requestAppealExpiry,
-		crawlerutils.CurrentEpochSecsInInt64())
+		ctime.CurrentEpochSecsInInt64())
 
 	err = t.challengePersister.CreateChallenge(challenge)
 	return challenge, err
@@ -1029,7 +1030,7 @@ func (t *TcrEventProcessor) persistNewAppealFromContract(tcrAddress common.Addre
 		appealRes.AppealPhaseExpiry,
 		appealRes.AppealGranted,
 		statement,
-		crawlerutils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 	)
 
 	if appealRes.AppealChallengeID.Uint64() != 0 {
