@@ -189,7 +189,7 @@
   revision = "41ca696dd3953b80cfa3a19e682e8fe94b7b03a4"
 
 [[projects]]
-  branch = "png/processor-functions"
+  branch = "master"
   digest = "1:3f54b91679029f41d2faee692101e696751a54f1787c266f5910dd4d3487b4e3"
   name = "github.com/joincivil/go-common"
   packages = [
@@ -200,7 +200,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "5cdf6dcaf4c0540128bd0c4a940df83e68d9edec"
+  revision = "1c4cb3e42c825bff48f14c02784b24f46204a6d5"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
