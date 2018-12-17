@@ -10,7 +10,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/robfig/cron"
 
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+	cstrings "github.com/joincivil/go-common/pkg/strings"
 )
 
 // PersisterType is the type of persister to use.
@@ -151,7 +151,7 @@ func (c *ProcessorConfig) validateCronConfig() error {
 }
 
 func (c *ProcessorConfig) validateAPIURL() error {
-	if c.EthAPIURL == "" || !crawlerutils.IsValidEthAPIURL(c.EthAPIURL) {
+	if c.EthAPIURL == "" || !cstrings.IsValidEthAPIURL(c.EthAPIURL) {
 		return fmt.Errorf("Invalid eth API URL: '%v'", c.EthAPIURL)
 	}
 	return nil

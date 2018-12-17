@@ -3,19 +3,22 @@ package processor
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	log "github.com/golang/glog"
 	"math/big"
 	"strings"
+
+	log "github.com/golang/glog"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+
+	cbytes "github.com/joincivil/go-common/pkg/bytes"
+	ctime "github.com/joincivil/go-common/pkg/time"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 const (
@@ -147,7 +150,7 @@ func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermo
 	if err != nil {
 		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
 	}
-	contentHash := utils.Byte32ToHexString(content.ContentHash)
+	contentHash := cbytes.Byte32ToHexString(content.ContentHash)
 
 	// Scrape the metadata and content for the revision
 	metadata, scraperContent, err := n.scrapeData(revisionURI.(string))
@@ -329,7 +332,7 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 		// CreatedDateTs:        creationDate,
 		// ApplicationDateTs:    applicationDate,
 		// ApprovalDateTs:       approvalDate,
-		LastUpdatedDateTs: crawlerutils.CurrentEpochSecsInInt64(),
+		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
 	})
 	err = n.listingPersister.CreateListing(listing)
 	return listing, err

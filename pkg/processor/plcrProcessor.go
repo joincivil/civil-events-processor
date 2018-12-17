@@ -3,15 +3,18 @@ package processor
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	log "github.com/golang/glog"
 	"math/big"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	log "github.com/golang/glog"
+
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+
 	"github.com/joincivil/civil-events-processor/pkg/model"
+
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 const (
@@ -105,7 +108,7 @@ func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event,
 		voteQuorum.(*big.Int),
 		votesFor,
 		votesAgainst,
-		crawlerutils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 	)
 	return p.pollPersister.CreatePoll(poll)
 }
