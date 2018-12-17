@@ -4,6 +4,7 @@ import (
 	// "fmt"
 	"math/big"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -605,6 +606,13 @@ func setupTcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *TestPers
 	return contracts, persister, tcrProc
 }
 
+func memoryCheck(t *testing.T) {
+	// var m runtime.MemStats
+	// runtime.ReadMemStats(&m)
+	//t.Logf("alloc = %v, totalalloc = %v, sys = %v", m.Alloc, m.TotalAlloc, m.Sys)
+	runtime.GC()
+}
+
 func TestTcrEventProcessor(t *testing.T) {
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	listingAddress := contracts.NewsroomAddr.Hex()
@@ -631,7 +639,7 @@ func TestTcrEventProcessor(t *testing.T) {
 	if len(persister.appeals) != 1 {
 		t.Error("Should have seen 1 appeal")
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRApplication(t *testing.T) {
@@ -672,7 +680,7 @@ func TestProcessTCRApplication(t *testing.T) {
 	if listing.ApprovalDateTs() != 0 {
 		t.Errorf("ApplicationDateTs value is not correct: %v", listing.ApplicationDateTs())
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRApplicationWhitelisted(t *testing.T) {
@@ -687,6 +695,7 @@ func TestProcessTCRApplicationWhitelisted(t *testing.T) {
 	if !listing.Whitelisted() {
 		t.Errorf("Should be whitelisted")
 	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRApplicationRemoved(t *testing.T) {
@@ -718,6 +727,7 @@ func TestProcessTCRApplicationRemoved(t *testing.T) {
 	if !reflect.DeepEqual(listing.ContributorAddresses(), []common.Address{}) {
 		t.Errorf("ContributorAddresses value is not correct %v", listing.ContributorAddresses())
 	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRDepositWithdrawal(t *testing.T) {
@@ -738,7 +748,7 @@ func TestProcessTCRDepositWithdrawal(t *testing.T) {
 	if !reflect.DeepEqual(listing.UnstakedDeposit(), deposit.(*big.Int)) {
 		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRListingRemoved(t *testing.T) {
@@ -771,6 +781,7 @@ func TestProcessTCRListingRemoved(t *testing.T) {
 	if !reflect.DeepEqual(listing.ContributorAddresses(), []common.Address{}) {
 		t.Errorf("ContributorAddresses value is not correct %v", listing.ContributorAddresses())
 	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRChallenge(t *testing.T) {
@@ -816,6 +827,7 @@ func TestProcessTCRChallenge(t *testing.T) {
 	// fmt.Println(challenge.Stake())
 	// fmt.Println(challenge.TotalTokens())
 	// fmt.Println(challenge.RequestAppealExpiry())
+	memoryCheck(t)
 
 }
 
@@ -842,6 +854,7 @@ func TestProcessTCRChallengeFailed(t *testing.T) {
 	}
 	// fmt.Println(unstakedDeposit)
 	// Test for case where appeal is requested and not granted: Need simulated backend to test this
+	memoryCheck(t)
 }
 
 func TestProcessTCRChallengeSucceeded(t *testing.T) {
@@ -872,6 +885,7 @@ func TestProcessTCRChallengeSucceeded(t *testing.T) {
 	}
 
 	// Test for case where appeal is requested and not granted
+	memoryCheck(t)
 }
 
 func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
@@ -898,6 +912,7 @@ func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
 	if !challenge.Resolved() {
 		t.Error("Challenge Resolved should be true")
 	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
@@ -925,7 +940,7 @@ func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 		t.Errorf("Listing should have had governance state of successfulchallengeoverturned %v", listing.LastGovernanceState())
 	}
 	//unstaked deposit value check
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRAppealRequested(t *testing.T) {
@@ -960,7 +975,7 @@ func TestProcessTCRAppealRequested(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRAppealGranted(t *testing.T) {
@@ -989,6 +1004,7 @@ func TestProcessTCRAppealGranted(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRGrantedAppealChallenged(t *testing.T) {
@@ -1021,7 +1037,7 @@ func TestProcessTCRGrantedAppealChallenged(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRGrantedAppealConfirmed(t *testing.T) {
@@ -1057,6 +1073,7 @@ func TestProcessTCRGrantedAppealConfirmed(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
+	memoryCheck(t)
 
 }
 
@@ -1094,6 +1111,7 @@ func TestProcessTCRGrantedAppealOverturned(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
+	memoryCheck(t)
 }
 
 func TestUpdateListingWithLastGovState(t *testing.T) {
@@ -1106,4 +1124,5 @@ func TestUpdateListingWithLastGovState(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
+	memoryCheck(t)
 }
