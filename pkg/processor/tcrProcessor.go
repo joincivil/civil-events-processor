@@ -40,6 +40,8 @@ const (
 	appealChallengeIDFieldName           = "AppealChallengeID"
 	appealOpenToChallengeExpiryFieldName = "AppealOpenToChallengeExpiry"
 	appealGrantedFieldName               = "AppealGranted"
+
+	challengeIDResetValue = 0
 )
 
 // NewTcrEventProcessor is a convenience function to init an EventProcessor
@@ -352,7 +354,10 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 	}
 	existingListing.SetUnstakedDeposit(unstakedDeposit)
 	existingListing.SetLastGovernanceState(model.GovernanceStateChallengeFailed)
-	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName}
+	existingListing.SetChallengeID(big.NewInt(challengeIDResetValue))
+	updatedFields := []string{unstakedDepositFieldName,
+		lastGovStateFieldName,
+		challengeIDFieldName}
 	err = t.listingPersister.UpdateListing(existingListing, updatedFields)
 	if err != nil {
 		return fmt.Errorf("Error updating listing: %v", err)
@@ -512,8 +517,9 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 	}
 	existingListing.SetUnstakedDeposit(unstakedDeposit)
 
+	existingListing.SetChallengeID(big.NewInt(challengeIDResetValue))
 	existingListing.SetLastGovernanceState(model.GovernanceStateSuccessfulChallengeOverturned)
-	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName}
+	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName, challengeIDFieldName}
 	return t.listingPersister.UpdateListing(existingListing, updatedFields)
 
 }
