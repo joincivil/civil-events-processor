@@ -420,7 +420,7 @@ func TestListingByAddressDoesNotExist(t *testing.T) {
 	// retrieve from test table
 	nullListing, err := persister.listingByAddressFromTable(bogusAddress, tableName)
 
-	if err != nil {
+	if err != model.ErrPersisterNoResults {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
 	}
 	if nullListing != nil {
@@ -480,7 +480,7 @@ func TestListingsByAddresses(t *testing.T) {
 		}
 	}
 	//retrieve listings
-	dbListings, err := persister.listingsByAddressesFromTable(modelListingAddresses, tableName)
+	dbListings, err := persister.listingsByAddressesFromTableInOrder(modelListingAddresses, tableName)
 	if err != nil {
 		t.Errorf("Error retrieving multiple listings: %v", err)
 	}
@@ -596,6 +596,42 @@ func TestListingByAddressesInOrderAddressNotFound(t *testing.T) {
 			}
 		}
 
+	}
+
+}
+
+func TestNilResultsListing(t *testing.T) {
+	// Query for listings that don't exist and make sure expected behavior is returned
+	tableName := "listing_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+	randHex, _ := randomHex(32)
+	randHex2, _ := randomHex(32)
+	testAddress1 := common.HexToAddress(randHex)
+	testAddress2 := common.HexToAddress(randHex2)
+
+	listingRes, err := persister.listingByAddressFromTable(testAddress1, tableName)
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Error message should be ErrPersisterNoResults, but is %v", err)
+	}
+	if listingRes != nil {
+		t.Errorf("Listing response should be nil")
+	}
+
+	// This does not use model.ErrPersisterNoResults
+	listingsRes, err := persister.listingsByAddressesFromTableInOrder([]common.Address{testAddress1, testAddress2},
+		tableName)
+	if err != nil {
+		t.Errorf("Error should be nil but is %v", err)
+	}
+
+	for _, listing := range listingsRes {
+		if listing != nil {
+			t.Errorf("Listing should be nil but it is %v", listing)
+		}
 	}
 
 }
@@ -1031,6 +1067,26 @@ func TestContentRevisions(t *testing.T) {
 
 }
 
+func TestNilResultsContentRevision(t *testing.T) {
+	contRevTableName := "content_revision_test"
+	persister, err := setupTestTable(contRevTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, contRevTableName)
+	address1, _ := randomHex(32)
+	contractAddress := common.HexToAddress(address1)
+	contentID := big.NewInt(0)
+	revisionID := big.NewInt(0)
+	cr, err := persister.contentRevisionFromTable(contractAddress, contentID, revisionID, contRevTableName)
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Error message is not %v but %v", model.ErrPersisterNoResults, err)
+	}
+	if cr != nil {
+		t.Errorf("Content Revision should be nil but is %v", cr)
+	}
+}
+
 // Test update content revision -- TODO(IS) create an update where address, contentid, revisionid don't change
 func TestUpdateContentRevision(t *testing.T) {
 }
@@ -1147,6 +1203,20 @@ func TestCreateGovernanceEvent(t *testing.T) {
 	}
 	if numRowsb != 1 {
 		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
+	}
+}
+
+func TestNilResultsGovernanceEvent(t *testing.T) {
+	persister := setupGovEventTable(t)
+	defer deleteTestTable(t, persister, govTestTableName)
+	txHashSample, _ := randomHex(30)
+	txHash := common.HexToHash(txHashSample)
+	govEvent, err := persister.governanceEventsByTxHashFromTable(txHash, govTestTableName)
+	if err != nil {
+		t.Errorf("Error should be nil but is %v", err)
+	}
+	if len(govEvent) != 0 {
+		t.Errorf("govEvent list should be empty but is %v", govEvent)
 	}
 }
 
@@ -1387,172 +1457,6 @@ func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEve
 	return testGovernanceEvent, challengeID
 }
 
-func TestGovernanceEventByChallengeID(t *testing.T) {
-	tableName := "governance_event_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tableName)
-
-	challengeEvent, challengeID := setupSampleGovernanceChallengeEvent(true)
-	// insert to table
-	err = persister.createGovernanceEventInTable(challengeEvent, tableName)
-	if err != nil {
-		t.Errorf("error saving GovernanceEvent: %v", err)
-	}
-
-	// Try with just one ID
-	challengeIDs := []int{challengeID}
-	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-	if err != nil {
-		t.Errorf("error getting gov events by challenge ids: %v", err)
-	}
-
-	if len(govEvents) != 1 {
-		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
-	}
-	govEvent := govEvents[0]
-	if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeID {
-		t.Errorf("ChallengeID is %v but it should be %v", int(govEvent.Metadata()["ChallengeID"].(float64)),
-			challengeID)
-	}
-
-	// Multiple IDs
-	challengeIDs = []int{}
-	for i := 0; i < 6; i++ {
-		challengeEvent, challengeID := setupSampleGovernanceChallengeEvent(true)
-		challengeIDs = append(challengeIDs, challengeID)
-		// insert to table
-		err = persister.createGovernanceEventInTable(challengeEvent, tableName)
-		if err != nil {
-			t.Errorf("error saving GovernanceEvent: %v", err)
-		}
-	}
-
-	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-	if err != nil {
-		t.Errorf("error getting gov events by challenge ids: %v", err)
-	}
-	if len(govEvents) != 6 {
-		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
-	}
-
-	// Will be in order that you put it in DB so you can do this
-	for i, govEvent := range govEvents {
-		if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeIDs[i] {
-			t.Errorf("ChallengeID from DB is %v but should be %v",
-				int(govEvent.Metadata()["ChallengeID"].(float64)), challengeID)
-		}
-	}
-
-	_, err = persister.govEventsByChallengeIDsFromTable([]int{}, tableName)
-	if err == nil {
-		t.Errorf("Should have received an error on empty challenges ID")
-	}
-	if err != model.ErrPersisterNoResults {
-		t.Errorf("Should have received an ErrPersisterNoResults on empty challenges ID: err: %v", err)
-	}
-
-	govEvents, err = persister.govEventsByChallengeIDsFromTable([]int{2402042030}, tableName)
-	if err != nil {
-		t.Errorf("Should not have received an error on bad challenges IDs")
-	}
-	if len(govEvents) != 1 {
-		t.Errorf("Should have received gov events from DB")
-	}
-	if govEvents[0] != nil {
-		t.Errorf("Should have received a nil value for an unfound govevents")
-	}
-
-}
-
-func TestGovernanceEventByChallengeIDOrder(t *testing.T) {
-	// check that challenges are in order
-	tableName := "governance_event_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tableName)
-
-	challengeEvent, challengeID := setupSampleGovernanceChallengeEvent(true)
-	// insert to table
-	err = persister.createGovernanceEventInTable(challengeEvent, tableName)
-	if err != nil {
-		t.Errorf("error saving GovernanceEvent: %v", err)
-	}
-
-	// Try with just one ID
-	challengeIDs := []int{challengeID}
-	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-	if err != nil {
-		t.Errorf("error getting gov events by challenge ids: %v", err)
-	}
-	if len(govEvents) != 1 {
-		t.Errorf("Wrong number of events returned: %v. Should be 1.", len(govEvents))
-	}
-	govEvent := govEvents[0]
-	if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeID {
-		t.Errorf("ChallengeID is %v but it should be %v", int(govEvent.Metadata()["ChallengeID"].(float64)),
-			challengeID)
-	}
-
-	// Multiple IDs
-	challengeIDs = []int{}
-	for i := 0; i < 6; i++ {
-		challengeEvent, challengeID := setupSampleGovernanceChallengeEvent(true)
-		challengeIDs = append(challengeIDs, challengeID)
-		// insert to table
-		err = persister.createGovernanceEventInTable(challengeEvent, tableName)
-		if err != nil {
-			t.Errorf("error saving GovernanceEvent: %v", err)
-		}
-	}
-
-	challengeIDs = shuffleInts(challengeIDs)
-	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-	if err != nil {
-		t.Errorf("error getting gov events from challenge ids: %v", err)
-	}
-	if len(govEvents) != 6 {
-		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
-	}
-
-	for i, govEvent := range govEvents {
-		if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeIDs[i] {
-			t.Errorf("ChallengeID from DB is %v but should be %v",
-				int(govEvent.Metadata()["ChallengeID"].(float64)), challengeIDs[i])
-		}
-	}
-
-	// IDs that don't exist
-	nilID := 300
-	challengeIDs = append(challengeIDs, nilID)
-	challengeIDs = shuffleInts(challengeIDs)
-	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-	if err != nil {
-		t.Errorf("error getting by challenge ids: %v", err)
-	}
-	if len(govEvents) != 7 {
-		t.Errorf("Wrong number of events returned: %v. Should be 6.", len(govEvents))
-	}
-	// emptyGovEvent := model.GovernanceEvent{}
-	for i, govEvent := range govEvents {
-		if govEvent != nil {
-			if int(govEvent.Metadata()["ChallengeID"].(float64)) != challengeIDs[i] {
-				t.Errorf("ChallengeID from DB is %v but should be %v",
-					int(govEvent.Metadata()["ChallengeID"].(float64)), challengeIDs[i])
-			}
-		} else {
-			if challengeIDs[i] != nilID {
-				t.Errorf("This challenge should be null but it is %v", govEvent)
-			}
-		}
-	}
-
-}
-
 //shuffle function
 func shuffleInts(slice []int) []int {
 	for i := range slice {
@@ -1560,58 +1464,6 @@ func shuffleInts(slice []int) []int {
 		slice[i], slice[j] = slice[j], slice[i]
 	}
 	return slice
-}
-
-func TestNilChallenges(t *testing.T) {
-	// check that challenges are in order
-	tableName := "governance_event_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tableName)
-
-	challengeEvent, _ := setupSampleGovernanceChallengeEvent(true)
-	// insert to table
-	err = persister.createGovernanceEventInTable(challengeEvent, tableName)
-	if err != nil {
-		t.Errorf("error saving GovernanceEvent: %v", err)
-	}
-
-	// Try with just one ID
-	challengeIDs := []int{0}
-	govEvents, err := persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-	if err != nil {
-		t.Errorf("error retrieving challenge ids: %v", err)
-	}
-	if len(govEvents) != 1 {
-		t.Errorf("Should have only returned 1 listing")
-	}
-
-	for _, event := range govEvents {
-		if event != nil {
-			t.Errorf("Should have gotten nil event but got %v", event)
-		}
-
-	}
-
-	// Try with just one ID
-	challengeIDs = []int{0, 300}
-	govEvents, err = persister.govEventsByChallengeIDsFromTable(challengeIDs, tableName)
-	if err != nil {
-		t.Errorf("error retrieving got events by challenges ids: err: %v", err)
-	}
-	if len(govEvents) != 2 {
-		t.Errorf("Should have only returned 1 listing")
-	}
-
-	for _, event := range govEvents {
-		if event != nil {
-			t.Errorf("Should have gotten nil event but got %v", event)
-		}
-
-	}
-
 }
 
 // also test that you can create multiple queries and cnxn pools are working
@@ -1896,6 +1748,32 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 	}
 }
 
+func TestNilResultsChallenges(t *testing.T) {
+	persister, err := setupTestTable(challengeTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, challengeTestTableName)
+
+	challenge, err := persister.challengeByChallengeIDFromTable(0, challengeTestTableName)
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Error should be %v but is %v", model.ErrPersisterNoResults, err)
+	}
+	if challenge != nil {
+		t.Errorf("Challenge should be nil but is %v", challenge)
+	}
+
+	blankAddress := common.Address{}
+	challenges, err := persister.challengesByListingAddressInTable(blankAddress, challengeTestTableName)
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Error should be no results %v", err)
+	}
+	if challenges != nil {
+		t.Errorf("Challenges should be nil but is %v", challenges)
+	}
+
+}
+
 func TestUpdateChallenge(t *testing.T) {
 	persister, err := setupTestTable(challengeTestTableName)
 	if err != nil {
@@ -1978,6 +1856,23 @@ func TestCreatePoll(t *testing.T) {
 	defer deleteTestTable(t, persister, pollTestTableName)
 	_, _ = createAndSaveTestPoll(t, persister, true)
 
+}
+
+func TestNilResultsPoll(t *testing.T) {
+	persister, err := setupTestTable(pollTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, pollTestTableName)
+
+	pollID := 0
+	poll, err := persister.pollByPollIDFromTable(pollID)
+	if poll != nil {
+		t.Errorf("Poll should be nil but is %v", poll)
+	}
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Error should be %v but is %v", model.ErrPersisterNoResults, err)
+	}
 }
 
 func TestUpdatePoll(t *testing.T) {
@@ -2103,25 +1998,22 @@ func TestUpdateAppeal(t *testing.T) {
 	}
 }
 
-// func TestAppealByChallengeIDEmptyResults(t *testing.T) {
-// 	persister, err := setupTestTable(appealTestTableName)
-// 	if err != nil {
-// 		t.Errorf("Error connecting to DB: %v", err)
-// 	}
-// 	defer deleteTestTable(t, persister, appealTestTableName)
-// 	_, challengeID := createAndSaveTestAppeal(t, persister, true)
+func TestNilResultsAppeal(t *testing.T) {
+	persister, err := setupTestTable(appealTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, appealTestTableName)
 
-// 	_, err = persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64()) + 1}, appealTestTableName)
-// 	// TODO(IS): Change this so model.ErrPersisterNoResults is being used correctly!
-// 	// Even though this challengeID doesn't exist err == nil
-// 	if err == nil {
-// 		t.Error("Should have received an error on appeals")
-// 	}
-// 	// // Empty input results
-// 	// if err != model.ErrPersisterNoResults {
-// 	// 	t.Errorf("Should have received an ErrPersisterNoResults on empty listing addresses: err: %v", err)
-// 	// }
-// }
+	challengeID := 0
+	appeal, err := persister.appealByChallengeIDFromTable(challengeID)
+	if appeal != nil {
+		t.Errorf("Appeal should be nil but is %v", appeal)
+	}
+	if err != model.ErrPersisterNoResults {
+		t.Errorf("Error should be %v but is %v", model.ErrPersisterNoResults, err)
+	}
+}
 
 /*
 All tests for cron table:
