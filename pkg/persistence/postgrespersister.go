@@ -21,13 +21,14 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 
+	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	cpostgres "github.com/joincivil/go-common/pkg/persistence/postgres"
 	cstrings "github.com/joincivil/go-common/pkg/strings"
 
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
-// NOTE(IS): model.ErrPersisterNoResults is only returned for single queries
+// NOTE(IS): cpersist.ErrPersisterNoResults is only returned for single queries
 
 const (
 	listingTableName   = "listing"
@@ -365,7 +366,7 @@ func (p *PostgresPersister) listingsByCriteriaFromTable(criteria *model.ListingC
 func (p *PostgresPersister) listingsByAddressesFromTableInOrder(addresses []common.Address,
 	tableName string) ([]*model.Listing, error) {
 	if len(addresses) == 0 {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 
 	stringAddresses := cstrings.ListCommonAddressToListString(addresses)
@@ -411,7 +412,7 @@ func (p *PostgresPersister) listingByAddressFromTable(address common.Address, ta
 	listings, err := p.listingsByAddressesFromTableInOrder([]common.Address{address}, tableName)
 	if len(listings) > 0 {
 		if listings[0] == nil {
-			err = model.ErrPersisterNoResults
+			err = cpersist.ErrPersisterNoResults
 		}
 		return listings[0], err
 	}
@@ -551,13 +552,13 @@ func (p *PostgresPersister) contentRevisionFromTable(address common.Address, con
 	err := p.db.Get(&dbContRev, queryString, address.Hex(), contentID.Int64(), revisionID.Int64())
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, model.ErrPersisterNoResults
+			return nil, cpersist.ErrPersisterNoResults
 		}
 		return nil, fmt.Errorf("Wasn't able to get ContentRevision from postgres table: %v", err)
 	}
 	contRev := dbContRev.DbToContentRevisionData()
 	if contRev == nil {
-		return contRev, model.ErrPersisterNoResults
+		return contRev, cpersist.ErrPersisterNoResults
 	}
 	return contRev, err
 }
@@ -882,7 +883,7 @@ func (p *PostgresPersister) challengeByChallengeIDFromTable(challengeID int, tab
 		return nil, err
 	}
 	if challenges[0] == nil {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 	return challenges[0], nil
 }
@@ -890,7 +891,7 @@ func (p *PostgresPersister) challengeByChallengeIDFromTable(challengeID int, tab
 func (p *PostgresPersister) challengesByChallengeIDsInTableInOrder(challengeIDs []int,
 	tableName string) ([]*model.Challenge, error) {
 	if len(challengeIDs) <= 0 {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 
 	challengeIDsString := cstrings.ListIntToListString(challengeIDs)
@@ -942,7 +943,7 @@ func (p *PostgresPersister) challengesByChallengeIDsQuery(tableName string) stri
 func (p *PostgresPersister) challengesByListingAddressesInTable(addrs []common.Address,
 	tableName string) ([][]*model.Challenge, error) {
 	if len(addrs) <= 0 {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 
 	listingAddrs := cstrings.ListCommonAddressToListString(addrs)
@@ -1017,7 +1018,7 @@ func (p *PostgresPersister) challengesByListingAddressInTable(addr common.Addres
 	}
 
 	if len(dbChallenges) == 0 {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 
 	for _, dbChallenge := range dbChallenges {
@@ -1082,14 +1083,14 @@ func (p *PostgresPersister) pollByPollIDFromTable(pollID int) (*model.Poll, erro
 		return nil, err
 	}
 	if polls[0] == nil {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 	return polls[0], nil
 }
 
 func (p *PostgresPersister) pollsByPollIDsInTableInOrder(pollIDs []int, pollTableName string) ([]*model.Poll, error) {
 	if len(pollIDs) <= 0 {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 
 	pollIDsString := cstrings.ListIntToListString(pollIDs)
@@ -1179,14 +1180,14 @@ func (p *PostgresPersister) appealByChallengeIDFromTable(challengeID int) (*mode
 		return nil, err
 	}
 	if appeals[0] == nil {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 	return appeals[0], nil
 }
 
 func (p *PostgresPersister) appealsByChallengeIDsInTableInOrder(challengeIDs []int, tableName string) ([]*model.Appeal, error) {
 	if len(challengeIDs) <= 0 {
-		return nil, model.ErrPersisterNoResults
+		return nil, cpersist.ErrPersisterNoResults
 	}
 
 	challengeIDsString := cstrings.ListIntToListString(challengeIDs)

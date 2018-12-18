@@ -15,6 +15,7 @@ import (
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 
+	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
@@ -639,7 +640,7 @@ func (t *TcrEventProcessor) newAppealChallenge(event *crawlermodel.Event,
 
 func (t *TcrEventProcessor) checkAppealNotGranted(challengeID *big.Int) (bool, error) {
 	appeal, err := t.appealPersister.AppealByChallengeID(int(challengeID.Int64()))
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return false, err
 	}
 	if appeal == nil {
@@ -710,7 +711,7 @@ func (t *TcrEventProcessor) getExistingChallenge(challengeID *big.Int, tcrAddres
 	listingAddress common.Address) (*model.Challenge, error) {
 
 	existingChallenge, err := t.challengePersister.ChallengeByChallengeID(int(challengeID.Int64()))
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
 
@@ -727,7 +728,7 @@ func (t *TcrEventProcessor) getExistingListing(tcrAddress common.Address,
 	listingAddress common.Address) (*model.Listing, error) {
 
 	listing, err := t.listingPersister.ListingByAddress(listingAddress)
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
 	if listing == nil {
@@ -742,7 +743,7 @@ func (t *TcrEventProcessor) getExistingListing(tcrAddress common.Address,
 func (t *TcrEventProcessor) getExistingAppeal(challengeID *big.Int,
 	tcrAddress common.Address) (*model.Appeal, error) {
 	existingAppeal, err := t.appealPersister.AppealByChallengeID(int(challengeID.Int64()))
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
 	if existingAppeal == nil {
