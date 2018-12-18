@@ -189,18 +189,19 @@
   revision = "41ca696dd3953b80cfa3a19e682e8fe94b7b03a4"
 
 [[projects]]
-  branch = "master"
-  digest = "1:3f54b91679029f41d2faee692101e696751a54f1787c266f5910dd4d3487b4e3"
+  branch = "png/persistence-vars"
+  digest = "1:a6af07e055313d7584e3065a502be08f8a16bd3543af3cc41430a01319694e4b"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
     "pkg/numbers",
+    "pkg/persistence",
     "pkg/persistence/postgres",
     "pkg/strings",
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "1c4cb3e42c825bff48f14c02784b24f46204a6d5"
+  revision = "cd22d0148259a23bd03058299ee9f6543a624c44"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
@@ -394,6 +395,7 @@
     "github.com/joincivil/civil-events-crawler/pkg/persistence",
     "github.com/joincivil/go-common/pkg/bytes",
     "github.com/joincivil/go-common/pkg/numbers",
+    "github.com/joincivil/go-common/pkg/persistence",
     "github.com/joincivil/go-common/pkg/persistence/postgres",
     "github.com/joincivil/go-common/pkg/strings",
     "github.com/joincivil/go-common/pkg/time",

@@ -14,6 +14,7 @@ import (
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 
+	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
@@ -121,7 +122,7 @@ func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
 		return errors.New("No choice found")
 	}
 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return err
 	}
 	if poll == nil {

@@ -48,5 +48,5 @@ required = ["github.com/99designs/gqlgen"]
 
 [[constraint]]
   name = "github.com/joincivil/go-common"
-  branch = "master"
+  branch = "png/persistence-vars"
 
