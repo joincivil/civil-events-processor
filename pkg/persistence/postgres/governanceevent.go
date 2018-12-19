@@ -26,7 +26,7 @@ func CreateGovernanceEventTableQueryString(tableName string) string {
             gov_event_type TEXT,
             creation_date INT,
             last_updated INT,
-            event_hash TEXT,
+            event_hash TEXT UNIQUE,
             block_data JSONB
         );
     `, tableName)
