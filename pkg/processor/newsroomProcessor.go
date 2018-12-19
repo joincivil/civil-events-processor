@@ -389,20 +389,23 @@ func (n *NewsroomEventProcessor) scraperDataToPayload(metadata *model.ScraperCiv
 	payload["originalPublishDate"] = metadata.OriginalPublishDate()
 	payload["opinion"] = metadata.Opinion()
 	payload["schemaVersion"] = metadata.SchemaVersion()
-	payload["authors"] = n.buildAuthors(metadata)
+	payload["authors"] = n.buildContributors(metadata)
 	payload["images"] = n.buildImages(metadata)
 	return payload
 }
 
-func (n *NewsroomEventProcessor) buildAuthors(metadata *model.ScraperCivilMetadata) []map[string]interface{} {
-	authors := []map[string]interface{}{}
-	for _, author := range metadata.Authors() {
+func (n *NewsroomEventProcessor) buildContributors(metadata *model.ScraperCivilMetadata) []map[string]interface{} {
+	contributors := []map[string]interface{}{}
+	for _, contributor := range metadata.Contributors() {
 		entry := map[string]interface{}{
-			"byline": author.Byline(),
+			"role":      contributor.Role(),
+			"name":      contributor.Name(),
+			"address":   contributor.Address(),
+			"signature": contributor.Signature(),
 		}
-		authors = append(authors, entry)
+		contributors = append(contributors, entry)
 	}
-	return authors
+	return contributors
 }
 
 func (n *NewsroomEventProcessor) buildImages(metadata *model.ScraperCivilMetadata) []map[string]interface{} {
