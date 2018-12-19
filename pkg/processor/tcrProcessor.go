@@ -205,10 +205,14 @@ func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	default:
 		ran = false
 	}
-	// TODO(IS): If there is an error above and govErr, only govErr is returned. Fix this.
+
+	if err != nil {
+		return ran, err
+	}
+
 	govErr := t.persistGovernanceEvent(event, eventName)
 	if govErr != nil {
-		return ran, govErr
+		return ran, fmt.Errorf("Error persisting govEvent: %v", govErr)
 	}
 	return ran, err
 
