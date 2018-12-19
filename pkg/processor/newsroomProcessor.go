@@ -12,10 +12,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
-	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
 	cbytes "github.com/joincivil/go-common/pkg/bytes"
+	"github.com/joincivil/go-common/pkg/generated/contract"
 	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	ctime "github.com/joincivil/go-common/pkg/time"
 
