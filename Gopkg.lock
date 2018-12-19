@@ -189,11 +189,12 @@
   revision = "41ca696dd3953b80cfa3a19e682e8fe94b7b03a4"
 
 [[projects]]
-  branch = "png/persistence-vars"
-  digest = "1:a6af07e055313d7584e3065a502be08f8a16bd3543af3cc41430a01319694e4b"
+  branch = "master"
+  digest = "1:0f548feb0f32da3c7319fe164ab3184647e55d825ceb9bec69888800bd93036e"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
+    "pkg/generated/contract",
     "pkg/numbers",
     "pkg/persistence",
     "pkg/persistence/postgres",
@@ -201,7 +202,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "cd22d0148259a23bd03058299ee9f6543a624c44"
+  revision = "031598fb6884f89e603f85356af8b84ad5b15299"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
@@ -390,10 +391,10 @@
     "github.com/jmoiron/sqlx",
     "github.com/joincivil/civil-events-crawler/pkg/contractutils",
     "github.com/joincivil/civil-events-crawler/pkg/generated/common",
-    "github.com/joincivil/civil-events-crawler/pkg/generated/contract",
     "github.com/joincivil/civil-events-crawler/pkg/model",
     "github.com/joincivil/civil-events-crawler/pkg/persistence",
     "github.com/joincivil/go-common/pkg/bytes",
+    "github.com/joincivil/go-common/pkg/generated/contract",
     "github.com/joincivil/go-common/pkg/numbers",
     "github.com/joincivil/go-common/pkg/persistence",
     "github.com/joincivil/go-common/pkg/persistence/postgres",
