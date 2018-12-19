@@ -175,7 +175,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b1a156147efc73136dff98af1ffd20bf887acaff9b43fd9fa29f154c5e35fb5f"
+  digest = "1:4408df57ccd4af2e66b816faa2b21cf86cc24efcc089a5f56ce4c0a2d68b5298"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -186,7 +186,7 @@
     "pkg/persistence/postgres",
   ]
   pruneopts = "UT"
-  revision = "41ca696dd3953b80cfa3a19e682e8fe94b7b03a4"
+  revision = "698c46f9ea916ecb42599ecfbd695ee5b210b940"
 
 [[projects]]
   branch = "master"
