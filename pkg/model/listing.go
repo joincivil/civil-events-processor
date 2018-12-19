@@ -2,10 +2,11 @@
 package model // import "github.com/joincivil/civil-events-processor/pkg/model"
 
 import (
-	"github.com/joincivil/civil-events-processor/pkg/utils"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+
+	cbytes "github.com/joincivil/go-common/pkg/bytes"
 )
 
 // ResetListingFieldsEvents is the list of governance events emitted that reset fields in the Listing
@@ -129,7 +130,7 @@ func (c *Charter) AsMap() map[string]interface{} {
 	}
 	newMap[signatureMapStr] = string(c.signature)
 	newMap[authorMapStr] = c.author.Hex()
-	newMap[contentHashMapStr] = utils.Byte32ToHexString(c.contentHash)
+	newMap[contentHashMapStr] = cbytes.Byte32ToHexString(c.contentHash)
 
 	if c.timestamp != nil {
 		newMap[timestampMapStr] = c.timestamp.Int64()
@@ -172,7 +173,7 @@ func (c *Charter) FromMap(charterMap map[string]interface{}) error {
 	}
 	val, ok = charterMap[contentHashMapStr]
 	if ok && val != nil {
-		fixed, err := utils.HexStringToByte32(val.(string))
+		fixed, err := cbytes.HexStringToByte32(val.(string))
 		if err != nil {
 			return err
 		}
@@ -357,6 +358,12 @@ func (l *Listing) RemoveOwnerAddress(addr common.Address) {
 	l.ownerAddresses = addrs
 }
 
+// ResetOwnerAddresses removes all addresses from ownerAddresses and owner
+func (l *Listing) ResetOwnerAddresses() {
+	l.owner = common.Address{}
+	l.ownerAddresses = []common.Address{}
+}
+
 // ContributorAddresses returns a list of contributor data to a newsroom
 func (l *Listing) ContributorAddresses() []common.Address {
 	return l.contributorAddresses
@@ -378,6 +385,11 @@ func (l *Listing) RemoveContributorAddress(addr common.Address) {
 		}
 	}
 	l.contributorAddresses = addrs
+}
+
+// ResetContributorAddresses removes all addresses from ownerAddresses
+func (l *Listing) ResetContributorAddresses() {
+	l.contributorAddresses = []common.Address{}
 }
 
 // ApplicationDateTs returns the timestamp of the listing's initial application

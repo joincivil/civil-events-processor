@@ -2,17 +2,22 @@ package processor_test
 
 import (
 	// "fmt"
+	"math/big"
+	"reflect"
+	"runtime"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	"github.com/joincivil/civil-events-crawler/pkg/utils"
+
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
-	"math/big"
-	"reflect"
-	"testing"
+
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 var (
@@ -45,7 +50,7 @@ func createAndProcAppEvent(t *testing.T, contracts *contractutils.AllTestContrac
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		application,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -75,7 +80,7 @@ func createAndProcAppWhitelistedEvent(t *testing.T, contracts *contractutils.All
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		whitelisted1,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -108,7 +113,7 @@ func createAndProcDepositEvent(t *testing.T, contracts *contractutils.AllTestCon
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		deposit,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -141,7 +146,7 @@ func createAndProcWithdrawalEvent(t *testing.T, contracts *contractutils.AllTest
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		withdrawal,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -171,7 +176,7 @@ func createAndProcAppRemoved(t *testing.T, contracts *contractutils.AllTestContr
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appRemoved,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -201,7 +206,7 @@ func createAndProcListingRemoved(t *testing.T, contracts *contractutils.AllTestC
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		listingRemoved,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := tcrProc.Process(event)
@@ -237,7 +242,7 @@ func createAndProcChallenge1(t *testing.T, contracts *contractutils.AllTestContr
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -271,7 +276,7 @@ func createAndProcChallenge1Failed(t *testing.T, contracts *contractutils.AllTes
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1Failed,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -305,7 +310,7 @@ func createAndProcChallenge1Succeeded(t *testing.T, contracts *contractutils.All
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1Succeeded,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -339,7 +344,7 @@ func createAndProcFailedChallenge1Overturned(t *testing.T, contracts *contractut
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		failedChallenge1Overturned,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -373,7 +378,7 @@ func createAndProcSuccessfulChallenge1Overturned(t *testing.T, contracts *contra
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		successfulChallenge1Overturned,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -405,7 +410,7 @@ func createAndProcAppealGranted(t *testing.T, contracts *contractutils.AllTestCo
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealGranted,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -440,7 +445,7 @@ func createAndProcAppealRequested(t *testing.T, contracts *contractutils.AllTest
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealRequested,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -474,7 +479,7 @@ func createAndProcGrantedAppealChallenged(t *testing.T, contracts *contractutils
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealChallenged,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -509,7 +514,7 @@ func createAndProcGrantedAppealConfirmed(t *testing.T, contracts *contractutils.
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealConfirmed,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -544,7 +549,7 @@ func createAndProcGrantedAppealOverturned(t *testing.T, contracts *contractutils
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealOverturned,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -575,7 +580,7 @@ func createAndProcTouchAndRemovedEvent(t *testing.T, contracts *contractutils.Al
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		touchAndRemoved,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := tcrProc.Process(event)
@@ -599,6 +604,13 @@ func setupTcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *TestPers
 		persister,
 		persister)
 	return contracts, persister, tcrProc
+}
+
+func memoryCheck(t *testing.T) {
+	// var m runtime.MemStats
+	// runtime.ReadMemStats(&m)
+	//t.Logf("alloc = %v, totalalloc = %v, sys = %v", m.Alloc, m.TotalAlloc, m.Sys)
+	runtime.GC()
 }
 
 func TestTcrEventProcessor(t *testing.T) {
@@ -627,7 +639,7 @@ func TestTcrEventProcessor(t *testing.T) {
 	if len(persister.appeals) != 1 {
 		t.Error("Should have seen 1 appeal")
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRApplication(t *testing.T) {
@@ -668,7 +680,7 @@ func TestProcessTCRApplication(t *testing.T) {
 	if listing.ApprovalDateTs() != 0 {
 		t.Errorf("ApplicationDateTs value is not correct: %v", listing.ApplicationDateTs())
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRApplicationWhitelisted(t *testing.T) {
@@ -683,6 +695,7 @@ func TestProcessTCRApplicationWhitelisted(t *testing.T) {
 	if !listing.Whitelisted() {
 		t.Errorf("Should be whitelisted")
 	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRApplicationRemoved(t *testing.T) {
@@ -705,6 +718,16 @@ func TestProcessTCRApplicationRemoved(t *testing.T) {
 	if !reflect.DeepEqual(listing.ChallengeID(), big.NewInt(0)) {
 		t.Errorf("ChallengeID value is not correct: %v", listing.ChallengeID())
 	}
+	if !reflect.DeepEqual(listing.OwnerAddresses(), []common.Address{}) {
+		t.Errorf("OwnerAddresses value is not correct: %v", listing.OwnerAddresses())
+	}
+	if !reflect.DeepEqual(listing.Owner(), common.Address{}) {
+		t.Errorf("OwnerAddress value is not correct: %v", listing.Owner())
+	}
+	if !reflect.DeepEqual(listing.ContributorAddresses(), []common.Address{}) {
+		t.Errorf("ContributorAddresses value is not correct %v", listing.ContributorAddresses())
+	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRDepositWithdrawal(t *testing.T) {
@@ -715,17 +738,17 @@ func TestProcessTCRDepositWithdrawal(t *testing.T) {
 	eventPayload := event.EventPayload()
 	withdrawal := eventPayload["NewTotal"]
 	listing := persister.listings[listingAddress]
-	if reflect.DeepEqual(listing.UnstakedDeposit(), withdrawal.(*big.Int)) {
+	if !reflect.DeepEqual(listing.UnstakedDeposit(), withdrawal.(*big.Int)) {
 		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
 	}
 	event = createAndProcDepositEvent(t, contracts, tcrProc)
 	eventPayload = event.EventPayload()
 	deposit := eventPayload["NewTotal"]
 	listing = persister.listings[listingAddress]
-	if reflect.DeepEqual(listing.UnstakedDeposit(), deposit.(*big.Int)) {
+	if !reflect.DeepEqual(listing.UnstakedDeposit(), deposit.(*big.Int)) {
 		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRListingRemoved(t *testing.T) {
@@ -749,7 +772,16 @@ func TestProcessTCRListingRemoved(t *testing.T) {
 	if !reflect.DeepEqual(listing.ChallengeID(), big.NewInt(0)) {
 		t.Errorf("ChallengeID value is not correct: %v", listing.ChallengeID())
 	}
-
+	if !reflect.DeepEqual(listing.OwnerAddresses(), []common.Address{}) {
+		t.Errorf("OwnerAddresses value is not correct: %v", listing.OwnerAddresses())
+	}
+	if !reflect.DeepEqual(listing.Owner(), common.Address{}) {
+		t.Errorf("OwnerAddress value is not correct: %v", listing.Owner())
+	}
+	if !reflect.DeepEqual(listing.ContributorAddresses(), []common.Address{}) {
+		t.Errorf("ContributorAddresses value is not correct %v", listing.ContributorAddresses())
+	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRChallenge(t *testing.T) {
@@ -795,33 +827,34 @@ func TestProcessTCRChallenge(t *testing.T) {
 	// fmt.Println(challenge.Stake())
 	// fmt.Println(challenge.TotalTokens())
 	// fmt.Println(challenge.RequestAppealExpiry())
+	memoryCheck(t)
 
 }
 
 func TestProcessTCRChallengeFailed(t *testing.T) {
 	// Listing: unstakedDeposit,  lastUpdatedDateTs (whitelisted will be changed upon _ApplicationWhitelisted event)
 	// Challenge: resolved, totalTokens. If appeal is requested and not granted, have to update: rewardPool, stake
-	contracts, _, tcrProc := setupTcrProcessor(t)
+	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
-	// listingAddress := contracts.NewsroomAddr.Hex()
+	listingAddress := contracts.NewsroomAddr.Hex()
 	// listing := persister.listings[listingAddress]
 	// unstakedDeposit := listing.UnstakedDeposit()
+
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
-	// challengeFailedEvent := createAndProcChallenge1Failed(t, contracts, tcrProc)
-	// challengeFailedEventPayload := challengeFailedEvent.EventPayload()
-	// listing = persister.listings[listingAddress]
-	// The following won't change bc of error. Need to use simulated backend
-	// if listing.LastGovernanceState() != model.GovernanceStateChallengeFailed {
-	// 	t.Errorf("Listing should have had governance state of challengefailed %v", listing.LastGovernanceState())
-	// }
-	// challenge := persister.challenges[int(challengeID1.Int64())]
-	// TODO: These values need to be tested using simulated backend bc they currently don't change.
+	challengeFailedEvent := createAndProcChallenge1Failed(t, contracts, tcrProc)
+	challengeFailedEventPayload := challengeFailedEvent.EventPayload()
+
+	listing := persister.listings[listingAddress]
+	if listing.LastGovernanceState() != model.GovernanceStateChallengeFailed {
+		t.Errorf("Listing should have had governance state of challengefailed %v", listing.LastGovernanceState())
+	}
+	challenge := persister.challenges[int(challengeID1.Int64())]
+	if challenge.TotalTokens() != challengeFailedEventPayload["TotalTokens"] {
+		t.Errorf("Challenge TotalTokens is not correct %v, %v", challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
+	}
 	// fmt.Println(unstakedDeposit)
-	// fmt.Println(challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
-	// if challenge.TotalTokens() != challengeFailedEventPayload["TotalTokens"] {
-	// 	t.Errorf("Challenge TotalTokens is not correct %v, %v", challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
-	// }
 	// Test for case where appeal is requested and not granted: Need simulated backend to test this
+	memoryCheck(t)
 }
 
 func TestProcessTCRChallengeSucceeded(t *testing.T) {
@@ -834,20 +867,25 @@ func TestProcessTCRChallengeSucceeded(t *testing.T) {
 	// unstakedDeposit := listing.UnstakedDeposit()
 
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
-	_ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
-	// challengeSucceededEventPayload := challengeSucceededEvent.EventPayload()
+	challengeSucceededEvent := createAndProcChallenge1Succeeded(t, contracts, tcrProc)
+	challengeSucceededEventPayload := challengeSucceededEvent.EventPayload()
 
 	listing := persister.listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateChallengeSucceeded {
 		t.Errorf("Listing should have had governance state of challengesucceeded")
 	}
 
-	// challenge := persister.challenges[int(challengeID1.Int64())]
+	challenge := persister.challenges[int(challengeID1.Int64())]
 	// Need simulated backend to test
-	// fmt.Println(challenge.TotalTokens(), challengeSucceededEventPayload["TotalTokens"])
-	// fmt.Println(challenge.Resolved())
+	if challenge.TotalTokens() != challengeSucceededEventPayload["TotalTokens"] {
+		t.Error("Challenge TotalTokens value is not correct")
+	}
+	if !challenge.Resolved() {
+		t.Error("Challenge resolved value is not correct")
+	}
 
-	// Test for case where appeal is requested and not granted: Need simulated backend to test this
+	// Test for case where appeal is requested and not granted
+	memoryCheck(t)
 }
 
 func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
@@ -856,7 +894,7 @@ func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
-	// listing := persister.listings[listingAddress]
+
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
 	_ = createAndProcChallenge1Failed(t, contracts, tcrProc)
 
@@ -874,6 +912,7 @@ func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
 	if !challenge.Resolved() {
 		t.Error("Challenge Resolved should be true")
 	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
@@ -881,8 +920,8 @@ func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 	// Listing: unstakedDeposit, Changes made in whitelistApplication() call
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
-	// listingAddress := contracts.NewsroomAddr.Hex()
-	// listing := persister.listings[listingAddress]
+	listingAddress := contracts.NewsroomAddr.Hex()
+	listing := persister.listings[listingAddress]
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
 	_ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
 
@@ -897,11 +936,11 @@ func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 		t.Error("Challenge Resolved should be true")
 	}
 
-	//TODO: need simulated backend for calculating reward and checking unstakeddeposit for listing
-	// if listing.LastGovernanceState() != model.GovernanceStateSuccessfulChallengeOverturned {
-	// 	t.Errorf("Listing should have had governance state of successfulchallengeoverturned %v", listing.LastGovernanceState())
-	// }
-
+	if listing.LastGovernanceState() != model.GovernanceStateSuccessfulChallengeOverturned {
+		t.Errorf("Listing should have had governance state of successfulchallengeoverturned %v", listing.LastGovernanceState())
+	}
+	//unstaked deposit value check
+	memoryCheck(t)
 }
 
 func TestProcessTCRAppealRequested(t *testing.T) {
@@ -936,7 +975,7 @@ func TestProcessTCRAppealRequested(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRAppealGranted(t *testing.T) {
@@ -965,6 +1004,7 @@ func TestProcessTCRAppealGranted(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
+	memoryCheck(t)
 }
 
 func TestProcessTCRGrantedAppealChallenged(t *testing.T) {
@@ -997,7 +1037,7 @@ func TestProcessTCRGrantedAppealChallenged(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessTCRGrantedAppealConfirmed(t *testing.T) {
@@ -1033,6 +1073,7 @@ func TestProcessTCRGrantedAppealConfirmed(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
+	memoryCheck(t)
 
 }
 
@@ -1070,6 +1111,7 @@ func TestProcessTCRGrantedAppealOverturned(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
+	memoryCheck(t)
 }
 
 func TestUpdateListingWithLastGovState(t *testing.T) {
@@ -1082,4 +1124,5 @@ func TestUpdateListingWithLastGovState(t *testing.T) {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
 	}
+	memoryCheck(t)
 }

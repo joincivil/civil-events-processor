@@ -46,3 +46,7 @@ required = ["github.com/99designs/gqlgen"]
   name = "github.com/ethereum/go-ethereum"
   version = "1.8.15"
 
+[[constraint]]
+  name = "github.com/joincivil/go-common"
+  branch = "png/persistence-vars"
+

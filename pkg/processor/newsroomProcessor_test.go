@@ -1,15 +1,19 @@
 package processor_test
 
 import (
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	"github.com/joincivil/civil-events-crawler/pkg/utils"
+
 	"github.com/joincivil/civil-events-processor/pkg/processor"
-	"math/big"
-	"testing"
+
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 var (
@@ -42,7 +46,7 @@ func createAndProcNameChangedEvent(t *testing.T, contracts *contractutils.AllTes
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		namechanged,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	_, err := nwsrmProc.Process(event)
@@ -76,7 +80,7 @@ func createAndProcRevisionUpdatedEventCharter(t *testing.T, contracts *contractu
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		revision,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := nwsrmProc.Process(event)
@@ -111,7 +115,7 @@ func createAndProcRevisionUpdatedEventCharter(t *testing.T, contracts *contractu
 // 		"NewsroomContract",
 // 		contracts.NewsroomAddr,
 // 		revision,
-// 		utils.CurrentEpochSecsInInt64(),
+// 		ctime.CurrentEpochSecsInInt64(),
 // 		crawlermodel.Watcher,
 // 	)
 // 	_, err := nwsrmProc.Process(event)
@@ -143,7 +147,7 @@ func createAndProcOwnershipTransferredEvent(t *testing.T, contracts *contractuti
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		ownership,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	_, err := nwsrmProc.Process(event)

@@ -3,15 +3,19 @@ package processor
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	log "github.com/golang/glog"
 	"math/big"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	log "github.com/golang/glog"
+
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+
 	"github.com/joincivil/civil-events-processor/pkg/model"
+
+	cpersist "github.com/joincivil/go-common/pkg/persistence"
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 const (
@@ -40,6 +44,15 @@ func (p *PlcrEventProcessor) isValidPLCRContractEventName(name string) bool {
 	return isStringInSlice(eventNames, name)
 }
 
+func (p *PlcrEventProcessor) pollIDFromEvent(event *crawlermodel.Event) (*big.Int, error) {
+	payload := event.EventPayload()
+	pollID, ok := payload["PollID"]
+	if !ok {
+		return nil, errors.New("Unable to find the poll ID in the payload")
+	}
+	return pollID.(*big.Int), nil
+}
+
 // Process processes Plcr Events into aggregated data
 func (p *PlcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	if !p.isValidPLCRContractEventName(event.EventType()) {
@@ -52,16 +65,25 @@ func (p *PlcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	// Handling all the actionable events from PLCR Contract
 	switch eventName {
 	case "PollCreated":
-		log.Infof("Handling PollCreated for %v\n", event.ContractAddress().Hex())
-		err = p.processPollCreated(event)
+		pollID, pollIDerr := p.pollIDFromEvent(event)
+		if pollIDerr != nil {
+			log.Infof("Error retrieving pollID: %v", err)
+		}
+		log.Infof("Handling PollCreated for pollID %v\n", pollID)
+		err = p.processPollCreated(event, pollID)
 	case "VoteRevealed":
-		log.Infof("Handling VoteRevealed for %v\n", event.ContractAddress().Hex())
-		err = p.processVoteRevealed(event)
+		pollID, pollIDerr := p.pollIDFromEvent(event)
+		if pollIDerr != nil {
+			log.Infof("Error retrieving pollID: %v", err)
+		}
+		log.Infof("Handling VoteRevealed for pollID %v\n", pollID)
+		err = p.processVoteRevealed(event, pollID)
 	}
 	return ran, err
 }
 
-func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event) error {
+func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event,
+	pollID *big.Int) error {
 	payload := event.EventPayload()
 	voteQuorum, ok := payload["VoteQuorum"]
 	if !ok {
@@ -77,39 +99,30 @@ func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event) error
 	if !ok {
 		return errors.New("No revealEndDate found")
 	}
-
-	pollID, ok := payload["PollID"]
-	if !ok {
-		return errors.New("No pollID found")
-	}
 	votesFor := big.NewInt(0)
 	votesAgainst := big.NewInt(0)
 
 	poll := model.NewPoll(
-		pollID.(*big.Int),
+		pollID,
 		commitEndDate.(*big.Int),
 		revealEndDate.(*big.Int),
 		voteQuorum.(*big.Int),
 		votesFor,
 		votesAgainst,
-		crawlerutils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 	)
-	err := p.pollPersister.CreatePoll(poll)
-	return err
+	return p.pollPersister.CreatePoll(poll)
 }
 
-func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event) error {
+func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
+	pollID *big.Int) error {
 	payload := event.EventPayload()
-	pollID, ok := payload["PollID"]
-	if !ok {
-		return errors.New("No pollID found")
-	}
 	choice, ok := payload["Choice"]
 	if !ok {
 		return errors.New("No choice found")
 	}
-	poll, err := p.pollPersister.PollByPollID(int(pollID.(*big.Int).Int64()))
-	if err != nil && err != model.ErrPersisterNoResults {
+	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return err
 	}
 	if poll == nil {

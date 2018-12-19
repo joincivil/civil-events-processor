@@ -3,24 +3,28 @@ package processor
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	log "github.com/golang/glog"
 	"math/big"
 	"strings"
+
+	log "github.com/golang/glog"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+
+	cbytes "github.com/joincivil/go-common/pkg/bytes"
+	cpersist "github.com/joincivil/go-common/pkg/persistence"
+	ctime "github.com/joincivil/go-common/pkg/time"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 const (
-	listingNameFieldName = "Name"
-	ownerFieldName       = "OwnerAddresses"
+	listingNameFieldName    = "Name"
+	ownerAddressesFieldName = "OwnerAddresses"
 
 	defaultCharterContentID = 0
 	// approvalDateNoUpdate    = int64(-1)
@@ -96,7 +100,7 @@ func (n *NewsroomEventProcessor) processNewsroomNameChanged(event *crawlermodel.
 	var updatedFields []string
 	payload := event.EventPayload()
 	listing, err := n.retrieveOrCreateListingForNewsroomEvent(event)
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
 	}
 	name, ok := payload["NewName"]
@@ -112,7 +116,7 @@ func (n *NewsroomEventProcessor) processNewsroomNameChanged(event *crawlermodel.
 func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Event) error {
 	// Create a new listing if none exists for the address in the event
 	_, err := n.retrieveOrCreateListingForNewsroomEvent(event)
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
 	}
 
@@ -147,7 +151,7 @@ func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermo
 	if err != nil {
 		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
 	}
-	contentHash := utils.Byte32ToHexString(content.ContentHash)
+	contentHash := cbytes.Byte32ToHexString(content.ContentHash)
 
 	// Scrape the metadata and content for the revision
 	metadata, scraperContent, err := n.scrapeData(revisionURI.(string))
@@ -188,7 +192,7 @@ func (n *NewsroomEventProcessor) processNewsroomOwnershipTransferred(event *craw
 	var updatedFields []string
 	payload := event.EventPayload()
 	listing, err := n.retrieveOrCreateListingForNewsroomEvent(event)
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return err
 	}
 	previousOwner, ok := payload["PreviousOwner"]
@@ -201,7 +205,7 @@ func (n *NewsroomEventProcessor) processNewsroomOwnershipTransferred(event *craw
 	}
 	listing.RemoveOwnerAddress(previousOwner.(common.Address))
 	listing.AddOwnerAddress(newOwner.(common.Address))
-	updatedFields = append(updatedFields, ownerFieldName)
+	updatedFields = append(updatedFields, ownerAddressesFieldName)
 	err = n.listingPersister.UpdateListing(listing, updatedFields)
 	return err
 }
@@ -252,7 +256,7 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 func (n *NewsroomEventProcessor) retrieveOrCreateListingForNewsroomEvent(event *crawlermodel.Event) (*model.Listing, error) {
 	listingAddress := event.ContractAddress()
 	listing, err := n.listingPersister.ListingByAddress(listingAddress)
-	if err != nil && err != model.ErrPersisterNoResults {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
 	if listing != nil {
@@ -329,7 +333,7 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 		// CreatedDateTs:        creationDate,
 		// ApplicationDateTs:    applicationDate,
 		// ApprovalDateTs:       approvalDate,
-		LastUpdatedDateTs: crawlerutils.CurrentEpochSecsInInt64(),
+		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
 	})
 	err = n.listingPersister.CreateListing(listing)
 	return listing, err

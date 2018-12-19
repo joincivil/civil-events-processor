@@ -2,16 +2,20 @@ package processor_test
 
 import (
 	"encoding/json"
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	utils "github.com/joincivil/civil-events-crawler/pkg/utils"
+
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
-	"math/big"
-	"testing"
+
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 const (
@@ -483,7 +487,7 @@ func setupEventList(t *testing.T, contracts *contractutils.AllTestContracts) []*
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		application,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	events = append(events, event)
@@ -509,7 +513,7 @@ func setupEventList(t *testing.T, contracts *contractutils.AllTestContracts) []*
 		"NewsroomContract",
 		contracts.NewsroomAddr,
 		revision,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
 	)
 	events = append(events, event)
@@ -537,7 +541,7 @@ func setupEventList(t *testing.T, contracts *contractutils.AllTestContracts) []*
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		challenge1,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	events = append(events, event)
@@ -563,7 +567,7 @@ func setupEventList(t *testing.T, contracts *contractutils.AllTestContracts) []*
 		"CivilPLCRVotingContract",
 		contracts.PlcrAddr,
 		pollCreated,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	events = append(events, event)
@@ -589,7 +593,7 @@ func setupEventList(t *testing.T, contracts *contractutils.AllTestContracts) []*
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealRequested,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 	events = append(events, event)
