@@ -11,37 +11,47 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
-	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+
 	"github.com/joincivil/civil-events-processor/pkg/processor"
+
+	"github.com/joincivil/go-common/pkg/generated/contract"
+	"github.com/joincivil/go-common/pkg/pubsub"
+
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 func TestPubsubBuildPayload(t *testing.T) {
 
-	pubsub, err := crawlerutils.NewGooglePubSub("civil-media")
+	pubsub, err := pubsub.NewGooglePubSub("civil-media")
 
 	if err != nil {
-		return nil, err
+		t.Fatalf("Error initializing pubsub: %v", err)
 	}
 
 	err = pubsub.CreateTopic("governance-events-staging")
 
 	if err != nil {
-		t.Errorf("Should have created a topic")
+		t.Errorf("Should have created a topic: err: %v", err)
 	}
 
 	err = pubsub.CreateSubscription("governance-events-staging", "test-subscription")
 
 	if err != nil {
-		t.Errorf("Should not prevented the creation of a the same subscription")
+		t.Errorf("Should not prevented the creation of a the same subscription: err: %v", err)
 	}
 
 	err = pubsub.StartPublishers()
 
 	if err != nil {
-		return nil, err
+		t.Fatalf("Error starting pubsub: %v", err)
+	}
+
+	contracts, err := contractutils.SetupAllTestContracts()
+	if err != nil {
+		t.Fatalf("Unable to setup the contracts: %v", err)
 	}
 
 	appealGranted := &contract.CivilTCRContractAppealGranted{
@@ -64,14 +74,10 @@ func TestPubsubBuildPayload(t *testing.T) {
 		"CivilTCRContract",
 		contracts.CivilTcrAddr,
 		appealGranted,
-		utils.CurrentEpochSecsInInt64(),
+		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
 
-	contracts, err := contractutils.SetupAllTestContracts()
-	if err != nil {
-		t.Fatalf("Unable to setup the contracts: %v", err)
-	}
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	processorParams := &processor.NewEventProcessorParams{
@@ -90,7 +96,7 @@ func TestPubsubBuildPayload(t *testing.T) {
 
 	proc := processor.NewEventProcessor(processorParams)
 
-	err = ps.StartSubscribers("test-subscription")
+	err = pubsub.StartSubscribers("test-subscription")
 
 	if err != nil {
 		t.Fatalf("Should have started up subscription: err: %v", err)
@@ -129,20 +135,28 @@ func TestPubsubBuildPayload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Should have stopped publishers: err: %v", err)
 	}
+	err = pubsub.DeleteSubscription("test-subscription")
+	if err != nil {
+		t.Errorf("Should have deleted the subscription")
+	}
+	err = pubsub.DeleteTopic("governance-events-staging")
+	if err != nil {
+		t.Errorf("Should have deleted the topic")
+	}
 
 	// pubSubBuildPayload
 }
 func TestPubsubProcessor(t *testing.T) {
-	pubsub, err := crawlerutils.NewGooglePubSub("civil-media")
+	pubsub, err := pubsub.NewGooglePubSub("civil-media")
 
 	if err != nil {
-		return nil, err
+		t.Fatalf("Error initializing pubsub: err: %v", err)
 	}
 
 	err = pubsub.StartPublishers()
 
 	if err != nil {
-		return nil, err
+		t.Fatalf("Error starting publishers: err: %v", err)
 	}
 
 }
