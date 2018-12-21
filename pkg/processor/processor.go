@@ -91,15 +91,10 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
 		}
 		if ran {
-			log.Info("About to process event")
-			err = e.pubSub(event)
-
-			log.Info("Event done.")
-
+			err = e.sendEventToPubsub(event)
 			if err != nil {
 				log.Errorf("Error publishing to pubsub: err %v\n", err)
 			}
-
 			continue
 		}
 		_, err = e.plcrEventProcessor.Process(event)
@@ -109,4 +104,21 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 
 	}
 	return err
+}
+
+func (e *EventProcessor) sendEventToPubsub(event *crawlermodel.Event) error {
+	if e.googlePubSub == nil {
+		log.Info("Pubsub not initialized, pubsub disabled")
+		return nil
+	}
+
+	log.Info("About to process event")
+	err := e.pubSub(event)
+
+	if err != nil {
+		return err
+	}
+
+	log.Info("Event done.")
+	return nil
 }
