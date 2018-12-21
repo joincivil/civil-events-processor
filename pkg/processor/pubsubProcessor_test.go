@@ -26,13 +26,13 @@ func TestPubsubBuildPayload(t *testing.T) {
 		return nil, err
 	}
 
-	err = pubsub.CreateTopic("goverance-events-staging")
+	err = pubsub.CreateTopic("governance-events-staging")
 
 	if err != nil {
 		t.Errorf("Should have created a topic")
 	}
 
-	err = pubsub.CreateSubscription("goverance-events-staging", "test-subscription")
+	err = pubsub.CreateSubscription("governance-events-staging", "test-subscription")
 
 	if err != nil {
 		t.Errorf("Should not prevented the creation of a the same subscription")
