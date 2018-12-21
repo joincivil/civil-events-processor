@@ -139,7 +139,7 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 	events, err := persisters.event.RetrieveEvents(
 		&crawlermodel.RetrieveEventsCriteria{
 			FromTs: lastTs,
-			Count:  1,
+			Count:  1
 		},
 	)
 	if err != nil {
