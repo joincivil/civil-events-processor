@@ -25,7 +25,7 @@ type PubSubMessage struct {
 }
 
 // TODO(jorgelo): Put this in configuration.
-const pubsubTopic = "goverance-events-staging"
+const pubsubTopic = "governance-events-staging"
 
 func (e *EventProcessor) pubSubBuildPayload(event *crawlermodel.Event) (*crawlerutils.GooglePubSubMsg, error) {
 
