@@ -12,7 +12,7 @@ import (
 	"github.com/robfig/cron"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+	"github.com/joincivil/go-common/pkg/pubsub"
 
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/model"
@@ -47,22 +47,22 @@ func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermode
 	return nil
 }
 
-func initPubSub(config *utils.ProcessorConfig) (*crawlerutils.GooglePubSub, error) {
+func initPubSub(config *utils.ProcessorConfig) (*pubsub.GooglePubSub, error) {
 
 	// TODO(jorgelo): Put "project id" in configuration.
-	pubsub, err := crawlerutils.NewGooglePubSub("civil-media")
+	ps, err := pubsub.NewGooglePubSub("civil-media")
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = pubsub.StartPublishers()
+	err = ps.StartPublishers()
 
 	if err != nil {
 		return nil, err
 	}
 
-	return pubsub, nil
+	return ps, nil
 }
 
 type initializedPersisters struct {
