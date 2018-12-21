@@ -5,7 +5,7 @@ import (
 	log "github.com/golang/glog"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
+	"github.com/joincivil/go-common/pkg/pubsub"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 )
@@ -58,7 +58,7 @@ type NewEventProcessorParams struct {
 	ContentScraper       model.ContentScraper
 	MetadataScraper      model.MetadataScraper
 	CivilMetadataScraper model.CivilMetadataScraper
-	GooglePubSub         *crawlerutils.GooglePubSub
+	GooglePubSub         *pubsub.GooglePubSub
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
@@ -67,7 +67,7 @@ type EventProcessor struct {
 	tcrEventProcessor      *TcrEventProcessor
 	plcrEventProcessor     *PlcrEventProcessor
 	newsroomEventProcessor *NewsroomEventProcessor
-	googlePubSub           *crawlerutils.GooglePubSub
+	googlePubSub           *pubsub.GooglePubSub
 }
 
 // Process runs the processor with the given set of raw CivilEvents
