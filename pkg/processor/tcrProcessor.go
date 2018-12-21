@@ -11,10 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
-	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 
+	"github.com/joincivil/go-common/pkg/generated/contract"
 	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
@@ -41,6 +41,8 @@ const (
 	appealChallengeIDFieldName           = "AppealChallengeID"
 	appealOpenToChallengeExpiryFieldName = "AppealOpenToChallengeExpiry"
 	appealGrantedFieldName               = "AppealGranted"
+
+	challengeIDResetValue = 0
 )
 
 // NewTcrEventProcessor is a convenience function to init an EventProcessor
@@ -203,10 +205,14 @@ func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	default:
 		ran = false
 	}
-	// TODO(IS): If there is an error above and govErr, only govErr is returned. Fix this.
+
+	if err != nil {
+		return ran, err
+	}
+
 	govErr := t.persistGovernanceEvent(event, eventName)
 	if govErr != nil {
-		return ran, govErr
+		return ran, fmt.Errorf("Error persisting govEvent: %v", govErr)
 	}
 	return ran, err
 
@@ -353,7 +359,10 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 	}
 	existingListing.SetUnstakedDeposit(unstakedDeposit)
 	existingListing.SetLastGovernanceState(model.GovernanceStateChallengeFailed)
-	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName}
+	existingListing.SetChallengeID(big.NewInt(challengeIDResetValue))
+	updatedFields := []string{unstakedDepositFieldName,
+		lastGovStateFieldName,
+		challengeIDFieldName}
 	err = t.listingPersister.UpdateListing(existingListing, updatedFields)
 	if err != nil {
 		return fmt.Errorf("Error updating listing: %v", err)
@@ -513,8 +522,9 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 	}
 	existingListing.SetUnstakedDeposit(unstakedDeposit)
 
+	existingListing.SetChallengeID(big.NewInt(challengeIDResetValue))
 	existingListing.SetLastGovernanceState(model.GovernanceStateSuccessfulChallengeOverturned)
-	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName}
+	updatedFields := []string{unstakedDepositFieldName, lastGovStateFieldName, challengeIDFieldName}
 	return t.listingPersister.UpdateListing(existingListing, updatedFields)
 
 }

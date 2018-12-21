@@ -11,12 +11,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
-	"github.com/joincivil/civil-events-crawler/pkg/generated/contract"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 
+	"github.com/joincivil/go-common/pkg/generated/contract"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
@@ -833,6 +833,7 @@ func TestProcessTCRChallenge(t *testing.T) {
 
 func TestProcessTCRChallengeFailed(t *testing.T) {
 	// Listing: unstakedDeposit,  lastUpdatedDateTs (whitelisted will be changed upon _ApplicationWhitelisted event)
+	// challengeid is reset to 0
 	// Challenge: resolved, totalTokens. If appeal is requested and not granted, have to update: rewardPool, stake
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
@@ -847,6 +848,9 @@ func TestProcessTCRChallengeFailed(t *testing.T) {
 	listing := persister.listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateChallengeFailed {
 		t.Errorf("Listing should have had governance state of challengefailed %v", listing.LastGovernanceState())
+	}
+	if listing.ChallengeID().Cmp(big.NewInt(0)) != 0 {
+		t.Errorf("Listing challengeID should have been reset to 0 but it is %v", listing.ChallengeID())
 	}
 	challenge := persister.challenges[int(challengeID1.Int64())]
 	if challenge.TotalTokens() != challengeFailedEventPayload["TotalTokens"] {
@@ -917,7 +921,7 @@ func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
 
 func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 	// Challenge: resolved, totalTokens
-	// Listing: unstakedDeposit, Changes made in whitelistApplication() call
+	// Listing: unstakedDeposit, set challengeid = 0 other changes made in whitelistApplication() call
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
@@ -938,6 +942,9 @@ func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 
 	if listing.LastGovernanceState() != model.GovernanceStateSuccessfulChallengeOverturned {
 		t.Errorf("Listing should have had governance state of successfulchallengeoverturned %v", listing.LastGovernanceState())
+	}
+	if listing.ChallengeID().Cmp(big.NewInt(0)) != 0 {
+		t.Errorf("ChallengeID should be 0 but it is %v", listing.ChallengeID())
 	}
 	//unstaked deposit value check
 	memoryCheck(t)

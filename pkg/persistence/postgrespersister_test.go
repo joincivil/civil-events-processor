@@ -1404,28 +1404,6 @@ func TestGovEventsByTxHash(t *testing.T) {
 
 }
 
-// func TestChallengeQuery(t *testing.T) {
-// 	tableName := "governance_event_test"
-// 	persister, err := setupTestTable(tableName)
-// 	if err != nil {
-// 		t.Errorf("Error connecting to DB: %v", err)
-// 	}
-// 	defer deleteTestTable(t, persister, tableName)
-
-// 	challengeIDs := []int{1, 2, 3}
-// 	query := persister.govEventsByChallengeIDQuery(govTestTableName, challengeIDs)
-// 	correctQuery := "SELECT listing_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1','2','3');"
-// 	if query != correctQuery {
-// 		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", correctQuery, query)
-// 	}
-// 	challengeIDs2 := []int{1}
-// 	query2 := persister.govEventsByChallengeIDQuery(govTestTableName, challengeIDs2)
-// 	correctQuery2 := "SELECT listing_address, metadata, gov_event_type, creation_date, last_updated, event_hash, block_data FROM governance_event_test WHERE gov_event_type='Challenge' AND metadata ->>'ChallengeID' IN ('1');"
-// 	if query2 != correctQuery2 {
-// 		t.Errorf("ChallengeID query for governance_events is not correct, should be %v, but is %v", correctQuery2, query2)
-// 	}
-// }
-
 func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEvent, int) {
 	var listingAddr common.Address
 	if randListing {
