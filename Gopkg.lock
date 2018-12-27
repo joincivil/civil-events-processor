@@ -190,10 +190,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0f548feb0f32da3c7319fe164ab3184647e55d825ceb9bec69888800bd93036e"
+  digest = "1:c6139ffa3293cfd4e8a2460917c536305dc539295ece50f820a893b33f302836"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
+    "pkg/config",
     "pkg/generated/contract",
     "pkg/numbers",
     "pkg/persistence",
@@ -202,7 +203,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "031598fb6884f89e603f85356af8b84ad5b15299"
+  revision = "d6e7f06dd2c0851a35e8e0e5d609122f03d3e47b"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
@@ -394,6 +395,7 @@
     "github.com/joincivil/civil-events-crawler/pkg/model",
     "github.com/joincivil/civil-events-crawler/pkg/persistence",
     "github.com/joincivil/go-common/pkg/bytes",
+    "github.com/joincivil/go-common/pkg/config",
     "github.com/joincivil/go-common/pkg/generated/contract",
     "github.com/joincivil/go-common/pkg/numbers",
     "github.com/joincivil/go-common/pkg/persistence",
