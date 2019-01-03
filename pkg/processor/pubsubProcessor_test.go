@@ -24,27 +24,25 @@ import (
 )
 
 func TestPubsubBuildPayload(t *testing.T) {
+	topicName := "governance-events-staging"
+	subscriptionName := "test-subscription"
 
 	pubsub, err := pubsub.NewGooglePubSub("civil-media")
-
 	if err != nil {
 		t.Fatalf("Error initializing pubsub: %v", err)
 	}
 
-	err = pubsub.CreateTopic("governance-events-staging")
-
+	err = pubsub.CreateTopic(topicName)
 	if err != nil {
 		t.Errorf("Should have created a topic: err: %v", err)
 	}
 
-	err = pubsub.CreateSubscription("governance-events-staging", "test-subscription")
-
+	err = pubsub.CreateSubscription(topicName, subscriptionName)
 	if err != nil {
 		t.Errorf("Should not prevented the creation of a the same subscription: err: %v", err)
 	}
 
 	err = pubsub.StartPublishers()
-
 	if err != nil {
 		t.Fatalf("Error starting pubsub: %v", err)
 	}
@@ -81,32 +79,28 @@ func TestPubsubBuildPayload(t *testing.T) {
 	persister := &TestPersister{}
 	scraper := &TestScraper{}
 	processorParams := &processor.NewEventProcessorParams{
-		Client:               contracts.Client,
-		ListingPersister:     persister,
-		RevisionPersister:    persister,
-		GovEventPersister:    persister,
-		ChallengePersister:   persister,
-		PollPersister:        persister,
-		AppealPersister:      persister,
-		ContentScraper:       scraper,
-		MetadataScraper:      scraper,
-		CivilMetadataScraper: scraper,
-		GooglePubSub:         pubsub,
+		Client:                contracts.Client,
+		ListingPersister:      persister,
+		RevisionPersister:     persister,
+		GovEventPersister:     persister,
+		ChallengePersister:    persister,
+		PollPersister:         persister,
+		AppealPersister:       persister,
+		ContentScraper:        scraper,
+		MetadataScraper:       scraper,
+		CivilMetadataScraper:  scraper,
+		GooglePubSub:          pubsub,
+		GooglePubSubTopicName: topicName,
 	}
 
 	proc := processor.NewEventProcessor(processorParams)
 
-	err = pubsub.StartSubscribers("test-subscription")
-
+	err = pubsub.StartSubscribers(subscriptionName)
 	if err != nil {
 		t.Fatalf("Should have started up subscription: err: %v", err)
 	}
 
 	proc.Process([]*crawlermodel.Event{event})
-
-	go func() {
-		time.Sleep(2 * time.Second)
-	}()
 
 	numResults := 0
 	resultChan := make(chan bool)
@@ -121,6 +115,8 @@ func TestPubsubBuildPayload(t *testing.T) {
 	select {
 	case <-resultChan:
 		numResults++
+	case <-time.After(time.Second * 5):
+		t.Errorf("Should not have timed out")
 	}
 
 	if numResults != 1 {
@@ -129,32 +125,29 @@ func TestPubsubBuildPayload(t *testing.T) {
 
 	err = pubsub.StopPublishers()
 	if err != nil {
-		t.Fatalf("Should have stopped publishers: err: %v", err)
+		t.Errorf("Should have stopped publishers: err: %v", err)
 	}
 	err = pubsub.StopSubscribers()
 	if err != nil {
-		t.Fatalf("Should have stopped publishers: err: %v", err)
+		t.Errorf("Should have stopped publishers: err: %v", err)
 	}
-	err = pubsub.DeleteSubscription("test-subscription")
+	err = pubsub.DeleteSubscription(subscriptionName)
 	if err != nil {
 		t.Errorf("Should have deleted the subscription")
 	}
-	err = pubsub.DeleteTopic("governance-events-staging")
+	err = pubsub.DeleteTopic(topicName)
 	if err != nil {
 		t.Errorf("Should have deleted the topic")
 	}
 
-	// pubSubBuildPayload
 }
 func TestPubsubProcessor(t *testing.T) {
 	pubsub, err := pubsub.NewGooglePubSub("civil-media")
-
 	if err != nil {
 		t.Fatalf("Error initializing pubsub: err: %v", err)
 	}
 
 	err = pubsub.StartPublishers()
-
 	if err != nil {
 		t.Fatalf("Error starting publishers: err: %v", err)
 	}

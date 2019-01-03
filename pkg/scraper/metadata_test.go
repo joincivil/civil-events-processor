@@ -2,6 +2,14 @@
 
 package scraper_test
 
+// import (
+// 	"strings"
+// 	"testing"
+
+// 	"github.com/joincivil/civil-events-processor/pkg/model"
+// 	"github.com/joincivil/civil-events-processor/pkg/scraper"
+// )
+
 // const (
 // 	// This may go away at some point, so see if this fails
 // 	// Updated on 12/18/2018

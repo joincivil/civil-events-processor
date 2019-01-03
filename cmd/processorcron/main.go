@@ -48,16 +48,22 @@ func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermode
 }
 
 func initPubSub(config *utils.ProcessorConfig) (*pubsub.GooglePubSub, error) {
+	// If no project ID, disable
+	if config.PubSubProjectID == "" {
+		return nil, nil
+	}
 
-	// TODO(jorgelo): Put "project id" in configuration.
-	ps, err := pubsub.NewGooglePubSub("civil-media")
+	// If no topic name, disable
+	if config.PubSubTopicName == "" {
+		return nil, nil
+	}
 
+	ps, err := pubsub.NewGooglePubSub(config.PubSubProjectID)
 	if err != nil {
 		return nil, err
 	}
 
 	err = ps.StartPublishers()
-
 	if err != nil {
 		return nil, err
 	}
@@ -156,24 +162,24 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 		defer client.Close()
 
 		pubsub, err := initPubSub(config)
-
 		if err != nil {
 			log.Errorf("Error initializing pubsub: err: %v", err)
 			return
 		}
 
 		proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-			Client:               client,
-			ListingPersister:     persisters.listing,
-			RevisionPersister:    persisters.contentRevision,
-			GovEventPersister:    persisters.governanceEvent,
-			ChallengePersister:   persisters.challenge,
-			PollPersister:        persisters.poll,
-			AppealPersister:      persisters.appeal,
-			ContentScraper:       helpers.ContentScraper(config),
-			MetadataScraper:      helpers.MetadataScraper(config),
-			CivilMetadataScraper: helpers.CivilMetadataScraper(config),
-			GooglePubSub:         pubsub,
+			Client:                client,
+			ListingPersister:      persisters.listing,
+			RevisionPersister:     persisters.contentRevision,
+			GovEventPersister:     persisters.governanceEvent,
+			ChallengePersister:    persisters.challenge,
+			PollPersister:         persisters.poll,
+			AppealPersister:       persisters.appeal,
+			ContentScraper:        helpers.ContentScraper(config),
+			MetadataScraper:       helpers.MetadataScraper(config),
+			CivilMetadataScraper:  helpers.CivilMetadataScraper(config),
+			GooglePubSub:          pubsub,
+			GooglePubSubTopicName: config.PubSubTopicName,
 		})
 		err = proc.Process(events)
 		if err != nil {

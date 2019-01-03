@@ -30,35 +30,39 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 	)
 	plcrEventProcessor := NewPlcrEventProcessor(
 		params.Client,
-		params.PollPersister)
+		params.PollPersister,
+	)
 	newsroomEventProcessor := NewNewsroomEventProcessor(
 		params.Client,
 		params.ListingPersister,
 		params.RevisionPersister,
 		params.ContentScraper,
 		params.MetadataScraper,
-		params.CivilMetadataScraper)
+		params.CivilMetadataScraper,
+	)
 	return &EventProcessor{
 		tcrEventProcessor:      tcrEventProcessor,
 		plcrEventProcessor:     plcrEventProcessor,
 		newsroomEventProcessor: newsroomEventProcessor,
 		googlePubSub:           params.GooglePubSub,
+		googlePubSubTopicName:  params.GooglePubSubTopicName,
 	}
 }
 
 // NewEventProcessorParams defines the params needed to be passed to the processor
 type NewEventProcessorParams struct {
-	Client               bind.ContractBackend
-	ListingPersister     model.ListingPersister
-	RevisionPersister    model.ContentRevisionPersister
-	GovEventPersister    model.GovernanceEventPersister
-	ChallengePersister   model.ChallengePersister
-	PollPersister        model.PollPersister
-	AppealPersister      model.AppealPersister
-	ContentScraper       model.ContentScraper
-	MetadataScraper      model.MetadataScraper
-	CivilMetadataScraper model.CivilMetadataScraper
-	GooglePubSub         *pubsub.GooglePubSub
+	Client                bind.ContractBackend
+	ListingPersister      model.ListingPersister
+	RevisionPersister     model.ContentRevisionPersister
+	GovEventPersister     model.GovernanceEventPersister
+	ChallengePersister    model.ChallengePersister
+	PollPersister         model.PollPersister
+	AppealPersister       model.AppealPersister
+	ContentScraper        model.ContentScraper
+	MetadataScraper       model.MetadataScraper
+	CivilMetadataScraper  model.CivilMetadataScraper
+	GooglePubSub          *pubsub.GooglePubSub
+	GooglePubSubTopicName string
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
@@ -68,6 +72,7 @@ type EventProcessor struct {
 	plcrEventProcessor     *PlcrEventProcessor
 	newsroomEventProcessor *NewsroomEventProcessor
 	googlePubSub           *pubsub.GooglePubSub
+	googlePubSubTopicName  string
 }
 
 // Process runs the processor with the given set of raw CivilEvents
@@ -109,6 +114,10 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 func (e *EventProcessor) sendEventToPubsub(event *crawlermodel.Event) error {
 	if e.googlePubSub == nil {
 		log.Info("Pubsub not initialized, pubsub disabled")
+		return nil
+	}
+	if e.googlePubSubTopicName == "" {
+		log.Info("Pubsub topic not specified, pubsub disabled")
 		return nil
 	}
 
