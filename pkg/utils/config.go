@@ -25,6 +25,9 @@ type ProcessorConfig struct {
 	CronConfig string `envconfig:"cron_config" required:"true" desc:"Cron config string * * * * *"`
 	EthAPIURL  string `envconfig:"eth_api_url" required:"true" desc:"Ethereum API address"`
 
+	PubSubProjectID string `split_words:"true" desc:"Sets GPubSub project ID. If not set, will not push events."`
+	PubSubTopicName string `split_words:"true" desc:"Sets GPubSub topic name. If not set, will not push events."`
+
 	PersisterType            cconfig.PersisterType `ignored:"true"`
 	PersisterTypeName        string                `split_words:"true" required:"true" desc:"Sets the persister type to use"`
 	PersisterPostgresAddress string                `split_words:"true" desc:"If persister type is Postgresql, sets the address"`

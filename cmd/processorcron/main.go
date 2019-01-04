@@ -2,15 +2,17 @@ package main
 
 import (
 	"flag"
-	log "github.com/golang/glog"
 	"os"
 	"runtime"
 	"time"
+
+	log "github.com/golang/glog"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/robfig/cron"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+	"github.com/joincivil/go-common/pkg/pubsub"
 
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/model"
@@ -43,6 +45,30 @@ func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermode
 		return persister.UpdateTimestampForCron(lastTs)
 	}
 	return nil
+}
+
+func initPubSub(config *utils.ProcessorConfig) (*pubsub.GooglePubSub, error) {
+	// If no project ID, disable
+	if config.PubSubProjectID == "" {
+		return nil, nil
+	}
+
+	// If no topic name, disable
+	if config.PubSubTopicName == "" {
+		return nil, nil
+	}
+
+	ps, err := pubsub.NewGooglePubSub(config.PubSubProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ps.StartPublishers()
+	if err != nil {
+		return nil, err
+	}
+
+	return ps, nil
 }
 
 type initializedPersisters struct {
@@ -121,6 +147,7 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 			FromTs: lastTs,
 		},
 	)
+
 	if err != nil {
 		log.Errorf("Error retrieving events: err: %v", err)
 		return
@@ -134,17 +161,25 @@ func runProcessor(config *utils.ProcessorConfig, persisters *initializedPersiste
 		}
 		defer client.Close()
 
+		pubsub, err := initPubSub(config)
+		if err != nil {
+			log.Errorf("Error initializing pubsub: err: %v", err)
+			return
+		}
+
 		proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-			Client:               client,
-			ListingPersister:     persisters.listing,
-			RevisionPersister:    persisters.contentRevision,
-			GovEventPersister:    persisters.governanceEvent,
-			ChallengePersister:   persisters.challenge,
-			PollPersister:        persisters.poll,
-			AppealPersister:      persisters.appeal,
-			ContentScraper:       helpers.ContentScraper(config),
-			MetadataScraper:      helpers.MetadataScraper(config),
-			CivilMetadataScraper: helpers.CivilMetadataScraper(config),
+			Client:                client,
+			ListingPersister:      persisters.listing,
+			RevisionPersister:     persisters.contentRevision,
+			GovEventPersister:     persisters.governanceEvent,
+			ChallengePersister:    persisters.challenge,
+			PollPersister:         persisters.poll,
+			AppealPersister:       persisters.appeal,
+			ContentScraper:        helpers.ContentScraper(config),
+			MetadataScraper:       helpers.MetadataScraper(config),
+			CivilMetadataScraper:  helpers.CivilMetadataScraper(config),
+			GooglePubSub:          pubsub,
+			GooglePubSubTopicName: config.PubSubTopicName,
 		})
 		err = proc.Process(events)
 		if err != nil {
