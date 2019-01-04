@@ -821,7 +821,7 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	listing.SetUnstakedDeposit(unstakedDeposit)
 
 	existingListing, err := t.listingPersister.ListingByAddress(listingAddress)
-	if err != nil {
+	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return fmt.Errorf("Error retrieving persisted listing: %v", err)
 	}
 	if existingListing != nil {
