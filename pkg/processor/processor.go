@@ -79,6 +79,11 @@ type EventProcessor struct {
 func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	var err error
 	var ran bool
+
+	if !e.pubsubEnabled() {
+		log.Info("Events pubsub is disabled, to enable set the project ID and topic in the config.")
+	}
+
 	for _, event := range events {
 		if event == nil {
 			log.Errorf("Nil event found, should not be nil")
@@ -112,22 +117,9 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 }
 
 func (e *EventProcessor) sendEventToPubsub(event *crawlermodel.Event) error {
-	if e.googlePubSub == nil {
-		log.Info("Pubsub not initialized, pubsub disabled")
-		return nil
-	}
-	if e.googlePubSubTopicName == "" {
-		log.Info("Pubsub topic not specified, pubsub disabled")
+	if !e.pubsubEnabled() {
 		return nil
 	}
 
-	log.Info("About to process event")
-	err := e.pubSub(event)
-
-	if err != nil {
-		return err
-	}
-
-	log.Info("Event done.")
-	return nil
+	return e.pubSub(event)
 }

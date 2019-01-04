@@ -2,7 +2,6 @@ package processor
 
 import (
 	"encoding/json"
-	"fmt"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
@@ -10,11 +9,8 @@ import (
 )
 
 func (e *EventProcessor) pubSub(event *crawlermodel.Event) error {
-	if e.googlePubSub == nil {
-		return fmt.Errorf("Google pubsub not initialized, failing to publish msg")
-	}
-	if e.googlePubSubTopicName == "" {
-		return fmt.Errorf("Pubsub topic name not initialized, failing to publish msg")
+	if !e.pubsubEnabled() {
+		return nil
 	}
 
 	payload, err := e.pubSubBuildPayload(event)
@@ -44,4 +40,14 @@ func (e *EventProcessor) pubSubBuildPayload(event *crawlermodel.Event) (*pubsub.
 	}
 
 	return googlePubSubMsg, nil
+}
+
+func (e *EventProcessor) pubsubEnabled() bool {
+	if e.googlePubSub == nil {
+		return false
+	}
+	if e.googlePubSubTopicName == "" {
+		return false
+	}
+	return true
 }
