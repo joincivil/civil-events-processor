@@ -100,7 +100,7 @@ func (n *NewsroomEventProcessor) processNewsroomNameChanged(event *crawlermodel.
 	var updatedFields []string
 	payload := event.EventPayload()
 	listing, err := n.retrieveOrCreateListingForNewsroomEvent(event)
-	if err != nil && err != cpersist.ErrPersisterNoResults {
+	if err != nil {
 		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
 	}
 	name, ok := payload["NewName"]
@@ -116,7 +116,7 @@ func (n *NewsroomEventProcessor) processNewsroomNameChanged(event *crawlermodel.
 func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermodel.Event) error {
 	// Create a new listing if none exists for the address in the event
 	_, err := n.retrieveOrCreateListingForNewsroomEvent(event)
-	if err != nil && err != cpersist.ErrPersisterNoResults {
+	if err != nil {
 		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
 	}
 
@@ -192,7 +192,7 @@ func (n *NewsroomEventProcessor) processNewsroomOwnershipTransferred(event *craw
 	var updatedFields []string
 	payload := event.EventPayload()
 	listing, err := n.retrieveOrCreateListingForNewsroomEvent(event)
-	if err != nil && err != cpersist.ErrPersisterNoResults {
+	if err != nil {
 		return err
 	}
 	previousOwner, ok := payload["PreviousOwner"]
