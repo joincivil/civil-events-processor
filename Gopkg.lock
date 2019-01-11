@@ -217,23 +217,23 @@
   revision = "0dae4fefe7c0e190f7b5a78dac28a1c82cc8d849"
 
 [[projects]]
-  branch = "master"
-  digest = "1:4408df57ccd4af2e66b816faa2b21cf86cc24efcc089a5f56ce4c0a2d68b5298"
+  branch = "inna/114/pubsub-to-update-processor"
+  digest = "1:c734f4bc77199bd9a919fb09af095851ccc7c5428eec7356c86e8285cee6d760"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
     "pkg/generated/common",
-    "pkg/generated/contract",
     "pkg/model",
     "pkg/persistence",
     "pkg/persistence/postgres",
+    "pkg/pubsub",
   ]
   pruneopts = "UT"
-  revision = "698c46f9ea916ecb42599ecfbd695ee5b210b940"
+  revision = "e543c379af42125ccabb3a07e7e75814dd396926"
 
 [[projects]]
   branch = "master"
-  digest = "1:777120574cf53ddb89d884648ac09b2aae5930d53384a102907b88c9049b2420"
+  digest = "1:b69a364f9003046b45cab281a2a85c62245375540c8dfd6b162e1917cea9c9e4"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
@@ -247,7 +247,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "d6e7f06dd2c0851a35e8e0e5d609122f03d3e47b"
+  revision = "42c095200c6fdf464a271ead5bcd58905e150ce6"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
@@ -601,6 +601,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "cloud.google.com/go/pubsub",
     "github.com/99designs/gqlgen",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
@@ -614,6 +615,7 @@
     "github.com/joincivil/civil-events-crawler/pkg/generated/common",
     "github.com/joincivil/civil-events-crawler/pkg/model",
     "github.com/joincivil/civil-events-crawler/pkg/persistence",
+    "github.com/joincivil/civil-events-crawler/pkg/pubsub",
     "github.com/joincivil/go-common/pkg/bytes",
     "github.com/joincivil/go-common/pkg/config",
     "github.com/joincivil/go-common/pkg/generated/contract",

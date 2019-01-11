@@ -14,6 +14,7 @@ import (
 
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 
@@ -76,8 +77,8 @@ func TestPubsubBuildPayload(t *testing.T) {
 		crawlermodel.Filterer,
 	)
 
-	persister := &TestPersister{}
-	scraper := &TestScraper{}
+	persister := &testutils.TestPersister{}
+	scraper := &testutils.TestScraper{}
 	processorParams := &processor.NewEventProcessorParams{
 		Client:                contracts.Client,
 		ListingPersister:      persister,

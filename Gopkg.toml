@@ -47,6 +47,9 @@ required = ["github.com/99designs/gqlgen"]
   version = "1.8.15"
 
 [[constraint]]
-  name = "github.com/joincivil/go-common"
-  branch = "master"
+  name = "github.com/joincivil/civil-events-crawler"
+  branch = "inna/114/pubsub-to-update-processor"
 
+[[constraint]]
+  name = "github.com/joincivil/go-common"
+  revision="0e31702d6db94ae4127c96556a8d6f739ff4eae5"

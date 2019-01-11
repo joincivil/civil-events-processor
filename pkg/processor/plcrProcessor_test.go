@@ -11,6 +11,7 @@ import (
 
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 
@@ -128,13 +129,13 @@ func createAndProcVoteRevealedVotesAgstEvent(t *testing.T, contracts *contractut
 	return event
 }
 
-func setupPlcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *TestPersister,
+func setupPlcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *testutils.TestPersister,
 	*processor.PlcrEventProcessor) {
 	contracts, err := contractutils.SetupAllTestContracts()
 	if err != nil {
 		t.Fatalf("Unable to setup the contracts: %v", err)
 	}
-	persister := &TestPersister{}
+	persister := &testutils.TestPersister{}
 	plcrProc := processor.NewPlcrEventProcessor(
 		contracts.Client,
 		persister,
@@ -145,7 +146,7 @@ func setupPlcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *TestPer
 func TestPlcrEventProcessor(t *testing.T) {
 	contracts, persister, plcrProc := setupPlcrProcessor(t)
 	_ = createAndProcPollCreatedEvent(t, contracts, plcrProc)
-	if len(persister.polls) != 1 {
+	if len(persister.Polls) != 1 {
 		t.Error("Should have only 1 poll in persistence")
 	}
 
@@ -155,7 +156,7 @@ func TestProcessPollCreated(t *testing.T) {
 	contracts, persister, plcrProc := setupPlcrProcessor(t)
 	pollEvent := createAndProcPollCreatedEvent(t, contracts, plcrProc)
 	pollEventPayload := pollEvent.EventPayload()
-	poll, ok := persister.polls[int(pollID1.Int64())]
+	poll, ok := persister.Polls[int(pollID1.Int64())]
 	if !ok {
 		t.Errorf("Could not get poll from persistence for pollID %v ", pollID1)
 	}
@@ -183,7 +184,7 @@ func TestProcessVoteRevealed(t *testing.T) {
 	voteRevealed := createAndProcVoteRevealedVotesForEvent(t, contracts, plcrProc)
 	voteRevealedPayload := voteRevealed.EventPayload()
 
-	poll, ok := persister.polls[int(pollID1.Int64())]
+	poll, ok := persister.Polls[int(pollID1.Int64())]
 	if !ok {
 		t.Errorf("Could not get poll from persistence for pollID %v ", pollID1)
 	}
@@ -196,7 +197,7 @@ func TestProcessVoteRevealed(t *testing.T) {
 
 	voteRevealedAgainst := createAndProcVoteRevealedVotesAgstEvent(t, contracts, plcrProc)
 	voteRevealedAgainstPayload := voteRevealedAgainst.EventPayload()
-	poll, ok = persister.polls[int(pollID1.Int64())]
+	poll, ok = persister.Polls[int(pollID1.Int64())]
 
 	if !ok {
 		t.Errorf("Could not get poll from persistence for pollID %v ", pollID1)
