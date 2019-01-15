@@ -8,7 +8,6 @@ import (
 	"github.com/joincivil/go-common/pkg/pubsub"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
-	"sync"
 )
 
 func isStringInSlice(slice []string, target string) bool {
@@ -74,14 +73,10 @@ type EventProcessor struct {
 	newsroomEventProcessor *NewsroomEventProcessor
 	googlePubSub           *pubsub.GooglePubSub
 	googlePubSubTopicName  string
-	mutex                  sync.Mutex
 }
 
 // Process runs the processor with the given set of raw CivilEvents
 func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
 	var err error
 	var ran bool
 

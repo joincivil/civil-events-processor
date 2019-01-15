@@ -40,7 +40,7 @@ func initPubSubForCron(config *utils.ProcessorConfig) (*cpubsub.GooglePubSub, er
 		return nil, err
 	}
 
-	return initPubSubEmail(config, ps)
+	return initPubSubEvents(config, ps)
 }
 
 func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPersisters) {
@@ -87,7 +87,7 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 			MetadataScraper:       helpers.MetadataScraper(config),
 			CivilMetadataScraper:  helpers.CivilMetadataScraper(config),
 			GooglePubSub:          pubsub,
-			GooglePubSubTopicName: config.PubSubEmailTopicName,
+			GooglePubSubTopicName: config.PubSubEventsTopicName,
 		})
 		err = proc.Process(events)
 		if err != nil {

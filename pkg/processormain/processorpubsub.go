@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"sync"
 	"syscall"
 
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -58,8 +57,7 @@ func processMessageGetEvents(msg *pubsub.Message) (*crawlerps.CrawlerPubSubMessa
 
 // RunProcessorPubSub gets messages from pubsub
 func RunProcessorPubSub(persisters *InitializedPersisters, ps *cpubsub.GooglePubSub,
-	proc *processor.EventProcessor, quit <-chan bool, wg *sync.WaitGroup) {
-	defer wg.Done()
+	proc *processor.EventProcessor, quit <-chan bool) {
 Loop:
 	for {
 		select {
@@ -73,11 +71,19 @@ Loop:
 			if err != nil {
 				log.Errorf("Error processing message: err: %v", err)
 			}
+
 			lastTs, err := persisters.Cron.TimestampOfLastEventForCron()
 			if err != nil {
 				log.Errorf("Error getting last event timestamp: %v", err)
 				return
 			}
+
+			// Log if this situation happens
+			if messData.Timestamp < lastTs {
+				log.Errorf("Timestamp %v is less than last persisted timestamp for event with hash %v",
+					messData.Timestamp, messData.Hash)
+			}
+
 			events, err := persisters.Event.RetrieveEvents(
 				&crawlermodel.RetrieveEventsCriteria{
 					FromTs: lastTs,
@@ -85,28 +91,23 @@ Loop:
 			)
 			if err != nil {
 				log.Errorf("Error retrieving events: err: %v", err)
+				return
 			}
 
-			// run processor here
 			err = proc.Process(events)
 			if err != nil {
 				log.Errorf("Error processing events: err: %v", err)
-			}
-
-			// Log if this situation happens
-			if messData.Timestamp < lastTs {
-				log.Infof("Timestamp %v is less than last persisted timestamp for event with hash %v",
-					messData.Timestamp, messData.Hash)
+				return
 			}
 
 			err = saveLastEventTimestamp(persisters.Cron, events, lastTs)
 			if err != nil {
 				log.Errorf("Error saving last timestamp %v: err: %v", lastTs, err)
+				return
 			}
 		case <-quit:
-			log.Infof("quitting")
+			log.Infof("Quitting")
 			break Loop
-
 		}
 	}
 }
@@ -132,7 +133,6 @@ func setupKillNotify(ps *cpubsub.GooglePubSub, quitChan chan<- bool) {
 
 // ProcessorPubSubMain runs the processor using pubsub
 func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedPersisters) {
-	var wg sync.WaitGroup
 	ps, err := initPubSub(config)
 	if err != nil {
 		log.Errorf("Error initializing pubsub: err: %v", err)
@@ -145,10 +145,10 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		log.Errorf("Error starting subscribers for pubsub: err: %v", err)
 	}
 
-	// Setup pubsub for email. This is email pubsub and can be nil
-	emailPubsub, err := initPubSubEmail(config, ps)
+	// Setup pubsub for events. This can be nil
+	eventsPs, err := initPubSubEvents(config, ps)
 	if err != nil {
-		log.Errorf("Error starting publishers for email: err: %v", err)
+		log.Errorf("Error starting publishers for events: err: %v", err)
 		return
 	}
 
@@ -170,15 +170,13 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		ContentScraper:        helpers.ContentScraper(config),
 		MetadataScraper:       helpers.MetadataScraper(config),
 		CivilMetadataScraper:  helpers.CivilMetadataScraper(config),
-		GooglePubSub:          emailPubsub,
-		GooglePubSubTopicName: config.PubSubEmailTopicName,
+		GooglePubSub:          eventsPs,
+		GooglePubSubTopicName: config.PubSubEventsTopicName,
 	})
 
-	wg.Add(1)
-	go RunProcessorPubSub(persisters, ps, proc, quitChan, &wg)
+	RunProcessorPubSub(persisters, ps, proc, quitChan)
 
 	setupKillNotify(ps, quitChan)
 
-	wg.Wait()
 	log.Infof("Done running processor: %v", runtime.NumGoroutine())
 }

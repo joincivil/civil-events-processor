@@ -26,9 +26,9 @@ func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermode
 	return nil
 }
 
-func initPubSubEmail(config *utils.ProcessorConfig, ps *cpubsub.GooglePubSub) (*cpubsub.GooglePubSub, error) {
-	// If no email topic name, disable
-	if config.PubSubEmailTopicName == "" {
+func initPubSubEvents(config *utils.ProcessorConfig, ps *cpubsub.GooglePubSub) (*cpubsub.GooglePubSub, error) {
+	// If no events topic name, disable
+	if config.PubSubEventsTopicName == "" {
 		return nil, nil
 	}
 	err := ps.StartPublishers()
