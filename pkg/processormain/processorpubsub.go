@@ -78,8 +78,7 @@ Loop:
 				return
 			}
 
-			// Log if this situation happens
-			if messData.Timestamp < lastTs {
+			if messData.Hash != "" && messData.Timestamp < lastTs {
 				log.Errorf("Timestamp %v is less than last persisted timestamp for event with hash %v",
 					messData.Timestamp, messData.Hash)
 			}
@@ -105,6 +104,8 @@ Loop:
 				log.Errorf("Error saving last timestamp %v: err: %v", lastTs, err)
 				return
 			}
+
+			log.Infof("Finished processing events from message\n")
 		case <-quit:
 			log.Infof("Quitting")
 			break Loop
