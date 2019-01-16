@@ -52,4 +52,4 @@ required = ["github.com/99designs/gqlgen"]
 
 [[constraint]]
   name = "github.com/joincivil/go-common"
-  revision="master"
+  revision = "810e928d12dd96ba97e9d86c1f6a51e76800d693"

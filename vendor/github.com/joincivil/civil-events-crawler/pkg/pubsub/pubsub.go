@@ -51,9 +51,15 @@ func (c *CrawlerPubSub) BuildMessage(timestamp int64, hash string) (*cpubsub.Goo
 	return &cpubsub.GooglePubSubMsg{Topic: c.Topic, Payload: string(msgBytes)}, nil
 }
 
+//BuildFilteringFinishedMessage is the message sent when filtering is done. It has no timestamp or hash
+// because there are a bunch of events associated with this.
+func (c *CrawlerPubSub) BuildFilteringFinishedMessage() (*cpubsub.GooglePubSubMsg, error) {
+	return c.BuildMessage(0, "")
+}
+
 // PublishFilteringFinishedMessage sends a message to pubsub that filtering has finished
 func (c *CrawlerPubSub) PublishFilteringFinishedMessage() error {
-	msg, err := c.BuildMessage(0, "")
+	msg, err := c.BuildFilteringFinishedMessage()
 	if err != nil {
 		return err
 	}
@@ -62,7 +68,6 @@ func (c *CrawlerPubSub) PublishFilteringFinishedMessage() error {
 
 // PublishWatchedEventMessage sends a message that an event has been watched for
 func (c *CrawlerPubSub) PublishWatchedEventMessage(event *model.Event) error {
-	// TODO: maybe some kind of timestamp persister so the same timestamp isn't sent twice?
 	msg, err := c.BuildMessage(event.Timestamp(), event.Hash())
 	if err != nil {
 		return err

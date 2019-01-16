@@ -3,10 +3,11 @@ package pubsub
 import (
 	"context"
 	"errors"
-	log "github.com/golang/glog"
 	"os"
 	"sync"
 	"time"
+
+	log "github.com/golang/glog"
 
 	"cloud.google.com/go/pubsub"
 )
@@ -249,7 +250,7 @@ func (g *GooglePubSub) CreateSubscriptionWithConfig(topicName string, subName st
 // CreateSubscription creates a new subscription with a default config
 func (g *GooglePubSub) CreateSubscription(topicName string, subName string) error {
 	subConfig := pubsub.SubscriptionConfig{
-		AckDeadline: 30 * time.Second,
+		AckDeadline: 10 * time.Second,
 	}
 	return g.CreateSubscriptionWithConfig(topicName, subName, subConfig)
 }
