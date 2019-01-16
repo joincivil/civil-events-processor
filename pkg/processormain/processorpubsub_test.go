@@ -343,11 +343,11 @@ func TestMessageOrder(t *testing.T) {
 	go runProcessorPubSub(t, &wg, persisters, cps, proc, quitChan)
 
 	go func() {
-		watchedEvent := createNsrmNameChangedEvent(t, "namechange1", contracts.NewsroomAddr)
+		watchedEvent := createNewsroomNameChangedEvent(t, "namechange1", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent})
 		cps.PublishWatchedEventMessage(watchedEvent)
 		time.Sleep(10)
-		watchedEvent2 := createNsrmNameChangedEvent(t, "namechange2", contracts.NewsroomAddr)
+		watchedEvent2 := createNewsroomNameChangedEvent(t, "namechange2", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent2})
 		cps.PublishWatchedEventMessage(watchedEvent2)
 
