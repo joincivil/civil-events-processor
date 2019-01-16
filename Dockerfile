@@ -1,7 +1,7 @@
 #FROM alpine:3.7
 FROM golang:1.11.1
 ADD build build
-ADD build/processorcron /processorcron
-RUN chmod u+x /processorcron
+ADD build/processor /processor
+RUN chmod u+x /processor
 
-CMD ["/processorcron", "-logtostderr=true", "-stderrthreshold=INFO"]
+CMD ["/processor", "-logtostderr=true", "-stderrthreshold=INFO"]
