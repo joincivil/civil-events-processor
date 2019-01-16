@@ -119,7 +119,7 @@ lint: ## Runs linting.
 
 .PHONY: build
 build: ## Builds the main file
-	$(GOBUILD) -o ./build/main cmd/main.go
+	$(GOBUILD) -o ./build/processor cmd/main.go
 
 .PHONY: test
 test: ## Runs unit tests and tests code coverage

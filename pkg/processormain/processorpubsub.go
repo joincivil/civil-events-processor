@@ -140,6 +140,7 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		return
 	}
 	quitChan := make(chan bool)
+
 	// Setup pubsub for getting subscriptions
 	err = initPubSubSubscribers(config, ps)
 	if err != nil {

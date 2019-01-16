@@ -143,7 +143,7 @@ func returnContractApplicationWatchedEvent(t *testing.T, address common.Address)
 	return event
 }
 
-func createNsrmNameChangedEvent(t *testing.T, name string, address common.Address) *crawlermodel.Event {
+func createNewsroomNameChangedEvent(t *testing.T, name string, address common.Address) *crawlermodel.Event {
 	nameChanged := &contract.NewsroomContractNameChanged{
 		NewName: name,
 		Raw: types.Log{
