@@ -15,6 +15,7 @@ import (
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
+	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
 	"github.com/joincivil/go-common/pkg/generated/contract"
 	ctime "github.com/joincivil/go-common/pkg/time"
@@ -590,13 +591,13 @@ func createAndProcTouchAndRemovedEvent(t *testing.T, contracts *contractutils.Al
 	return event
 }
 
-func setupTcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *TestPersister,
+func setupTcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *testutils.TestPersister,
 	*processor.TcrEventProcessor) {
 	contracts, err := contractutils.SetupAllTestContracts()
 	if err != nil {
 		t.Fatalf("Unable to setup the contracts: %v", err)
 	}
-	persister := &TestPersister{}
+	persister := &testutils.TestPersister{}
 	tcrProc := processor.NewTcrEventProcessor(
 		contracts.Client,
 		persister,
@@ -627,16 +628,16 @@ func TestTcrEventProcessor(t *testing.T) {
 	_ = createAndProcGrantedAppealChallenged(t, contracts, tcrProc)
 	_ = createAndProcGrantedAppealOverturned(t, contracts, tcrProc)
 
-	if len(persister.listings) != 1 {
+	if len(persister.Listings) != 1 {
 		t.Error("Should have seen at least 1 listing")
 	}
-	if len(persister.govEvents[listingAddress]) != 7 {
+	if len(persister.GovEvents[listingAddress]) != 7 {
 		t.Error("Should have seen 7 governance events")
 	}
-	if len(persister.challenges) != 2 {
+	if len(persister.Challenges) != 2 {
 		t.Error("Should have seen 1 challenge")
 	}
-	if len(persister.appeals) != 1 {
+	if len(persister.Appeals) != 1 {
 		t.Error("Should have seen 1 appeal")
 	}
 	memoryCheck(t)
@@ -648,7 +649,7 @@ func TestProcessTCRApplication(t *testing.T) {
 	event := createAndProcAppEvent(t, contracts, tcrProc)
 	eventPayload := event.EventPayload()
 
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateApplied {
 		t.Errorf("Listing should have had governance state of applied")
 	}
@@ -688,7 +689,7 @@ func TestProcessTCRApplicationWhitelisted(t *testing.T) {
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
 	_ = createAndProcAppWhitelistedEvent(t, contracts, tcrProc)
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateAppWhitelisted {
 		t.Errorf("Listing should have had governance state of applied")
 	}
@@ -702,7 +703,7 @@ func TestProcessTCRApplicationRemoved(t *testing.T) {
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppRemoved(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateAppRemoved {
 		t.Errorf("Listing should have had governance state of appremoved")
 	}
@@ -737,14 +738,14 @@ func TestProcessTCRDepositWithdrawal(t *testing.T) {
 	event := createAndProcWithdrawalEvent(t, contracts, tcrProc)
 	eventPayload := event.EventPayload()
 	withdrawal := eventPayload["NewTotal"]
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if !reflect.DeepEqual(listing.UnstakedDeposit(), withdrawal.(*big.Int)) {
 		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
 	}
 	event = createAndProcDepositEvent(t, contracts, tcrProc)
 	eventPayload = event.EventPayload()
 	deposit := eventPayload["NewTotal"]
-	listing = persister.listings[listingAddress]
+	listing = persister.Listings[listingAddress]
 	if !reflect.DeepEqual(listing.UnstakedDeposit(), deposit.(*big.Int)) {
 		t.Errorf("UnstakedDeposit value is not correct: %v", listing.UnstakedDeposit())
 	}
@@ -756,7 +757,7 @@ func TestProcessTCRListingRemoved(t *testing.T) {
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcListingRemoved(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateRemoved {
 		t.Errorf("Listing should have had governance state of app removed")
 	}
@@ -791,14 +792,14 @@ func TestProcessTCRChallenge(t *testing.T) {
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	unstakedDeposit := listing.UnstakedDeposit()
 
 	challengeEvent := createAndProcChallenge1(t, contracts, tcrProc)
 	eventPayload := challengeEvent.EventPayload()
 
-	listing = persister.listings[listingAddress]
-	challenge := persister.challenges[int(challengeID1.Int64())]
+	listing = persister.Listings[listingAddress]
+	challenge := persister.Challenges[int(challengeID1.Int64())]
 
 	if listing.LastGovernanceState() != model.GovernanceStateChallenged {
 		t.Errorf("Listing should have had governance state of challenged")
@@ -845,14 +846,14 @@ func TestProcessTCRChallengeFailed(t *testing.T) {
 	challengeFailedEvent := createAndProcChallenge1Failed(t, contracts, tcrProc)
 	challengeFailedEventPayload := challengeFailedEvent.EventPayload()
 
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateChallengeFailed {
 		t.Errorf("Listing should have had governance state of challengefailed %v", listing.LastGovernanceState())
 	}
 	if listing.ChallengeID().Cmp(big.NewInt(0)) != 0 {
 		t.Errorf("Listing challengeID should have been reset to 0 but it is %v", listing.ChallengeID())
 	}
-	challenge := persister.challenges[int(challengeID1.Int64())]
+	challenge := persister.Challenges[int(challengeID1.Int64())]
 	if challenge.TotalTokens() != challengeFailedEventPayload["TotalTokens"] {
 		t.Errorf("Challenge TotalTokens is not correct %v, %v", challenge.TotalTokens(), challengeFailedEventPayload["TotalTokens"])
 	}
@@ -874,12 +875,12 @@ func TestProcessTCRChallengeSucceeded(t *testing.T) {
 	challengeSucceededEvent := createAndProcChallenge1Succeeded(t, contracts, tcrProc)
 	challengeSucceededEventPayload := challengeSucceededEvent.EventPayload()
 
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateChallengeSucceeded {
 		t.Errorf("Listing should have had governance state of challengesucceeded")
 	}
 
-	challenge := persister.challenges[int(challengeID1.Int64())]
+	challenge := persister.Challenges[int(challengeID1.Int64())]
 	// Need simulated backend to test
 	if challenge.TotalTokens() != challengeSucceededEventPayload["TotalTokens"] {
 		t.Error("Challenge TotalTokens value is not correct")
@@ -905,11 +906,11 @@ func TestProcessTCRFailedChallengeOverturned(t *testing.T) {
 	challengeOverturnedEvent := createAndProcFailedChallenge1Overturned(t, contracts, tcrProc)
 
 	challengeOverturnedEventPayload := challengeOverturnedEvent.EventPayload()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateFailedChallengeOverturned {
 		t.Errorf("Listing should have had governance state of failedchallengeoverturned %v", listing.LastGovernanceState())
 	}
-	challenge := persister.challenges[int(challengeID1.Int64())]
+	challenge := persister.Challenges[int(challengeID1.Int64())]
 	if challenge.TotalTokens() != challengeOverturnedEventPayload["TotalTokens"] {
 		t.Errorf("Challenge TotalTokens is not correct %v %v", challenge.TotalTokens(), challengeOverturnedEventPayload["TotalTokens"])
 	}
@@ -925,14 +926,14 @@ func TestProcessTCRSuccessfulChallengeOverturned(t *testing.T) {
 	contracts, persister, tcrProc := setupTcrProcessor(t)
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
 	_ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
 
 	challengeOverturnedEvent := createAndProcSuccessfulChallenge1Overturned(t, contracts, tcrProc)
 	challengeOverturnedEventPayload := challengeOverturnedEvent.EventPayload()
 
-	challenge := persister.challenges[int(challengeID1.Int64())]
+	challenge := persister.Challenges[int(challengeID1.Int64())]
 	if challenge.TotalTokens() != challengeOverturnedEventPayload["TotalTokens"] {
 		t.Errorf("Challenge TotalTokens is not correct %v %v", challenge.TotalTokens(), challengeOverturnedEventPayload["TotalTokens"])
 	}
@@ -959,7 +960,7 @@ func TestProcessTCRAppealRequested(t *testing.T) {
 
 	appealRequestedEvent := createAndProcAppealRequested(t, contracts, tcrProc)
 	appealRequestedEventPayload := appealRequestedEvent.EventPayload()
-	appeal := persister.appeals[int(challengeID1.Int64())]
+	appeal := persister.Appeals[int(challengeID1.Int64())]
 	if appeal.OriginalChallengeID() != appealRequestedEventPayload["ChallengeID"] {
 		t.Errorf("Appeal challengeID is not correct %v %v", appeal.OriginalChallengeID(), appealRequestedEventPayload["ChallengeID"])
 	}
@@ -976,7 +977,7 @@ func TestProcessTCRAppealRequested(t *testing.T) {
 	// fmt.Println(appeal.AppealPhaseExpiry())
 
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 
 	if listing.LastGovernanceState() != model.GovernanceStateAppealRequested {
 		t.Errorf("Listing last governance state is not what it should be %v",
@@ -996,7 +997,7 @@ func TestProcessTCRAppealGranted(t *testing.T) {
 
 	_ = createAndProcAppealGranted(t, contracts, tcrProc)
 	// appealGrantedEventPayload := appealGrantedEvent.EventPayload()
-	appeal := persister.appeals[int(challengeID1.Int64())]
+	appeal := persister.Appeals[int(challengeID1.Int64())]
 
 	if !appeal.AppealGranted() {
 		t.Error("Appeal Granted should be true")
@@ -1005,7 +1006,7 @@ func TestProcessTCRAppealGranted(t *testing.T) {
 	// fmt.Println(appeal.AppealPhaseExpiry())
 
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 
 	if listing.LastGovernanceState() != model.GovernanceStateAppealGranted {
 		t.Errorf("Listing last governance state is not what it should be %v",
@@ -1028,7 +1029,7 @@ func TestProcessTCRGrantedAppealChallenged(t *testing.T) {
 	grantedAppealChallengedEvent := createAndProcGrantedAppealChallenged(t, contracts, tcrProc)
 	grantedAppealChallengedEventPayload := grantedAppealChallengedEvent.EventPayload()
 	// check that all challenge fields are correct for the appeal challenge
-	appealChallenge, ok := persister.challenges[int(appealChallengeID1.Int64())]
+	appealChallenge, ok := persister.Challenges[int(appealChallengeID1.Int64())]
 	if !ok {
 		t.Error("appealChallenge is not in persistence")
 	}
@@ -1039,7 +1040,7 @@ func TestProcessTCRGrantedAppealChallenged(t *testing.T) {
 	// TODO: use simulated backend to check rest of challenge res
 
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateGrantedAppealChallenged {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
@@ -1062,7 +1063,7 @@ func TestProcessTCRGrantedAppealConfirmed(t *testing.T) {
 	grantedAppealConfirmedEvent := createAndProcGrantedAppealConfirmed(t, contracts, tcrProc)
 	grantedAppealConfirmedEventPayload := grantedAppealConfirmedEvent.EventPayload()
 
-	appealChallenge, ok := persister.challenges[int(appealChallengeID1.Int64())]
+	appealChallenge, ok := persister.Challenges[int(appealChallengeID1.Int64())]
 	if !ok {
 		t.Error("appealChallenge is not in persistence")
 	}
@@ -1075,7 +1076,7 @@ func TestProcessTCRGrantedAppealConfirmed(t *testing.T) {
 	}
 
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateGrantedAppealConfirmed {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
@@ -1100,7 +1101,7 @@ func TestProcessTCRGrantedAppealOverturned(t *testing.T) {
 	grantedAppealOverturnedEvent := createAndProcGrantedAppealOverturned(t, contracts, tcrProc)
 	grantedAppealOverturnedEventPayload := grantedAppealOverturnedEvent.EventPayload()
 
-	appealChallenge, ok := persister.challenges[int(appealChallengeID1.Int64())]
+	appealChallenge, ok := persister.Challenges[int(appealChallengeID1.Int64())]
 	if !ok {
 		t.Error("appealChallenge is not in persistence")
 	}
@@ -1113,7 +1114,7 @@ func TestProcessTCRGrantedAppealOverturned(t *testing.T) {
 	}
 
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateGrantedAppealOverturned {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())
@@ -1126,7 +1127,7 @@ func TestUpdateListingWithLastGovState(t *testing.T) {
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
 	_ = createAndProcTouchAndRemovedEvent(t, contracts, tcrProc)
 	listingAddress := contracts.NewsroomAddr.Hex()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if listing.LastGovernanceState() != model.GovernanceStateTouchRemoved {
 		t.Errorf("Listing last governance state is not what it should be %v",
 			listing.LastGovernanceState())

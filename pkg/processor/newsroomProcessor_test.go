@@ -12,6 +12,7 @@ import (
 	"github.com/joincivil/go-common/pkg/generated/contract"
 
 	"github.com/joincivil/civil-events-processor/pkg/processor"
+	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
@@ -157,14 +158,14 @@ func createAndProcOwnershipTransferredEvent(t *testing.T, contracts *contractuti
 	return event
 }
 
-func setupApplicationAndNewsroomProcessor(t *testing.T) (*contractutils.AllTestContracts, *TestPersister,
+func setupApplicationAndNewsroomProcessor(t *testing.T) (*contractutils.AllTestContracts, *testutils.TestPersister,
 	*processor.NewsroomEventProcessor) {
 	contracts, err := contractutils.SetupAllTestContracts()
 	if err != nil {
 		t.Fatalf("Unable to setup the contracts: %v", err)
 	}
-	persister := &TestPersister{}
-	scraper := &TestScraper{}
+	persister := &testutils.TestPersister{}
+	scraper := &testutils.TestScraper{}
 	tcrProc := processor.NewTcrEventProcessor(
 		contracts.Client,
 		persister,
@@ -188,10 +189,10 @@ func TestNewsroomProcessor(t *testing.T) {
 	_ = createAndProcOwnershipTransferredEvent(t, contracts, nwsrmProc)
 	_ = createAndProcNameChangedEvent(t, contracts, nwsrmProc)
 
-	if len(persister.listings) != 1 {
+	if len(persister.Listings) != 1 {
 		t.Error("Should be only 1 listing")
 	}
-	if len(persister.revisions) != 1 {
+	if len(persister.Revisions) != 1 {
 		t.Error("Should be one revision")
 	}
 
@@ -202,7 +203,7 @@ func TestProcessNameChanged(t *testing.T) {
 	listingAddress := contracts.NewsroomAddr.Hex()
 	event := createAndProcNameChangedEvent(t, contracts, nwsrmProc)
 	eventPayload := event.EventPayload()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 
 	if listing.Name() != eventPayload["NewName"] {
 		t.Errorf("Listing name is not correct %v %v", listing.Name(), eventPayload["NewName"])
@@ -216,7 +217,7 @@ func TestCreateAndProcRevisionUpdatedEvent(t *testing.T) {
 	event := createAndProcRevisionUpdatedEventCharter(t, contracts, nwsrmProc)
 	eventPayload := event.EventPayload()
 
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 
 	charter := listing.Charter()
 	// NOTE(IS): These are the fields that get set through revision.
@@ -236,7 +237,7 @@ func TestCreateAndProcRevisionUpdatedEvent(t *testing.T) {
 	// can also test scrape data
 
 	// test content revision
-	revisionCharter := persister.revisions[listingAddress][0]
+	revisionCharter := persister.Revisions[listingAddress][0]
 	if revisionCharter.ContractContentID() != eventPayload["ContentId"] {
 		t.Error("ContentRevision contentID not correct")
 	}
@@ -259,7 +260,7 @@ func TestCreateAndProcOwnershipTransferredEvent(t *testing.T) {
 	listingAddress := contracts.NewsroomAddr.Hex()
 	event := createAndProcOwnershipTransferredEvent(t, contracts, nwsrmProc)
 	eventPayload := event.EventPayload()
-	listing := persister.listings[listingAddress]
+	listing := persister.Listings[listingAddress]
 	if len(listing.OwnerAddresses()) != 1 {
 		t.Errorf("Should still only have 1 owner for the listing")
 	}

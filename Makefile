@@ -118,8 +118,8 @@ lint: ## Runs linting.
 	@gometalinter ./...
 
 .PHONY: build
-build: ## Builds the processor cron
-	$(GOBUILD) -o ./build/processorcron cmd/processorcron/main.go
+build: ## Builds the main file
+	$(GOBUILD) -o ./build/processor cmd/main.go
 
 .PHONY: test
 test: ## Runs unit tests and tests code coverage
