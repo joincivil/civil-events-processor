@@ -3,12 +3,11 @@ package postgres_test
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 	cpostgres "github.com/joincivil/go-common/pkg/persistence/postgres"
+	"math/big"
 
 	// "reflect"
 	"testing"
@@ -76,6 +75,7 @@ func setupSampleListingNoCharter() (*model.Listing, common.Address) {
 	hash := "33333333333333333333333333333333"
 	contentHash := [32]byte{}
 	copy(contentHash[:], hash)
+	charter := model.NewEmptyCharter()
 
 	testListingParams := &model.NewListingParams{
 		Name:                 "test_listing",
@@ -90,6 +90,7 @@ func setupSampleListingNoCharter() (*model.Listing, common.Address) {
 		ApplicationDateTs:    1257894000,
 		ApprovalDateTs:       1257894000,
 		LastUpdatedDateTs:    1257894000,
+		Charter:              charter,
 	}
 	testListing := model.NewListing(testListingParams)
 	return testListing, contractAddress
@@ -99,11 +100,12 @@ func TestNewDBListing(t *testing.T) {
 	modelListing, _ := setupSampleListing()
 	dbListing := postgres.NewListing(modelListing)
 	_ = dbListing.DbToListingData()
+
 	// TODO(IS): Check all fields other than the nil ones which are appexpiry, unstakeddeposit, challengeID
 	// when you first save a listing
 }
 
-func TestNewDBListingNoCharter(t *testing.T) {
+func TestNewDBListingEmptyCharter(t *testing.T) {
 	modelListing, _ := setupSampleListingNoCharter()
 	dbListing := postgres.NewListing(modelListing)
 	_ = dbListing.DbToListingData()
