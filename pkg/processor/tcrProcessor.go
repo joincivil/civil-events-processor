@@ -375,7 +375,7 @@ func (t *TcrEventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Eve
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateChallengeSucceeded)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error updating listing %v", err)
 	}
 	return t.processChallengeResolution(event, tcrAddress, listingAddress)
 }
@@ -402,7 +402,11 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	existingChallenge.SetRewardPool(challengeRes.RewardPool)
 	updatedFields := []string{rewardPoolFieldName, totalTokensFieldName}
 
-	return t.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	err = t.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	if err != nil {
+		return fmt.Errorf("Error updating challenge %v, err: %v", existingChallenge.ChallengeID(), err)
+	}
+	return nil
 }
 
 func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event,
@@ -420,7 +424,8 @@ func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event
 
 	existingChallenge, err := t.getExistingChallenge(challengeID, tcrAddress, listingAddress)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting existing challenge with id: %v. Err: %v",
+			existingChallenge.ChallengeID(), err)
 	}
 	existingChallenge.SetResolved(resolved)
 	existingChallenge.SetTotalTokens(totalTokens.(*big.Int))
@@ -428,13 +433,13 @@ func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event
 
 	appealNotGranted, err := t.checkAppealNotGranted(challengeID)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error checking for appeal not granted. err: %v", err)
 	}
 	if appealNotGranted {
 		// NOTE(IS): Have to get stake through contract call, so get all data this way
-		challenge, err := t.getChallengeFromTCRContract(tcrAddress, challengeID)
-		if err != nil {
-			return fmt.Errorf("Error getting challenge from contract: %v", err)
+		challenge, challengeErr := t.getChallengeFromTCRContract(tcrAddress, challengeID)
+		if challengeErr != nil {
+			return fmt.Errorf("Error getting challenge from contract: %v", challengeErr)
 		}
 		stake := challenge.Stake
 		rewardPool := challenge.RewardPool
@@ -443,7 +448,11 @@ func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event
 		updatedFields = append(updatedFields, rewardPoolFieldName, stakeFieldName)
 	}
 
-	return t.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	err = t.challengePersister.UpdateChallenge(existingChallenge, updatedFields)
+	if err != nil {
+		return fmt.Errorf("Error updating challenge %v, err: %v", existingChallenge.ChallengeID(), err)
+	}
+	return nil
 }
 
 func (t *TcrEventProcessor) processTCRAppealRequested(event *crawlermodel.Event,
@@ -653,8 +662,8 @@ func (t *TcrEventProcessor) checkAppealNotGranted(challengeID *big.Int) (bool, e
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return false, err
 	}
-	if appeal == nil {
-		return false, err
+	if appeal == nil && err == cpersist.ErrPersisterNoResults {
+		return false, nil
 	}
 	if !appeal.AppealGranted() {
 		return true, nil
@@ -769,7 +778,7 @@ func (t *TcrEventProcessor) updateListingWithLastGovState(listingAddress common.
 	tcrAddress common.Address, govState model.GovernanceState) error {
 	listing, err := t.getExistingListing(tcrAddress, listingAddress)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting existing listing %v, err: %v", listingAddress.Hex(), err)
 	}
 
 	listing.SetLastGovernanceState(govState)
@@ -801,24 +810,8 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	}
 	ownerAddresses := []common.Address{ownerAddr}
 
-	listing := model.NewListing(&model.NewListingParams{
-		Name:              name,
-		ContractAddress:   listingAddress,
-		Whitelisted:       false,
-		LastState:         model.GovernanceStateApplied,
-		URL:               url,
-		Owner:             ownerAddr,
-		OwnerAddresses:    ownerAddresses,
-		CreatedDateTs:     event.Timestamp(),
-		ApplicationDateTs: event.Timestamp(),
-		ApprovalDateTs:    approvalDateEmptyValue,
-		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
-	})
-
 	appExpiry := event.EventPayload()["AppEndDate"].(*big.Int)
 	unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
-	listing.SetAppExpiry(appExpiry)
-	listing.SetUnstakedDeposit(unstakedDeposit)
 
 	existingListing, err := t.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
@@ -839,11 +832,28 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 			approvalDateFieldName,
 			appExpiryFieldName,
 			unstakedDepositFieldName}
-		err = t.listingPersister.UpdateListing(listing, updatedFields)
+		err = t.listingPersister.UpdateListing(existingListing, updatedFields)
 		if err != nil {
 			return fmt.Errorf("Error updating listing in persistence %v", err)
 		}
 	} else {
+		listing := model.NewListing(&model.NewListingParams{
+			Name:              name,
+			ContractAddress:   listingAddress,
+			Whitelisted:       false,
+			LastState:         model.GovernanceStateApplied,
+			URL:               url,
+			Owner:             ownerAddr,
+			OwnerAddresses:    ownerAddresses,
+			CreatedDateTs:     event.Timestamp(),
+			ApplicationDateTs: event.Timestamp(),
+			ApprovalDateTs:    approvalDateEmptyValue,
+			LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
+		})
+		listing.SetAppExpiry(appExpiry)
+		listing.SetUnstakedDeposit(unstakedDeposit)
+		// NOTE(IS): Store temp empty charter
+		listing.SetCharter(model.NewEmptyCharter())
 		err = t.listingPersister.CreateListing(listing)
 		if err != nil {
 			return fmt.Errorf("Error creating new listing in persistence: %v", err)
@@ -968,6 +978,7 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 		OwnerAddresses:    ownerAddresses,
 		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
 	})
+
 	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating TCR contract: err: %v", err)
@@ -980,6 +991,9 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 	listing.SetUnstakedDeposit(listingFromContract.UnstakedDeposit)
 	listing.SetWhitelisted(listingFromContract.Whitelisted)
 	listing.SetChallengeID(listingFromContract.ChallengeID)
+
+	// NOTE(IS): Store temp empty charter
+	listing.SetCharter(model.NewEmptyCharter())
 
 	err = t.listingPersister.CreateListing(listing)
 

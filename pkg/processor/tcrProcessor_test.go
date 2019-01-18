@@ -1,7 +1,6 @@
 package processor_test
 
 import (
-	// "fmt"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -620,9 +619,7 @@ func TestTcrEventProcessor(t *testing.T) {
 	_ = createAndProcAppEvent(t, contracts, tcrProc)
 	_ = createAndProcChallenge1(t, contracts, tcrProc)
 	_ = createAndProcChallenge1Succeeded(t, contracts, tcrProc)
-
 	_ = createAndProcAppealRequested(t, contracts, tcrProc)
-
 	_ = createAndProcAppealGranted(t, contracts, tcrProc)
 
 	_ = createAndProcGrantedAppealChallenged(t, contracts, tcrProc)

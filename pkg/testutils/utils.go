@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	cpersist "github.com/joincivil/go-common/pkg/persistence"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 )
@@ -61,6 +62,9 @@ func (t *TestPersister) ListingsByAddresses(addresses []common.Address) ([]*mode
 // ListingByAddress retrieves a listing based on address
 func (t *TestPersister) ListingByAddress(address common.Address) (*model.Listing, error) {
 	listing := t.Listings[address.Hex()]
+	if listing == nil {
+		return nil, cpersist.ErrPersisterNoResults
+	}
 	return listing, nil
 }
 
@@ -285,6 +289,9 @@ func (t *TestPersister) DeleteGovernanceEvent(govEvent *model.GovernanceEvent) e
 // ChallengeByChallengeID gets a challenge by challengeID
 func (t *TestPersister) ChallengeByChallengeID(challengeID int) (*model.Challenge, error) {
 	challenge := t.Challenges[challengeID]
+	if challenge == nil {
+		return nil, cpersist.ErrPersisterNoResults
+	}
 	return challenge, nil
 }
 
@@ -348,6 +355,9 @@ func (t *TestPersister) UpdateChallenge(challenge *model.Challenge, updatedField
 // PollByPollID gets a poll by pollID
 func (t *TestPersister) PollByPollID(pollID int) (*model.Poll, error) {
 	poll := t.Polls[pollID]
+	if poll == nil {
+		return nil, cpersist.ErrPersisterNoResults
+	}
 	return poll, nil
 }
 
@@ -386,6 +396,9 @@ func (t *TestPersister) UpdatePoll(poll *model.Poll, updatedFields []string) err
 // AppealByChallengeID gets an appeal by challengeID
 func (t *TestPersister) AppealByChallengeID(challengeID int) (*model.Appeal, error) {
 	appeal := t.Appeals[challengeID]
+	if appeal == nil {
+		return nil, cpersist.ErrPersisterNoResults
+	}
 	return appeal, nil
 }
 
