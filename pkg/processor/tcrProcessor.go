@@ -810,24 +810,8 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	}
 	ownerAddresses := []common.Address{ownerAddr}
 
-	listing := model.NewListing(&model.NewListingParams{
-		Name:              name,
-		ContractAddress:   listingAddress,
-		Whitelisted:       false,
-		LastState:         model.GovernanceStateApplied,
-		URL:               url,
-		Owner:             ownerAddr,
-		OwnerAddresses:    ownerAddresses,
-		CreatedDateTs:     event.Timestamp(),
-		ApplicationDateTs: event.Timestamp(),
-		ApprovalDateTs:    approvalDateEmptyValue,
-		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
-	})
-
 	appExpiry := event.EventPayload()["AppEndDate"].(*big.Int)
 	unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
-	listing.SetAppExpiry(appExpiry)
-	listing.SetUnstakedDeposit(unstakedDeposit)
 
 	existingListing, err := t.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
@@ -853,8 +837,23 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 			return fmt.Errorf("Error updating listing in persistence %v", err)
 		}
 	} else {
+		listing := model.NewListing(&model.NewListingParams{
+			Name:              name,
+			ContractAddress:   listingAddress,
+			Whitelisted:       false,
+			LastState:         model.GovernanceStateApplied,
+			URL:               url,
+			Owner:             ownerAddr,
+			OwnerAddresses:    ownerAddresses,
+			CreatedDateTs:     event.Timestamp(),
+			ApplicationDateTs: event.Timestamp(),
+			ApprovalDateTs:    approvalDateEmptyValue,
+			LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
+		})
+		listing.SetAppExpiry(appExpiry)
+		listing.SetUnstakedDeposit(unstakedDeposit)
 		// NOTE(IS): Store temp empty charter
-		t.tempCharter(listing)
+		listing.SetCharter(model.NewEmptyCharter())
 		err = t.listingPersister.CreateListing(listing)
 		if err != nil {
 			return fmt.Errorf("Error creating new listing in persistence: %v", err)
@@ -994,16 +993,11 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 	listing.SetChallengeID(listingFromContract.ChallengeID)
 
 	// NOTE(IS): Store temp empty charter
-	t.tempCharter(listing)
+	listing.SetCharter(model.NewEmptyCharter())
 
 	err = t.listingPersister.CreateListing(listing)
 
 	return listing, err
-}
-
-func (t *TcrEventProcessor) tempCharter(listing *model.Listing) {
-	tempCharter := model.NewEmptyCharter()
-	listing.SetCharter(tempCharter)
 }
 
 func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Address,
