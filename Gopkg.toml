@@ -48,7 +48,7 @@ required = ["github.com/99designs/gqlgen"]
 
 [[constraint]]
   name = "github.com/joincivil/civil-events-crawler"
-  branch = "master"
+  branch = "inna/266/retrieve-events-from-timestamp"
 
 [[constraint]]
   name = "github.com/joincivil/go-common"
