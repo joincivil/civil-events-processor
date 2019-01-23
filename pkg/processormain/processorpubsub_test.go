@@ -14,6 +14,7 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/processormain"
 	"github.com/joincivil/civil-events-processor/pkg/testutils"
 	"github.com/joincivil/go-common/pkg/generated/contract"
+	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
 	cstring "github.com/joincivil/go-common/pkg/strings"
 	ctime "github.com/joincivil/go-common/pkg/time"
 	"math/big"
@@ -223,7 +224,12 @@ func setupCrawlerPubSub(t *testing.T) *crawlerpubsub.CrawlerPubSub {
 	if err != nil {
 		t.Errorf("Error creating subscription %v", err)
 	}
-	err = ps.GooglePubsub.StartSubscribers(subName)
+	err = ps.GooglePubsub.StartSubscribersWithConfig(
+		cpubsub.SubscribeConfig{
+			Name:    subName,
+			AutoAck: false,
+		},
+	)
 	if err != nil {
 		t.Errorf("Error starting subscribers %v", err)
 	}
