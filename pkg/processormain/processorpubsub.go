@@ -99,6 +99,8 @@ Loop:
 				return
 			}
 			err = proc.Process(events)
+			// NOTE(IS): The following error will only be called for individual processing on
+			// watched
 			if err != nil {
 				log.Errorf("Error processing events: err: %v", err)
 				return
@@ -108,7 +110,7 @@ Loop:
 			// NOTE(IS): Only save lastTs if the messData timestamp is greater than lastTs for
 			// a watched message, or messData is triggered from filtering finished.
 			if isMessageFromFilterer(messData) ||
-				!isMessageFromFilterer(messData) && messData.Timestamp > lastTs {
+				(!isMessageFromFilterer(messData) && messData.Timestamp > lastTs) {
 				err = saveLastEventTimestamp(persisters.Cron, events, lastTs)
 				if err != nil {
 					log.Errorf("Error saving last timestamp %v: err: %v", lastTs, err)
