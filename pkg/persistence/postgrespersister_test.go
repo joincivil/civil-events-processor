@@ -1362,7 +1362,7 @@ func TestGovEventsByCriteria(t *testing.T) {
 
 }
 
-// TestGovEventsByCriteria tests GovernanceEvent by criteria query
+// TestGovEventsByCriteria tests GovernanceEvent by txhash query
 func TestGovEventsByTxHash(t *testing.T) {
 	tableName := "governance_event_test"
 	persister, err := setupTestTable(tableName)
@@ -1373,15 +1373,16 @@ func TestGovEventsByTxHash(t *testing.T) {
 
 	// sample governanceEvent
 	modelGovernanceEvent, _, _, txHash := setupSampleGovernanceEvent(true)
+	time.Sleep(3)
 	modelGovernanceEvent2, _, _, _ := setupSampleGovernanceEvent(true)
 
 	// insert to table
-	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
+	err = persister.createGovernanceEventInTable(modelGovernanceEvent2, tableName)
 	if err != nil {
 		t.Errorf("error saving GovernanceEvent: %v", err)
 	}
 
-	err = persister.createGovernanceEventInTable(modelGovernanceEvent2, tableName)
+	err = persister.createGovernanceEventInTable(modelGovernanceEvent, tableName)
 	if err != nil {
 		t.Errorf("error saving GovernanceEvent: %v", err)
 	}
@@ -1396,7 +1397,7 @@ func TestGovEventsByTxHash(t *testing.T) {
 	if len(govEvents) != 1 {
 		t.Errorf("Should have only received 1 governance event from txHash query but received %v", len(govEvents))
 	}
-
+	// This also tests that the first govEvent is the most recent one although they were saved out of order
 	blockData := govEvents[0].BlockData()
 	if blockData.TxHash() != txHash.Hex() {
 		t.Errorf("Hash should be %v but is %v", txHash, blockData.TxHash())
