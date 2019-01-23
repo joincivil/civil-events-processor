@@ -45,11 +45,3 @@ required = ["github.com/99designs/gqlgen"]
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
   version = "1.8.15"
-
-[[constraint]]
-  name = "github.com/joincivil/civil-events-crawler"
-  branch = "inna/266/retrieve-events-from-timestamp"
-
-[[constraint]]
-  name = "github.com/joincivil/go-common"
-  revision = "810e928d12dd96ba97e9d86c1f6a51e76800d693"
