@@ -13,6 +13,11 @@ func (e *EventProcessor) pubSub(event *crawlermodel.Event) error {
 		return nil
 	}
 
+	// NOTE(IS): We only want to send notifications on watched events
+	if event.RetrievalMethod() == crawlermodel.RetrievalMethod(0) {
+		return nil
+	}
+
 	payload, err := e.pubSubBuildPayload(event)
 	if err != nil {
 		return err
