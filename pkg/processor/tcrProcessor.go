@@ -813,6 +813,24 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 	appExpiry := event.EventPayload()["AppEndDate"].(*big.Int)
 	unstakedDeposit := event.EventPayload()["Deposit"].(*big.Int)
 
+	listing := model.NewListing(&model.NewListingParams{
+		Name:              name,
+		ContractAddress:   listingAddress,
+		Whitelisted:       false,
+		LastState:         model.GovernanceStateApplied,
+		URL:               url,
+		Owner:             ownerAddr,
+		OwnerAddresses:    ownerAddresses,
+		CreatedDateTs:     event.Timestamp(),
+		ApplicationDateTs: event.Timestamp(),
+		ApprovalDateTs:    approvalDateEmptyValue,
+		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
+	})
+	listing.SetAppExpiry(appExpiry)
+	listing.SetUnstakedDeposit(unstakedDeposit)
+	// NOTE(IS): Store temp empty charter
+	listing.SetCharter(model.NewEmptyCharter())
+
 	existingListing, err := t.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return fmt.Errorf("Error retrieving persisted listing: %v", err)
@@ -832,28 +850,11 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 			approvalDateFieldName,
 			appExpiryFieldName,
 			unstakedDepositFieldName}
-		err = t.listingPersister.UpdateListing(existingListing, updatedFields)
+		err = t.listingPersister.UpdateListing(listing, updatedFields)
 		if err != nil {
 			return fmt.Errorf("Error updating listing in persistence %v", err)
 		}
 	} else {
-		listing := model.NewListing(&model.NewListingParams{
-			Name:              name,
-			ContractAddress:   listingAddress,
-			Whitelisted:       false,
-			LastState:         model.GovernanceStateApplied,
-			URL:               url,
-			Owner:             ownerAddr,
-			OwnerAddresses:    ownerAddresses,
-			CreatedDateTs:     event.Timestamp(),
-			ApplicationDateTs: event.Timestamp(),
-			ApprovalDateTs:    approvalDateEmptyValue,
-			LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
-		})
-		listing.SetAppExpiry(appExpiry)
-		listing.SetUnstakedDeposit(unstakedDeposit)
-		// NOTE(IS): Store temp empty charter
-		listing.SetCharter(model.NewEmptyCharter())
 		err = t.listingPersister.CreateListing(listing)
 		if err != nil {
 			return fmt.Errorf("Error creating new listing in persistence: %v", err)
