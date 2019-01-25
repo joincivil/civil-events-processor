@@ -14,7 +14,7 @@ func (e *EventProcessor) pubSub(event *crawlermodel.Event) error {
 	}
 
 	// NOTE(IS): We only want to send notifications on watched events
-	if event.RetrievalMethod() == crawlermodel.RetrievalMethod(0) {
+	if event.RetrievalMethod() == crawlermodel.Filterer {
 		return nil
 	}
 
