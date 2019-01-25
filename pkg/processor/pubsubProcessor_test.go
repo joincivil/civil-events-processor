@@ -74,7 +74,7 @@ func TestPubsubBuildPayload(t *testing.T) {
 		contracts.CivilTcrAddr,
 		appealGranted,
 		ctime.CurrentEpochSecsInInt64(),
-		crawlermodel.Filterer,
+		crawlermodel.Watcher,
 	)
 
 	persister := &testutils.TestPersister{}
