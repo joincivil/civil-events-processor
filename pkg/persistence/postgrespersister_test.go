@@ -10,13 +10,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	mathrand "math/rand"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
@@ -2020,7 +2020,7 @@ func TestTypeExistsInCronTable(t *testing.T) {
 		t.Errorf("Error getting type exists in table, %v", err)
 	}
 
-	if exists != postgres.TimestampToString(0) {
+	if exists != ctime.TimestampToString(0) {
 		t.Errorf("Value returned should be 0 but it is %v", err)
 	}
 
@@ -2059,7 +2059,6 @@ func TestUpdateTimestampForCron(t *testing.T) {
 		t.Errorf("Error updating cron table, %v", err)
 	}
 
-	// retrieve timestamp to make sure it was updated
 	timestamp, err := persister.lastCronTimestampFromTable(tableName)
 	if err != nil {
 		t.Errorf("Error retrieving from cron table: %v", err)
@@ -2069,7 +2068,6 @@ func TestUpdateTimestampForCron(t *testing.T) {
 		t.Errorf("Timestamp should be %v but it is %v", newTimestamp, timestamp)
 	}
 
-	// Update again, make sure it works NOTE THIS DOESN'T WORK!
 	newTimestamp2 := int64(121212121233)
 	err = persister.updateCronTimestampInTable(newTimestamp2, tableName)
 	if err != nil {
@@ -2085,4 +2083,47 @@ func TestUpdateTimestampForCron(t *testing.T) {
 	if timestamp2 != newTimestamp2 {
 		t.Errorf("Timestamp should be %v but it is %v", newTimestamp2, timestamp2)
 	}
+}
+
+func TestLastEventHashesFromTable(t *testing.T) {
+	tableName := "cron_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	// There should be no rows in the table. In this case lastEventHashes should insert a nil value.
+	eventHashes, err := persister.lastEventHashesFromTable(tableName)
+	if err != nil {
+		t.Errorf("Error retrieving from cron table: %v", err)
+	}
+	if strings.Join(eventHashes, ",") != "" {
+		t.Errorf("Event Hashes should be empty but are %v", eventHashes)
+	}
+}
+
+func TestUpdateEventHashes(t *testing.T) {
+	tableName := "cron_test"
+	persister, err := setupTestTable(tableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	newEventHashes := []string{"testhash1", "testhash2"}
+	err = persister.updateEventHashesInTable(newEventHashes, tableName)
+	if err != nil {
+		t.Errorf("Error updating cron table, %v", err)
+	}
+
+	eventHashes, err := persister.lastEventHashesFromTable(tableName)
+	if err != nil {
+		t.Errorf("Error retrieving from cron table: %v", err)
+	}
+
+	if !reflect.DeepEqual(eventHashes, newEventHashes) {
+		t.Errorf("EventHashes should be %v but is %v", newEventHashes, eventHashes)
+	}
+
 }
