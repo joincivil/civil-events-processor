@@ -176,7 +176,7 @@ func (p *PostgresPersister) retrieveEventsQuery(tableName string, criteria *mode
 		queryBuf.WriteString(" WHERE hash = :hash") // nolint: gosec
 	} else {
 		if criteria.FromTs > 0 {
-			queryBuf.WriteString(" WHERE timestamp > :fromts") // nolint: gosec
+			queryBuf.WriteString(" WHERE timestamp >= :fromts") // nolint: gosec
 		} else if criteria.BeforeTs > 0 {
 			p.addWhereAnd(queryBuf)
 			queryBuf.WriteString(" timestamp < :beforets") // nolint: gosec
@@ -184,6 +184,15 @@ func (p *PostgresPersister) retrieveEventsQuery(tableName string, criteria *mode
 		if criteria.EventType != "" {
 			p.addWhereAnd(queryBuf)
 			queryBuf.WriteString(" event_type = :eventtype") // nolint: gosec
+		}
+		if criteria.ContractAddress != "" {
+			p.addWhereAnd(queryBuf)
+			queryBuf.WriteString(" contract_address = :contract_address") // nolint: gosec
+		}
+		if len(criteria.ExcludeHashes) > 0 {
+			p.addWhereAnd(queryBuf)
+			notInQuery := fmt.Sprintf(" hash NOT IN ('%v')", strings.Join(criteria.ExcludeHashes, "','"))
+			queryBuf.WriteString(notInQuery) // nolint: gosec
 		}
 		if criteria.Reverse {
 			queryBuf.WriteString(" ORDER BY id DESC") // nolint: gosec

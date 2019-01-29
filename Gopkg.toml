@@ -45,3 +45,7 @@ required = ["github.com/99designs/gqlgen"]
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
   version = "1.8.15"
+
+[[constraint]]
+  name="github.com/joincivil/civil-events-crawler"
+  branch="inna/241/back-to-trigger"
