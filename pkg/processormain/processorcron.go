@@ -50,9 +50,16 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 		return
 	}
 
+	lastHashes, err := persisters.Cron.EventHashesOfLastTimestampForCron()
+	if err != nil {
+		log.Errorf("Error getting event hashes for last timestamp seen in cron: %v", err)
+		return
+	}
+
 	events, err := persisters.Event.RetrieveEvents(
 		&crawlermodel.RetrieveEventsCriteria{
-			FromTs: lastTs,
+			FromTs:        lastTs,
+			ExcludeHashes: lastHashes,
 		},
 	)
 
@@ -95,9 +102,9 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 			return
 		}
 
-		err = saveLastEventTimestamp(persisters.Cron, events, lastTs)
+		err = SaveLastEventInformation(persisters.Cron, events, lastTs)
 		if err != nil {
-			log.Errorf("Error saving last timestamp %v: err: %v", lastTs, err)
+			log.Errorf("Error saving last seen event info %v: err: %v", lastTs, err)
 			return
 		}
 	}

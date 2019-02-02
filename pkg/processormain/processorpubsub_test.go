@@ -15,7 +15,6 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/testutils"
 	"github.com/joincivil/go-common/pkg/generated/contract"
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
-	cstring "github.com/joincivil/go-common/pkg/strings"
 	ctime "github.com/joincivil/go-common/pkg/time"
 	"math/big"
 	"os"
@@ -25,10 +24,9 @@ import (
 )
 
 const (
-	topicName       = "testTopic"
-	subName         = "testSubscription"
-	projectID       = "civil-media"
-	contractAddress = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
+	topicName = "testTopic"
+	subName   = "testSubscription"
+	projectID = "civil-media"
 )
 
 // TestEventPersister is a persistence used for testing event persistence
@@ -45,43 +43,17 @@ func (ep *TestEventPersister) SaveEvents(events []*crawlermodel.Event) error {
 	return nil
 }
 
-func returnRandomTestApplicationEvent(t *testing.T) *contract.CivilTCRContractApplication {
-	testAddress, _ := cstring.RandomHexStr(20)
-	return &contract.CivilTCRContractApplication{
-		ListingAddress: common.HexToAddress(testAddress),
-		Deposit:        big.NewInt(1000),
-		AppEndDate:     big.NewInt(1653860896),
-		Data:           "DATA",
-		Applicant:      common.HexToAddress(testAddress),
-		Raw: types.Log{
-			Address: common.HexToAddress(contractAddress),
-			Topics: []common.Hash{
-				common.HexToHash("0x09cd8dcaf170a50a26316b5fe0727dd9fb9581a688d65e758b16a1650da65c0b"),
-				common.HexToHash("0x0000000000000000000000002652c60cf04bbf6bb6cc8a5e6f1c18143729d440"),
-				common.HexToHash("0x00000000000000000000000025bf9a1595d6f6c70e6848b60cba2063e4d9e552"),
-			},
-			Data:        []byte("thisisadatastring"),
-			BlockNumber: 8888888,
-			TxHash:      common.Hash{},
-			TxIndex:     2,
-			BlockHash:   common.Hash{},
-			Index:       2,
-			Removed:     false,
-		},
-	}
-}
-
 func returnFilteredTestEvents(t *testing.T, numEvents int) []*crawlermodel.Event {
 	appEvents := make([]*crawlermodel.Event, numEvents)
 	for i := 0; i < numEvents; i++ {
-		appEvent := returnRandomTestApplicationEvent(t)
+		appEvent := ReturnRandomTestApplicationEvent(t)
 		event, err := crawlermodel.NewEventFromContractEvent(
 			"Application",
 			"CivilTCRContract",
-			common.HexToAddress(contractAddress),
+			common.HexToAddress(ContractAddress),
 			appEvent,
 			ctime.CurrentEpochSecsInInt64()-int64(1000-i),
-			crawlermodel.Watcher,
+			crawlermodel.Filterer,
 		)
 		if err != nil {
 			t.Errorf("Error creating new event %v", err)
@@ -92,11 +64,11 @@ func returnFilteredTestEvents(t *testing.T, numEvents int) []*crawlermodel.Event
 }
 
 func returnWatchedTestEvent(t *testing.T) *crawlermodel.Event {
-	appEvent := returnRandomTestApplicationEvent(t)
+	appEvent := ReturnRandomTestApplicationEvent(t)
 	event, err := crawlermodel.NewEventFromContractEvent(
 		"Application",
 		"CivilTCRContract",
-		common.HexToAddress(contractAddress),
+		common.HexToAddress(ContractAddress),
 		appEvent,
 		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
@@ -115,7 +87,7 @@ func returnContractApplicationWatchedEvent(t *testing.T, address common.Address)
 		Data:           "DATA",
 		Applicant:      address,
 		Raw: types.Log{
-			Address: common.HexToAddress(contractAddress),
+			Address: common.HexToAddress(ContractAddress),
 			Topics: []common.Hash{
 				common.HexToHash("0x09cd8dcaf170a50a26316b5fe0727dd9fb9581a688d65e758b16a1650da65c0b"),
 				common.HexToHash("0x0000000000000000000000002652c60cf04bbf6bb6cc8a5e6f1c18143729d440"),
@@ -133,7 +105,7 @@ func returnContractApplicationWatchedEvent(t *testing.T, address common.Address)
 	event, err := crawlermodel.NewEventFromContractEvent(
 		"Application",
 		"CivilTCRContract",
-		common.HexToAddress(contractAddress),
+		common.HexToAddress(ContractAddress),
 		appEvent,
 		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Watcher,
@@ -282,11 +254,11 @@ func TestProcessorPubSub(t *testing.T) {
 	go func() {
 		// Save filtered fake events here to Events persistence
 		_ = testEventPersister.SaveEvents(filteredEvents)
-		cps.PublishFilteringFinishedMessage()
+		cps.PublishTriggerMessage()
 		// Make some fake watched event
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent, watchedEvent2})
-		cps.PublishWatchedEventMessage(watchedEvent)
-		cps.PublishWatchedEventMessage(watchedEvent2)
+		cps.PublishTriggerMessage()
+		cps.PublishNewsroomExceptionMessage(watchedEvent2.ContractAddress().Hex())
 
 		time.Sleep(5 * time.Second)
 		quitChan <- true
@@ -302,7 +274,16 @@ func TestProcessorPubSub(t *testing.T) {
 	if timestampFromCron != watchedEvent.Timestamp() {
 		t.Errorf("Processor did not run correctly, last timestamp is wrong: %v, %v", timestampFromCron, watchedEvent.Timestamp())
 	}
-
+	eventHashFromCron, _ := persisters.Cron.EventHashesOfLastTimestampForCron()
+	var numEvents int
+	if watchedEvent.Timestamp() == watchedEvent2.Timestamp() {
+		numEvents = 2
+	} else {
+		numEvents = 1
+	}
+	if len(eventHashFromCron) != numEvents {
+		t.Errorf("Should have %v event hashes but only have %v", numEvents, len(eventHashFromCron))
+	}
 }
 
 // TestMessageOrder tests that for watched messages sent right after one another, they are being
@@ -351,11 +332,11 @@ func TestMessageOrder(t *testing.T) {
 	go func() {
 		watchedEvent := createNewsroomNameChangedEvent(t, "namechange1", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent})
-		cps.PublishWatchedEventMessage(watchedEvent)
+		cps.PublishTriggerMessage()
 		time.Sleep(10)
 		watchedEvent2 := createNewsroomNameChangedEvent(t, "namechange2", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent2})
-		cps.PublishWatchedEventMessage(watchedEvent2)
+		cps.PublishTriggerMessage()
 
 		time.Sleep(5 * time.Second)
 		quitChan <- true

@@ -17,13 +17,14 @@ const (
 
 //TestPersister is a test persister
 type TestPersister struct {
-	Listings   map[string]*model.Listing
-	Revisions  map[string][]*model.ContentRevision
-	GovEvents  map[string][]*model.GovernanceEvent
-	Challenges map[int]*model.Challenge
-	Appeals    map[int]*model.Appeal
-	Polls      map[int]*model.Poll
-	Timestamp  int64
+	Listings    map[string]*model.Listing
+	Revisions   map[string][]*model.ContentRevision
+	GovEvents   map[string][]*model.GovernanceEvent
+	Challenges  map[int]*model.Challenge
+	Appeals     map[int]*model.Appeal
+	Polls       map[int]*model.Poll
+	Timestamp   int64
+	EventHashes []string
 }
 
 func indexAddressInSlice(slice []common.Address, target common.Address) int {
@@ -442,6 +443,17 @@ func (t *TestPersister) TimestampOfLastEventForCron() (int64, error) {
 // UpdateTimestampForCron updates timestamp for cron
 func (t *TestPersister) UpdateTimestampForCron(timestamp int64) error {
 	t.Timestamp = timestamp
+	return nil
+}
+
+// EventHashesOfLastTimestampForCron returns the event hashes processed for the last timestamp from cron
+func (t *TestPersister) EventHashesOfLastTimestampForCron() ([]string, error) {
+	return t.EventHashes, nil
+}
+
+// UpdateEventHashesForCron updates the eventHashes saved in cron table
+func (t *TestPersister) UpdateEventHashesForCron(eventHashes []string) error {
+	t.EventHashes = eventHashes
 	return nil
 }
 

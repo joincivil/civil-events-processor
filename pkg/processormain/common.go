@@ -1,6 +1,7 @@
 package processormain
 
 import (
+	"fmt"
 	log "github.com/golang/glog"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
@@ -10,18 +11,38 @@ import (
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
 )
 
-func saveLastEventTimestamp(persister model.CronPersister, events []*crawlermodel.Event,
+// SaveLastEventInformation saves the last timestamp and event hash info to the cron table
+func SaveLastEventInformation(persister model.CronPersister, events []*crawlermodel.Event,
 	lastTs int64) error {
 	updated := false
+	numEvents := 0
 	for _, event := range events {
 		timestamp := event.Timestamp()
 		if timestamp > lastTs {
 			lastTs = timestamp
 			updated = true
+			numEvents = 1
+		} else if timestamp == lastTs {
+			numEvents++
 		}
 	}
+	eventHashes := make([]string, numEvents)
+	i := 0
 	if updated {
-		return persister.UpdateTimestampForCron(lastTs)
+		for _, event := range events {
+			if event.Timestamp() == lastTs {
+				eventHashes[i] = event.Hash()
+				i++
+			}
+		}
+		err := persister.UpdateTimestampForCron(lastTs)
+		if err != nil {
+			return fmt.Errorf("Error updating event hashes in cron table: %v", err)
+		}
+		err = persister.UpdateEventHashesForCron(eventHashes)
+		if err != nil {
+			return fmt.Errorf("Error updating event hashes in cron table: %v", err)
+		}
 	}
 	return nil
 }
