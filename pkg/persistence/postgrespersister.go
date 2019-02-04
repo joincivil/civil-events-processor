@@ -1271,7 +1271,7 @@ func (p *PostgresPersister) lastEventHashesFromTable(tableName string) ([]string
 			// If row doesn't exist, create row with nil value
 			updateErr := p.updateEventHashesInTable(noLastHash, tableName)
 			if updateErr != nil {
-				return noLastHash, fmt.Errorf("No row in %s with timestamp. Error updating table, %v", tableName, updateErr)
+				return noLastHash, fmt.Errorf("No row in %s with hash. Error updating table, %v", tableName, updateErr)
 			}
 			return noLastHash, nil
 		}
@@ -1292,7 +1292,6 @@ func (p *PostgresPersister) updateEventHashesInTable(eventHashes []string, table
 
 func (p *PostgresPersister) updateCronTable(cronData *postgres.CronData, tableName string) error {
 	typeExists := true
-
 	_, err := p.typeExistsInCronTable(tableName, cronData.DataType)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -1308,11 +1307,11 @@ func (p *PostgresPersister) updateCronTable(cronData *postgres.CronData, tableNa
 		if errBuff != nil {
 			return err
 		}
+		queryBuff.WriteString(" WHERE data_type=:data_type;") // nolint: gosec
 		queryString = queryBuff.String()
 	} else {
 		queryString = p.insertIntoDBQueryString(tableName, postgres.CronData{})
 	}
-
 	_, err = p.db.NamedExec(queryString, cronData)
 	if err != nil {
 		return fmt.Errorf("Error updating fields in db: %v", err)
