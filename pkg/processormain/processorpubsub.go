@@ -194,5 +194,9 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		GooglePubSub:          eventsPs,
 		GooglePubSubTopicName: config.PubSubEventsTopicName,
 	})
+
+	// First run processor without pubsub:
+	RunProcessor(config, persisters)
+
 	RunProcessorPubSub(persisters, ps, proc, quitChan)
 }
