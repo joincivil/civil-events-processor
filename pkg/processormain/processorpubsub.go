@@ -196,7 +196,23 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 	})
 
 	// First run processor without pubsub:
-	RunProcessor(config, persisters)
+	lastTs, lastHashes, err := GetLastEventInformation(persisters)
+	if err != nil {
+		return
+	}
+	events, err := persisters.Event.RetrieveEvents(
+		&crawlermodel.RetrieveEventsCriteria{
+			FromTs:        lastTs,
+			ExcludeHashes: lastHashes,
+		},
+	)
+	if err != nil {
+		log.Errorf("Error retrieving events: err: %v", err)
+		return
+	}
+	if len(events) > 0 {
+		RunProcessor(proc, persisters, events, lastTs)
+	}
 
 	RunProcessorPubSub(persisters, ps, proc, quitChan)
 }

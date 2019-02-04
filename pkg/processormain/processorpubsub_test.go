@@ -254,10 +254,10 @@ func TestProcessorPubSub(t *testing.T) {
 	go func() {
 		// Save filtered fake events here to Events persistence
 		_ = testEventPersister.SaveEvents(filteredEvents)
-		cps.PublishTriggerMessage()
+		cps.PublishProcessorTriggerMessage()
 		// Make some fake watched event
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent, watchedEvent2})
-		cps.PublishTriggerMessage()
+		cps.PublishProcessorTriggerMessage()
 		cps.PublishNewsroomExceptionMessage(watchedEvent2.ContractAddress().Hex())
 
 		time.Sleep(5 * time.Second)
@@ -332,11 +332,11 @@ func TestMessageOrder(t *testing.T) {
 	go func() {
 		watchedEvent := createNewsroomNameChangedEvent(t, "namechange1", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent})
-		cps.PublishTriggerMessage()
+		cps.PublishProcessorTriggerMessage()
 		time.Sleep(10)
 		watchedEvent2 := createNewsroomNameChangedEvent(t, "namechange2", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent2})
-		cps.PublishTriggerMessage()
+		cps.PublishProcessorTriggerMessage()
 
 		time.Sleep(5 * time.Second)
 		quitChan <- true

@@ -1263,10 +1263,9 @@ func (p *PostgresPersister) lastCronTimestampFromTable(tableName string) (int64,
 }
 
 func (p *PostgresPersister) lastEventHashesFromTable(tableName string) ([]string, error) {
-	noLastHash := []string{}
-
 	lastHashesString, err := p.typeExistsInCronTable(tableName, postgres.EventHashesDataType)
 	if err != nil {
+		noLastHash := []string{}
 		if err == sql.ErrNoRows {
 			// If row doesn't exist, create row with nil value
 			updateErr := p.updateEventHashesInTable(noLastHash, tableName)
