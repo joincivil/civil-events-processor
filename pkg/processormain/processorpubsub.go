@@ -56,8 +56,8 @@ func processMessageGetEvents(msg *pubsub.Message) (*crawlerps.CrawlerPubSubMessa
 	return mess, err
 }
 
-func isMessageFromFilterer(crawlerMsg *crawlerps.CrawlerPubSubMessage) bool {
-	if crawlerMsg.Hash == "" && crawlerMsg.Timestamp == 0 {
+func isNewsroomException(crawlerMsg *crawlerps.CrawlerPubSubMessage) bool {
+	if crawlerMsg.NewsroomException && crawlerMsg.ContractAddress != "" {
 		return true
 	}
 	return false
@@ -84,13 +84,20 @@ Loop:
 				return
 			}
 			var retrieveCriteria *crawlermodel.RetrieveEventsCriteria
-			if isMessageFromFilterer(messData) {
+			if isNewsroomException(messData) {
 				retrieveCriteria = &crawlermodel.RetrieveEventsCriteria{
-					FromTs: lastTs,
+					FromTs:          lastTs,
+					ContractAddress: messData.ContractAddress,
 				}
 			} else {
+				lastHashes, cronTableErr := persisters.Cron.EventHashesOfLastTimestampForCron()
+				if cronTableErr != nil {
+					log.Errorf("Error getting event hashes for last timestamp seen in cron: %v", cronTableErr)
+					return
+				}
 				retrieveCriteria = &crawlermodel.RetrieveEventsCriteria{
-					Hash: messData.Hash,
+					FromTs:        lastTs,
+					ExcludeHashes: lastHashes,
 				}
 			}
 			events, err := persisters.Event.RetrieveEvents(retrieveCriteria)
@@ -99,29 +106,20 @@ Loop:
 				return
 			}
 			err = proc.Process(events)
-			// NOTE(IS): The following error will only be called for individual processing on
-			// watched
 			if err != nil {
 				log.Errorf("Error processing events: err: %v", err)
 				return
 			}
-			// NOTE(IS): Manually acknowledge message receipt after processing is successful
+			// Manually acknowledge message receipt after processing is successful
 			msg.Ack()
-			// NOTE(IS): Only save lastTs if the messData timestamp is greater than lastTs for
-			// a watched message, or messData is triggered from filtering finished.
-			if isMessageFromFilterer(messData) ||
-				(!isMessageFromFilterer(messData) && messData.Timestamp > lastTs) {
-				err = saveLastEventTimestamp(persisters.Cron, events, lastTs)
+			// NOTE(IS): Only save lastTs if this message isn't a NewsroomException
+			if !isNewsroomException(messData) {
+				err := SaveLastEventInformation(persisters.Cron, events, lastTs)
 				if err != nil {
-					log.Errorf("Error saving last timestamp %v: err: %v", lastTs, err)
+					log.Errorf("Error saving last seen event info %v: err: %v", lastTs, err)
 					return
 				}
 			}
-			if !isMessageFromFilterer(messData) && messData.Timestamp < lastTs {
-				log.Errorf("Timestamp %v is less than last persisted timestamp for event with hash %v",
-					messData.Timestamp, messData.Hash)
-			}
-
 			log.Infof("Finished processing events from message\n")
 		case <-quit:
 			log.Infof("Quitting")
@@ -196,5 +194,25 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		GooglePubSub:          eventsPs,
 		GooglePubSubTopicName: config.PubSubEventsTopicName,
 	})
+
+	// First run processor without pubsub:
+	lastTs, lastHashes, err := GetLastEventInformation(persisters)
+	if err != nil {
+		return
+	}
+	events, err := persisters.Event.RetrieveEvents(
+		&crawlermodel.RetrieveEventsCriteria{
+			FromTs:        lastTs,
+			ExcludeHashes: lastHashes,
+		},
+	)
+	if err != nil {
+		log.Errorf("Error retrieving events: err: %v", err)
+		return
+	}
+	if len(events) > 0 {
+		RunProcessor(proc, persisters, events, lastTs)
+	}
+
 	RunProcessorPubSub(persisters, ps, proc, quitChan)
 }
