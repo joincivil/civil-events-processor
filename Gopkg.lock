@@ -230,7 +230,7 @@
   revision = "0dae4fefe7c0e190f7b5a78dac28a1c82cc8d849"
 
 [[projects]]
-  branch = "inna/241/back-to-trigger"
+  branch = "master"
   digest = "1:dd6da7c2fc0129f4c1f7147f7b8b5ab715d559751aa78036a505eaed27cd8b63"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
@@ -242,7 +242,7 @@
     "pkg/pubsub",
   ]
   pruneopts = "UT"
-  revision = "3c4dc10e6bd41724c62923f1bab3acb9a63ec365"
+  revision = "7e87f30adbe783c8394966bb6bd31bb32a5c3102"
 
 [[projects]]
   branch = "master"
