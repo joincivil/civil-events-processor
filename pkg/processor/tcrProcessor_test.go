@@ -999,6 +999,9 @@ func TestProcessTCRAppealGranted(t *testing.T) {
 	if !appeal.AppealGranted() {
 		t.Error("Appeal Granted should be true")
 	}
+	if appeal.AppealGrantedStatementURI() != "" {
+		t.Error("Should have set AppealGrantedStatementURI")
+	}
 	// need simulated backend for this:
 	// fmt.Println(appeal.AppealPhaseExpiry())
 

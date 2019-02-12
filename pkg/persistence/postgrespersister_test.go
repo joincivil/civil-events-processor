@@ -1908,6 +1908,7 @@ func setupSampleAppeal(randListing bool) (*model.Appeal, *big.Int) {
 		true,
 		"",
 		int64(232323),
+		"",
 	), originalChallengeID
 }
 
