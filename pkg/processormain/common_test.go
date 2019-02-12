@@ -46,6 +46,7 @@ func ReturnRandomTestApplicationEvent(t *testing.T) *contract.CivilTCRContractAp
 
 func ReturnTestEventsSameTimestamp(t *testing.T, numEvents int) []*crawlermodel.Event {
 	appEvents := make([]*crawlermodel.Event, numEvents)
+	ts := ctime.CurrentEpochSecsInInt64()
 	for i := 0; i < numEvents; i++ {
 		appEvent := ReturnRandomTestApplicationEvent(t)
 		event, err := crawlermodel.NewEventFromContractEvent(
@@ -53,7 +54,7 @@ func ReturnTestEventsSameTimestamp(t *testing.T, numEvents int) []*crawlermodel.
 			"CivilTCRContract",
 			common.HexToAddress(ContractAddress),
 			appEvent,
-			ctime.CurrentEpochSecsInInt64(),
+			ts,
 			crawlermodel.Watcher,
 		)
 		if err != nil {
