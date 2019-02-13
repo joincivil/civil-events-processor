@@ -41,6 +41,7 @@ const (
 	appealChallengeIDFieldName           = "AppealChallengeID"
 	appealOpenToChallengeExpiryFieldName = "AppealOpenToChallengeExpiry"
 	appealGrantedFieldName               = "AppealGranted"
+	appealGrantedURIFieldName            = "AppealGrantedStatementURI"
 
 	challengeIDResetValue = 0
 )
@@ -473,6 +474,12 @@ func (t *TcrEventProcessor) processTCRAppealGranted(event *crawlermodel.Event,
 		return err
 	}
 
+	payload := event.EventPayload()
+	appealGrantedURI, ok := payload["Data"]
+	if !ok {
+		return errors.New("No totalTokens found")
+	}
+
 	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)
 	if err != nil {
 		return fmt.Errorf("Error creating TCR contract: err: %v", err)
@@ -491,7 +498,9 @@ func (t *TcrEventProcessor) processTCRAppealGranted(event *crawlermodel.Event,
 
 	existingAppeal.SetAppealOpenToChallengeExpiry(appealOpenToChallengeExpiry)
 	existingAppeal.SetAppealGranted(appealGranted)
-	updatedFields := []string{appealOpenToChallengeExpiryFieldName, appealGrantedFieldName}
+	existingAppeal.SetAppealGrantedStatementURI(appealGrantedURI.(string))
+	updatedFields := []string{appealOpenToChallengeExpiryFieldName, appealGrantedFieldName,
+		appealGrantedURIFieldName}
 	err = t.appealPersister.UpdateAppeal(existingAppeal, updatedFields)
 	if err != nil {
 		return err
@@ -931,6 +940,7 @@ func (t *TcrEventProcessor) newAppealFromAppealRequested(event *crawlermodel.Eve
 	if err != nil {
 		return fmt.Errorf("Error calling function in TCR contract: err: %v", err)
 	}
+	appealGrantedURI := ""
 	appealPhaseExpiry := challengeRes.AppealPhaseExpiry
 	appealGranted := false
 	appeal := model.NewAppeal(
@@ -941,6 +951,7 @@ func (t *TcrEventProcessor) newAppealFromAppealRequested(event *crawlermodel.Eve
 		appealGranted,
 		statement.(string),
 		ctime.CurrentEpochSecsInInt64(),
+		appealGrantedURI,
 	)
 	// TODO(IS): Check if an appeal already exists. if it does, update data
 
@@ -1049,6 +1060,7 @@ func (t *TcrEventProcessor) persistNewAppealFromContract(tcrAddress common.Addre
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving appeals: err: %v", err)
 	}
+	appealGrantedURI := ""
 	appeal := model.NewAppeal(
 		challengeID,
 		appealRes.Requester,
@@ -1057,6 +1069,7 @@ func (t *TcrEventProcessor) persistNewAppealFromContract(tcrAddress common.Addre
 		appealRes.AppealGranted,
 		statement,
 		ctime.CurrentEpochSecsInInt64(),
+		appealGrantedURI,
 	)
 
 	if appealRes.AppealChallengeID.Uint64() != 0 {

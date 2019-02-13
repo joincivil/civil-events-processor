@@ -2,6 +2,7 @@
 
 // This is an integration test file for processorpubsub.go. Pubsub simulator needs to be running.
 // Run this using go test -tags=integration
+// TODO: fix this test. Getting panics sometimes
 package processormain_test
 
 import (
