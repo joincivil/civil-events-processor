@@ -43,5 +43,5 @@ required = ["github.com/99designs/gqlgen"]
   revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/ethereum/go-ethereum"
-  version = "1.8.15"
