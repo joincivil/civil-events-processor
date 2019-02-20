@@ -111,8 +111,8 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		if err != nil {
 			log.Errorf("Error processing plcr event: err: %v\n", err)
 		}
-
 	}
+	log.Info("Finished Processing")
 	return err
 }
 

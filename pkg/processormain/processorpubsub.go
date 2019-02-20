@@ -66,6 +66,7 @@ func isNewsroomException(crawlerMsg *crawlerps.CrawlerPubSubMessage) bool {
 // RunProcessorPubSub runs processor upon receiving messages from pubsub
 func RunProcessorPubSub(persisters *InitializedPersisters, ps *cpubsub.GooglePubSub,
 	proc *processor.EventProcessor, quit <-chan bool) {
+	log.Info("Start listening for messages")
 Loop:
 	for {
 		select {
@@ -85,11 +86,13 @@ Loop:
 			}
 			var retrieveCriteria *crawlermodel.RetrieveEventsCriteria
 			if isNewsroomException(messData) {
+				log.Infof("Received newsroom exception message with ID: %v from crawler", msg.ID)
 				retrieveCriteria = &crawlermodel.RetrieveEventsCriteria{
 					FromTs:          lastTs,
 					ContractAddress: messData.ContractAddress,
 				}
 			} else {
+				log.Infof("Received regular message with ID: %v from crawler", msg.ID)
 				lastHashes, cronTableErr := persisters.Cron.EventHashesOfLastTimestampForCron()
 				if cronTableErr != nil {
 					log.Errorf("Error getting event hashes for last timestamp seen in cron: %v", cronTableErr)
@@ -213,6 +216,5 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 	if len(events) > 0 {
 		RunProcessor(proc, persisters, events, lastTs)
 	}
-
 	RunProcessorPubSub(persisters, ps, proc, quitChan)
 }
