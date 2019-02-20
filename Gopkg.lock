@@ -231,7 +231,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dd6da7c2fc0129f4c1f7147f7b8b5ab715d559751aa78036a505eaed27cd8b63"
+  digest = "1:5f3f8ec4b4fd6bdb467c0759927f6e77b1723c2e59aadb58b5551b0f37b7b5d7"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -242,11 +242,11 @@
     "pkg/pubsub",
   ]
   pruneopts = "UT"
-  revision = "9169fdbb049082671d764248e732c973cbab60dd"
+  revision = "e623f98c4b170604edd64c40eef0a6b7884b83b7"
 
 [[projects]]
   branch = "master"
-  digest = "1:7bf11ec3f1ac175647a87b709713ecbc5c1fbdb230a9b24db3f6290f77158743"
+  digest = "1:c1b49a13cf385a9fad3ea83c69328628582fde5c5e445c501b05efca70e1ec99"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
@@ -262,7 +262,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "5e7a7ece289b75720891e4e7d94627129115cc77"
+  revision = "68ea090ad413b80e1ec8a91a7cf65c97fa3fab15"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
