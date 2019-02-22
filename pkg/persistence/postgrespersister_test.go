@@ -10,13 +10,14 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	mathrand "math/rand"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
@@ -81,6 +82,8 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreatePollTableQueryString(tableName)
 	case "appeal_test":
 		queryString = postgres.CreateAppealTableQueryString(tableName)
+	case "token_purchase_test":
+		queryString = postgres.CreateTokenPurchaseTableQueryString(tableName)
 	}
 
 	_, err = persister.db.Query(queryString)
@@ -107,6 +110,8 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 		_, err = persister.db.Query("DROP TABLE poll_test;")
 	case "appeal_test":
 		_, err = persister.db.Query("DROP TABLE appeal_test;")
+	case "token_purchase_test":
+		_, err = persister.db.Query("DROP TABLE token_purchase_test;")
 	}
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
@@ -116,7 +121,7 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 func checkTableExists(tableName string, persister *PostgresPersister) error {
 	var exists bool
 	queryString := fmt.Sprintf(`SELECT EXISTS ( SELECT 1
-        FROM   information_schema.tables 
+        FROM   information_schema.tables
         WHERE  table_schema = 'public'
         AND    table_name = '%s'
         );`, tableName)
@@ -2127,4 +2132,87 @@ func TestUpdateEventHashes(t *testing.T) {
 		t.Errorf("EventHashes should be %v but is %v", newEventHashes, eventHashes)
 	}
 
+}
+
+/*
+ * All tests for token purchase table:
+ */
+
+func setupSampleTokenPurchase() *model.TokenPurchase {
+	address1, _ := randomHex(32)
+	address2, _ := randomHex(32)
+	hex1, _ := randomHex(30)
+	hex2, _ := randomHex(30)
+	params := &model.TokenPurchaseParams{
+		PurchaserAddress: common.HexToAddress(address1),
+		SourceAddress:    common.HexToAddress(address2),
+		Amount:           big.NewInt(int64(mathrand.Intn(1000))),
+		PurchaseDate:     ctime.CurrentEpochSecsInInt64(),
+		BlockNumber:      uint64(mathrand.Intn(1000000)),
+		TxHash:           common.HexToHash(hex1),
+		TxIndex:          uint(mathrand.Intn(20)),
+		BlockHash:        common.HexToHash(hex2),
+		Index:            uint(mathrand.Intn(20)),
+	}
+	return model.NewTokenPurchase(params)
+}
+
+func setupTokenPurchaseTable(t *testing.T) *PostgresPersister {
+	persister, err := setupTestTable(tokenPurchaseTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	return persister
+}
+
+func createAndSaveTestTokenPurchase(t *testing.T, persister *PostgresPersister) *model.TokenPurchase {
+	tokenPurchase := setupSampleTokenPurchase()
+	err := persister.createTokenPurchaseInTable(tokenPurchase, tokenPurchaseTableName)
+	if err != nil {
+		t.Errorf("error saving token purchase: %v", err)
+	}
+	return tokenPurchase
+}
+
+func TestCreateTokenPurchase(t *testing.T) {
+	persister, err := setupTestTable(tokenPurchaseTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tokenPurchaseTableName)
+	_ = createAndSaveTestTokenPurchase(t, persister)
+}
+
+func TestGetTokenPurchasesForPurchaserAddress(t *testing.T) {
+	persister, err := setupTestTable(tokenPurchaseTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tokenPurchaseTableName)
+	tokenPurchase := createAndSaveTestTokenPurchase(t, persister)
+
+	purchases, err := persister.tokenPurchasesByPurchaserAddressFromTable(
+		tokenPurchase.PurchaserAddress(),
+		tokenPurchaseTableName,
+	)
+	if err != nil {
+		t.Errorf("Should have not gotten error from purchases query: err: %v", err)
+	}
+	if len(purchases) != 1 {
+		t.Errorf("Should have gotten 1 result for purchases")
+	}
+	purchase := purchases[0]
+
+	if purchase.PurchaserAddress().Hex() != tokenPurchase.PurchaserAddress().Hex() {
+		t.Errorf("Should have gotten the same purchase address")
+	}
+	if purchase.SourceAddress().Hex() != tokenPurchase.SourceAddress().Hex() {
+		t.Errorf("Should have gotten the same source address")
+	}
+	if purchase.Amount().Int64() != tokenPurchase.Amount().Int64() {
+		t.Errorf("Should have gotten the same amount")
+	}
+	if purchase.PurchaseDate() != tokenPurchase.PurchaseDate() {
+		t.Errorf("Should have gotten the purchase date")
+	}
 }
