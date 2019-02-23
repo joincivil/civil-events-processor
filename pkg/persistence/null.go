@@ -204,3 +204,13 @@ func (n *NullPersister) CreateAppeal(appeal *model.Appeal) error {
 func (n *NullPersister) UpdateAppeal(appeal *model.Appeal, updatedFields []string) error {
 	return nil
 }
+
+// TokenPurchasesByPurchaserAddress gets a list of token purchases by purchaser address
+func (n *NullPersister) TokenPurchasesByPurchaserAddress(addr common.Address) ([]*model.TokenPurchase, error) {
+	return []*model.TokenPurchase{}, nil
+}
+
+// CreateTokenPurchase creates an token purchase
+func (n *NullPersister) CreateTokenPurchase(appeal *model.TokenPurchase) error {
+	return nil
+}

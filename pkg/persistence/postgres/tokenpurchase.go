@@ -64,7 +64,7 @@ type TokenPurchase struct {
 
 	SourceAddress string `db:"source_address"`
 
-	Amount float64 `db:"amount"` // Amount in token, not gwei
+	Amount float64 `db:"amount"` // Amount in gwei, not token
 
 	PurchaseDate int64 `db:"purchase_date"`
 

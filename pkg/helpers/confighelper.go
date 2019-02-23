@@ -106,6 +106,16 @@ func PollPersister(config cconfig.PersisterConfig) (model.PollPersister, error) 
 	return p.(model.PollPersister), nil
 }
 
+// TokenPurchasePersister is a helper function to return the token purchase persister based on
+// the given configuration
+func TokenPurchasePersister(config cconfig.PersisterConfig) (model.TokenPurchasePersister, error) {
+	p, err := persister(config)
+	if err != nil {
+		return nil, err
+	}
+	return p.(model.TokenPurchasePersister), nil
+}
+
 func persister(config cconfig.PersisterConfig) (interface{}, error) {
 	if config.PersistType() == cconfig.PersisterTypePostgresql {
 		return postgresPersister(config)

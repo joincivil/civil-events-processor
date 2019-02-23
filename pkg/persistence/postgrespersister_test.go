@@ -7,8 +7,6 @@ package persistence
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	mathrand "math/rand"
@@ -23,6 +21,7 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 
 	cpersist "github.com/joincivil/go-common/pkg/persistence"
+	cstrings "github.com/joincivil/go-common/pkg/strings"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
@@ -39,15 +38,6 @@ const (
 
 	testAddress = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 )
-
-// randomHex generates a random hex string
-func randomHex(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
 
 func setupDBConnection() (*PostgresPersister, error) {
 	postgresPersister, err := NewPostgresPersister(postgresHost, postgresPort, postgresUser, postgresPswd, postgresDBName)
@@ -188,9 +178,9 @@ Helpers for listing table tests:
 */
 
 func setupSampleListing() (*model.Listing, common.Address) {
-	address1, _ := randomHex(32)
-	address2, _ := randomHex(32)
-	address3, _ := randomHex(32)
+	address1, _ := cstrings.RandomHexStr(32)
+	address2, _ := cstrings.RandomHexStr(32)
+	address3, _ := cstrings.RandomHexStr(32)
 	contractAddress := common.HexToAddress(address1)
 	ownerAddr := common.HexToAddress(address2)
 	ownerAddresses := []common.Address{common.HexToAddress(address2), common.HexToAddress(address3)}
@@ -200,10 +190,10 @@ func setupSampleListing() (*model.Listing, common.Address) {
 	unstakedDeposit.SetString("100000000000000000000", 10)
 	challengeID := big.NewInt(10)
 
-	signature, _ := randomHex(32)
-	authorAddr, _ := randomHex(32)
+	signature, _ := cstrings.RandomHexStr(32)
+	authorAddr, _ := cstrings.RandomHexStr(32)
 
-	contentHashHex, _ := randomHex(32)
+	contentHashHex, _ := cstrings.RandomHexStr(32)
 	contentHashBytes := []byte(contentHashHex)
 	fixedContentHash := [32]byte{}
 	copy(fixedContentHash[:], contentHashBytes)
@@ -240,9 +230,9 @@ func setupSampleListing() (*model.Listing, common.Address) {
 }
 
 func setupSampleListingUnchallenged() (*model.Listing, common.Address) {
-	address1, _ := randomHex(32)
-	address2, _ := randomHex(32)
-	address3, _ := randomHex(32)
+	address1, _ := cstrings.RandomHexStr(32)
+	address2, _ := cstrings.RandomHexStr(32)
+	address3, _ := cstrings.RandomHexStr(32)
 	contractAddress := common.HexToAddress(address1)
 	ownerAddr := common.HexToAddress(address2)
 	ownerAddresses := []common.Address{common.HexToAddress(address2), common.HexToAddress(address3)}
@@ -251,10 +241,10 @@ func setupSampleListingUnchallenged() (*model.Listing, common.Address) {
 	unstakedDeposit := new(big.Int)
 	unstakedDeposit.SetString("100000000000000000000", 10)
 
-	signature, _ := randomHex(32)
-	authorAddr, _ := randomHex(32)
+	signature, _ := cstrings.RandomHexStr(32)
+	authorAddr, _ := cstrings.RandomHexStr(32)
 
-	contentHashHex, _ := randomHex(32)
+	contentHashHex, _ := cstrings.RandomHexStr(32)
 	contentHashBytes := []byte(contentHashHex)
 	fixedContentHash := [32]byte{}
 	copy(fixedContentHash[:], contentHashBytes)
@@ -614,8 +604,8 @@ func TestNilResultsListing(t *testing.T) {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
 	defer deleteTestTable(t, persister, tableName)
-	randHex, _ := randomHex(32)
-	randHex2, _ := randomHex(32)
+	randHex, _ := cstrings.RandomHexStr(32)
+	randHex2, _ := cstrings.RandomHexStr(32)
 	testAddress1 := common.HexToAddress(randHex)
 	testAddress2 := common.HexToAddress(randHex2)
 
@@ -909,15 +899,15 @@ Helpers for content_revision table tests:
 */
 
 func setupRandomSampleContentRevision() (*model.ContentRevision, common.Address, *big.Int, *big.Int) {
-	address, _ := randomHex(32)
+	address, _ := cstrings.RandomHexStr(32)
 	listingAddr := common.HexToAddress(address)
 	contractContentID := big.NewInt(mathrand.Int63())
 	return setupSampleContentRevision(listingAddr, contractContentID)
 }
 
 func setupSampleContentRevision(listingAddr common.Address, contractContentID *big.Int) (*model.ContentRevision, common.Address, *big.Int, *big.Int) {
-	address2, _ := randomHex(32)
-	address3, _ := randomHex(32)
+	address2, _ := cstrings.RandomHexStr(32)
+	address3, _ := cstrings.RandomHexStr(32)
 	payload := model.ArticlePayload{}
 	payloadHash := address2
 	editorAddress := common.HexToAddress(address3)
@@ -930,7 +920,7 @@ func setupSampleContentRevision(listingAddr common.Address, contractContentID *b
 }
 
 func setupSampleContentRevisionsSameAddressContentID(numRevisions int) ([]*model.ContentRevision, common.Address, *big.Int, []*big.Int) {
-	address, _ := randomHex(32)
+	address, _ := cstrings.RandomHexStr(32)
 	listingAddr := common.HexToAddress(address)
 	contractContentID := big.NewInt(mathrand.Int63())
 	testContentRevisions := make([]*model.ContentRevision, numRevisions)
@@ -1080,7 +1070,7 @@ func TestNilResultsContentRevision(t *testing.T) {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
 	defer deleteTestTable(t, persister, contRevTableName)
-	address1, _ := randomHex(32)
+	address1, _ := cstrings.RandomHexStr(32)
 	contractAddress := common.HexToAddress(address1)
 	contentID := big.NewInt(0)
 	revisionID := big.NewInt(0)
@@ -1147,7 +1137,7 @@ Helpers for governance_event table tests:
 func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, common.Address, string, common.Hash) {
 	var listingAddr common.Address
 	if randListing {
-		address1, _ := randomHex(32)
+		address1, _ := cstrings.RandomHexStr(32)
 		listingAddr = common.HexToAddress(address1)
 	} else {
 		// keep listingAddress constant
@@ -1158,9 +1148,9 @@ func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, commo
 	governanceEventType := "governanceeventtypehere"
 	creationDateTs := ctime.CurrentEpochSecsInInt64()
 	lastUpdatedDateTs := ctime.CurrentEpochSecsInInt64() + 1
-	eventHash, _ := randomHex(5)
+	eventHash, _ := cstrings.RandomHexStr(5)
 	blockNumber := uint64(88888)
-	tHash, _ := randomHex(5)
+	tHash, _ := cstrings.RandomHexStr(5)
 	txHash := common.HexToHash(tHash)
 	txIndex := uint(4)
 	blockHash := common.Hash{}
@@ -1215,7 +1205,7 @@ func TestCreateGovernanceEvent(t *testing.T) {
 func TestNilResultsGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
 	defer deleteTestTable(t, persister, govTestTableName)
-	txHashSample, _ := randomHex(30)
+	txHashSample, _ := cstrings.RandomHexStr(30)
 	txHash := common.HexToHash(txHashSample)
 	govEvent, err := persister.governanceEventsByTxHashFromTable(txHash, govTestTableName)
 	if err != nil {
@@ -1413,7 +1403,7 @@ func TestGovEventsByTxHash(t *testing.T) {
 func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEvent, int) {
 	var listingAddr common.Address
 	if randListing {
-		address1, _ := randomHex(32)
+		address1, _ := cstrings.RandomHexStr(32)
 		listingAddr = common.HexToAddress(address1)
 	} else {
 		// keep listingAddress constant
@@ -1430,9 +1420,9 @@ func setupSampleGovernanceChallengeEvent(randListing bool) (*model.GovernanceEve
 	governanceEventType := "Challenge"
 	creationDateTs := ctime.CurrentEpochSecsInInt64()
 	lastUpdatedDateTs := ctime.CurrentEpochSecsInInt64() + 1
-	eventHash, _ := randomHex(5)
+	eventHash, _ := cstrings.RandomHexStr(5)
 	blockNumber := uint64(88888)
-	tHash, _ := randomHex(5)
+	tHash, _ := cstrings.RandomHexStr(5)
 	txHash := common.HexToHash(tHash)
 	txIndex := uint(4)
 	blockHash := common.Hash{}
@@ -1460,7 +1450,7 @@ func setupChallengeByChallengeID(challengeIDInt int, resolved bool) *model.Chall
 	listingAddr := common.HexToAddress(testAddress)
 	challengeID := big.NewInt(int64(challengeIDInt))
 	statement := ""
-	address2, _ := randomHex(32)
+	address2, _ := cstrings.RandomHexStr(32)
 	challenger := common.HexToAddress(address2)
 	stake := new(big.Int)
 	stake.SetString("100000000000000000000", 10)
@@ -1476,9 +1466,9 @@ func setupChallengeByChallengeID(challengeIDInt int, resolved bool) *model.Chall
 
 func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 	var listingAddr common.Address
-	address2, _ := randomHex(32)
+	address2, _ := cstrings.RandomHexStr(32)
 	if randListing {
-		address1, _ := randomHex(32)
+		address1, _ := cstrings.RandomHexStr(32)
 		listingAddr = common.HexToAddress(address1)
 	} else {
 		// keep listingAddress constant
@@ -1904,7 +1894,7 @@ All tests for appeal table:
 
 func setupSampleAppeal(randListing bool) (*model.Appeal, *big.Int) {
 	originalChallengeID := big.NewInt(23)
-	address2, _ := randomHex(32)
+	address2, _ := cstrings.RandomHexStr(32)
 	return model.NewAppeal(
 		originalChallengeID,
 		common.HexToAddress(address2),
@@ -2139,10 +2129,10 @@ func TestUpdateEventHashes(t *testing.T) {
  */
 
 func setupSampleTokenPurchase() *model.TokenPurchase {
-	address1, _ := randomHex(32)
-	address2, _ := randomHex(32)
-	hex1, _ := randomHex(30)
-	hex2, _ := randomHex(30)
+	address1, _ := cstrings.RandomHexStr(32)
+	address2, _ := cstrings.RandomHexStr(32)
+	hex1, _ := cstrings.RandomHexStr(30)
+	hex2, _ := cstrings.RandomHexStr(30)
 	params := &model.TokenPurchaseParams{
 		PurchaserAddress: common.HexToAddress(address1),
 		SourceAddress:    common.HexToAddress(address2),

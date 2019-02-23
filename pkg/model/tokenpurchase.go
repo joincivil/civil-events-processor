@@ -44,7 +44,7 @@ type TokenPurchase struct {
 	// wallet from which the tokens were transferred from (civil wallet)
 	sourceAddress common.Address
 
-	// amount in tokens, not gwei
+	// amount in gwei, not tokens
 	amount *big.Int
 
 	purchaseDate int64
@@ -63,9 +63,14 @@ func (t *TokenPurchase) SourceAddress() common.Address {
 }
 
 // Amount is the amount of token purchased
-// Is in number of token, not in gwei
+// Is in number of gwei, not in token
 func (t *TokenPurchase) Amount() *big.Int {
 	return t.amount
+}
+
+// AmountInToken is the amount in tokens
+func (t *TokenPurchase) AmountInToken() *big.Int {
+	return t.amount.Quo(t.amount, big.NewInt(1e18))
 }
 
 // PurchaseDate is the purchase date
@@ -78,4 +83,21 @@ func (t *TokenPurchase) PurchaseDate() int64 {
 // NOTE: This is not secured by consensus
 func (t *TokenPurchase) BlockData() BlockData {
 	return t.blockData
+}
+
+// Equals compares this token purchase structs with another for equality
+func (t *TokenPurchase) Equals(purchase *TokenPurchase) bool {
+	if t.purchaserAddress.Hex() == purchase.PurchaserAddress().Hex() {
+		return false
+	}
+	if t.sourceAddress.Hex() == purchase.SourceAddress().Hex() {
+		return false
+	}
+	if t.amount.Int64() != purchase.Amount().Int64() {
+		return false
+	}
+	if t.purchaseDate != purchase.PurchaseDate() {
+		return false
+	}
+	return true
 }

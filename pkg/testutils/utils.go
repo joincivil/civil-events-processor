@@ -17,14 +17,15 @@ const (
 
 //TestPersister is a test persister
 type TestPersister struct {
-	Listings    map[string]*model.Listing
-	Revisions   map[string][]*model.ContentRevision
-	GovEvents   map[string][]*model.GovernanceEvent
-	Challenges  map[int]*model.Challenge
-	Appeals     map[int]*model.Appeal
-	Polls       map[int]*model.Poll
-	Timestamp   int64
-	EventHashes []string
+	Listings       map[string]*model.Listing
+	Revisions      map[string][]*model.ContentRevision
+	GovEvents      map[string][]*model.GovernanceEvent
+	Challenges     map[int]*model.Challenge
+	Appeals        map[int]*model.Appeal
+	Polls          map[int]*model.Poll
+	TokenPurchases map[string][]*model.TokenPurchase
+	Timestamp      int64
+	EventHashes    []string
 }
 
 func indexAddressInSlice(slice []common.Address, target common.Address) int {
@@ -454,6 +455,31 @@ func (t *TestPersister) EventHashesOfLastTimestampForCron() ([]string, error) {
 // UpdateEventHashesForCron updates the eventHashes saved in cron table
 func (t *TestPersister) UpdateEventHashesForCron(eventHashes []string) error {
 	t.EventHashes = eventHashes
+	return nil
+}
+
+// TokenPurchasesByPurchaserAddress gets a list of token purchases by purchaser address
+func (t *TestPersister) TokenPurchasesByPurchaserAddress(addr common.Address) (
+	[]*model.TokenPurchase, error) {
+	purchases, ok := t.TokenPurchases[addr.Hex()]
+	if !ok {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	return purchases, nil
+}
+
+// CreateTokenPurchase creates a new token purchase
+func (t *TestPersister) CreateTokenPurchase(purchase *model.TokenPurchase) error {
+	addr := purchase.PurchaserAddress().Hex()
+	if t.TokenPurchases == nil {
+		t.TokenPurchases = map[string][]*model.TokenPurchase{}
+	}
+	purchases, ok := t.TokenPurchases[addr]
+	if !ok {
+		t.TokenPurchases[addr] = []*model.TokenPurchase{purchase}
+	} else {
+		t.TokenPurchases[addr] = append(purchases, purchase)
+	}
 	return nil
 }
 
