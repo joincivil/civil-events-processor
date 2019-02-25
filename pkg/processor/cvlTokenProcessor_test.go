@@ -31,7 +31,7 @@ func setupCvlTokenEventProcessor(t *testing.T) (*contractutils.AllTestContracts,
 	return contracts, persister, proc
 }
 
-func createAndProcCvlTokenPurchaseEvent(t *testing.T, contracts *contractutils.AllTestContracts,
+func createAndProcCvlTokenTransferEvent(t *testing.T, contracts *contractutils.AllTestContracts,
 	proc *processor.CvlTokenEventProcessor) *crawlermodel.Event {
 	tokens := big.NewInt(int64(1000))
 	// In gwei
@@ -73,14 +73,14 @@ func createAndProcCvlTokenPurchaseEvent(t *testing.T, contracts *contractutils.A
 }
 func TestProcessTransfer(t *testing.T) {
 	contracts, persister, proc := setupCvlTokenEventProcessor(t)
-	event := createAndProcCvlTokenPurchaseEvent(t, contracts, proc)
+	event := createAndProcCvlTokenTransferEvent(t, contracts, proc)
 
 	eventPayload := event.EventPayload()
 	toAddr, ok := eventPayload["To"]
 	if !ok {
 		t.Fatalf("Should have added to address")
 	}
-	purchases, err := persister.TokenPurchasesByPurchaserAddress(toAddr.(common.Address))
+	purchases, err := persister.TokenTransfersByToAddress(toAddr.(common.Address))
 	if err != nil {
 		t.Fatalf("Should have not gotten error when retrieving purchases")
 	}
@@ -95,11 +95,11 @@ func TestProcessTransfer(t *testing.T) {
 		t.Fatalf("Should have added value")
 	}
 
-	if purchase.PurchaserAddress().Hex() != toAddr.(common.Address).Hex() {
-		t.Errorf("PurchaserAddress should have been the same")
+	if purchase.ToAddress().Hex() != toAddr.(common.Address).Hex() {
+		t.Errorf("ToAddress should have been the same")
 	}
-	if purchase.SourceAddress().Hex() != fromAddr.(common.Address).Hex() {
-		t.Errorf("SourceAddress should have been the same")
+	if purchase.FromAddress().Hex() != fromAddr.(common.Address).Hex() {
+		t.Errorf("FromAddress should have been the same")
 	}
 	if purchase.Amount() != value.(*big.Int) {
 		t.Errorf("Purchase amoutn should have been the same")

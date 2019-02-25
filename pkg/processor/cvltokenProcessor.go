@@ -19,10 +19,10 @@ import (
 
 // NewCvlTokenEventProcessor is a convenience function to init an Event processor
 func NewCvlTokenEventProcessor(client bind.ContractBackend,
-	purchasePersister model.TokenPurchasePersister) *CvlTokenEventProcessor {
+	transferPersister model.TokenTransferPersister) *CvlTokenEventProcessor {
 	return &CvlTokenEventProcessor{
 		client:            client,
-		purchasePersister: purchasePersister,
+		transferPersister: transferPersister,
 	}
 }
 
@@ -30,7 +30,7 @@ func NewCvlTokenEventProcessor(client bind.ContractBackend,
 // for use via the API.
 type CvlTokenEventProcessor struct {
 	client            bind.ContractBackend
-	purchasePersister model.TokenPurchasePersister
+	transferPersister model.TokenTransferPersister
 }
 
 // Process processes Newsroom Events into aggregated data
@@ -43,7 +43,7 @@ func (c *CvlTokenEventProcessor) Process(event *crawlermodel.Event) (bool, error
 	ran := true
 	eventName := strings.Trim(event.EventType(), " _")
 
-	// Handling all the actionable events from Newsroom Addressses
+	// Handling all the actionable events from the cvl token addressses
 	switch eventName {
 	// When a token transfer has occurred
 	case "Transfer":
@@ -65,11 +65,11 @@ func (c *CvlTokenEventProcessor) isValidCvlTokenEventName(name string) bool {
 func (c *CvlTokenEventProcessor) processCvlTokenTransfer(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 
-	purchaserAddress, ok := payload["To"]
+	toAddress, ok := payload["To"]
 	if !ok {
 		return fmt.Errorf("No purchaser address found")
 	}
-	sourceAddress, ok := payload["From"]
+	fromAddress, ok := payload["From"]
 	if !ok {
 		return fmt.Errorf("No source address found")
 	}
@@ -77,43 +77,43 @@ func (c *CvlTokenEventProcessor) processCvlTokenTransfer(event *crawlermodel.Eve
 	if !ok {
 		return fmt.Errorf("No amount found")
 	}
-	purchaseDate := event.Timestamp()
+	transferDate := event.Timestamp()
 
-	paddr := purchaserAddress.(common.Address)
-	caddr := sourceAddress.(common.Address)
+	paddr := toAddress.(common.Address)
+	caddr := fromAddress.(common.Address)
 
-	params := &model.TokenPurchaseParams{
-		PurchaserAddress: paddr,
-		SourceAddress:    caddr,
-		Amount:           amount.(*big.Int),
-		PurchaseDate:     purchaseDate,
-		BlockNumber:      event.BlockNumber(),
-		TxHash:           event.TxHash(),
-		TxIndex:          event.TxIndex(),
-		BlockHash:        event.BlockHash(),
-		Index:            event.LogIndex(),
+	params := &model.TokenTransferParams{
+		ToAddress:    paddr,
+		FromAddress:  caddr,
+		Amount:       amount.(*big.Int),
+		TransferDate: transferDate,
+		BlockNumber:  event.BlockNumber(),
+		TxHash:       event.TxHash(),
+		TxIndex:      event.TxIndex(),
+		BlockHash:    event.BlockHash(),
+		Index:        event.LogIndex(),
 	}
-	newPurchase := model.NewTokenPurchase(params)
+	newPurchase := model.NewTokenTransfer(params)
 
-	purchases, err := c.purchasePersister.TokenPurchasesByPurchaserAddress(paddr)
+	purchases, err := c.transferPersister.TokenTransfersByToAddress(paddr)
 	if err != nil {
 		if err != cpersist.ErrPersisterNoResults {
-			return fmt.Errorf("Error retrieving token purchase: err: %v", err)
+			return fmt.Errorf("Error retrieving token transfer: err: %v", err)
 		}
 	}
 	if len(purchases) > 0 {
 		for _, purchase := range purchases {
 			if purchase.Equals(newPurchase) {
 				return fmt.Errorf(
-					"Token purchase already exists: %v, %v, %v, %v",
-					purchase.PurchaserAddress().Hex(),
-					purchase.SourceAddress().Hex(),
+					"Token transfer already exists: %v, %v, %v, %v",
+					purchase.ToAddress().Hex(),
+					purchase.FromAddress().Hex(),
 					purchase.Amount().Int64(),
-					purchase.PurchaseDate(),
+					purchase.TransferDate(),
 				)
 			}
 		}
 	}
 
-	return c.purchasePersister.CreateTokenPurchase(newPurchase)
+	return c.transferPersister.CreateTokenTransfer(newPurchase)
 }

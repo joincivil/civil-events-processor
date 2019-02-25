@@ -159,10 +159,10 @@ type AppealPersister interface {
 	UpdateAppeal(appeal *Appeal, updatedFields []string) error
 }
 
-// TokenPurchasePersister is the persister interface to store TokenPurchase
-type TokenPurchasePersister interface {
-	// TokenPurchasesByPurchaserAddress gets a list of token purchases by purchaser address
-	TokenPurchasesByPurchaserAddress(addr common.Address) ([]*TokenPurchase, error)
-	// CreateTokenPurchase creates a new token purchase
-	CreateTokenPurchase(purchase *TokenPurchase) error
+// TokenTransferPersister is the persister interface to store TokenTransfer
+type TokenTransferPersister interface {
+	// TokenTransfersByToAddress gets a list of token transfers by purchaser address
+	TokenTransfersByToAddress(addr common.Address) ([]*TokenTransfer, error)
+	// CreateTokenTransfer creates a new token transfer
+	CreateTokenTransfer(purchase *TokenTransfer) error
 }

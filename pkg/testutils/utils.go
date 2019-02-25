@@ -23,7 +23,7 @@ type TestPersister struct {
 	Challenges     map[int]*model.Challenge
 	Appeals        map[int]*model.Appeal
 	Polls          map[int]*model.Poll
-	TokenPurchases map[string][]*model.TokenPurchase
+	TokenTransfers map[string][]*model.TokenTransfer
 	Timestamp      int64
 	EventHashes    []string
 }
@@ -458,27 +458,27 @@ func (t *TestPersister) UpdateEventHashesForCron(eventHashes []string) error {
 	return nil
 }
 
-// TokenPurchasesByPurchaserAddress gets a list of token purchases by purchaser address
-func (t *TestPersister) TokenPurchasesByPurchaserAddress(addr common.Address) (
-	[]*model.TokenPurchase, error) {
-	purchases, ok := t.TokenPurchases[addr.Hex()]
+// TokenTransfersByToAddress gets a list of token transfers by purchaser address
+func (t *TestPersister) TokenTransfersByToAddress(addr common.Address) (
+	[]*model.TokenTransfer, error) {
+	purchases, ok := t.TokenTransfers[addr.Hex()]
 	if !ok {
 		return nil, cpersist.ErrPersisterNoResults
 	}
 	return purchases, nil
 }
 
-// CreateTokenPurchase creates a new token purchase
-func (t *TestPersister) CreateTokenPurchase(purchase *model.TokenPurchase) error {
-	addr := purchase.PurchaserAddress().Hex()
-	if t.TokenPurchases == nil {
-		t.TokenPurchases = map[string][]*model.TokenPurchase{}
+// CreateTokenTransfer creates a new token transfer
+func (t *TestPersister) CreateTokenTransfer(purchase *model.TokenTransfer) error {
+	addr := purchase.ToAddress().Hex()
+	if t.TokenTransfers == nil {
+		t.TokenTransfers = map[string][]*model.TokenTransfer{}
 	}
-	purchases, ok := t.TokenPurchases[addr]
+	purchases, ok := t.TokenTransfers[addr]
 	if !ok {
-		t.TokenPurchases[addr] = []*model.TokenPurchase{purchase}
+		t.TokenTransfers[addr] = []*model.TokenTransfer{purchase}
 	} else {
-		t.TokenPurchases[addr] = append(purchases, purchase)
+		t.TokenTransfers[addr] = append(purchases, purchase)
 	}
 	return nil
 }

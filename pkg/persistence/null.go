@@ -205,12 +205,12 @@ func (n *NullPersister) UpdateAppeal(appeal *model.Appeal, updatedFields []strin
 	return nil
 }
 
-// TokenPurchasesByPurchaserAddress gets a list of token purchases by purchaser address
-func (n *NullPersister) TokenPurchasesByPurchaserAddress(addr common.Address) ([]*model.TokenPurchase, error) {
-	return []*model.TokenPurchase{}, nil
+// TokenTransfersByToAddress gets a list of token transfers by purchaser address
+func (n *NullPersister) TokenTransfersByToAddress(addr common.Address) ([]*model.TokenTransfer, error) {
+	return []*model.TokenTransfer{}, nil
 }
 
-// CreateTokenPurchase creates an token purchase
-func (n *NullPersister) CreateTokenPurchase(appeal *model.TokenPurchase) error {
+// CreateTokenTransfer creates an token transfer
+func (n *NullPersister) CreateTokenTransfer(appeal *model.TokenTransfer) error {
 	return nil
 }

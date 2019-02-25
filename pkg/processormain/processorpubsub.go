@@ -192,7 +192,7 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		ChallengePersister:     persisters.Challenge,
 		PollPersister:          persisters.Poll,
 		AppealPersister:        persisters.Appeal,
-		TokenPurchasePersister: persisters.TokenPurchase,
+		TokenTransferPersister: persisters.TokenTransfer,
 		ContentScraper:         helpers.ContentScraper(config),
 		MetadataScraper:        helpers.MetadataScraper(config),
 		CivilMetadataScraper:   helpers.CivilMetadataScraper(config),

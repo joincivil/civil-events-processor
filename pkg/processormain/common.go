@@ -71,7 +71,7 @@ type InitializedPersisters struct {
 	Challenge       model.ChallengePersister
 	Poll            model.PollPersister
 	Appeal          model.AppealPersister
-	TokenPurchase   model.TokenPurchasePersister
+	TokenTransfer   model.TokenTransferPersister
 }
 
 // InitPersisters inits the persisters from the config file
@@ -116,9 +116,9 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		log.Errorf("Error w AppealPersister: err: %v", err)
 		return nil, err
 	}
-	purchasePersister, err := helpers.TokenPurchasePersister(config)
+	transferPersister, err := helpers.TokenTransferPersister(config)
 	if err != nil {
-		log.Errorf("Error w PurchasePersister: err: %v", err)
+		log.Errorf("Error w transferPersister: err: %v", err)
 		return nil, err
 	}
 	return &InitializedPersisters{
@@ -130,7 +130,7 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		Challenge:       challengePersister,
 		Poll:            pollPersister,
 		Appeal:          appealPersister,
-		TokenPurchase:   purchasePersister,
+		TokenTransfer:   transferPersister,
 	}, nil
 }
 

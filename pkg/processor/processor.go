@@ -42,7 +42,7 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 	)
 	cvlTokenProcessor := NewCvlTokenEventProcessor(
 		params.Client,
-		params.TokenPurchasePersister,
+		params.TokenTransferPersister,
 	)
 	return &EventProcessor{
 		tcrEventProcessor:      tcrEventProcessor,
@@ -63,7 +63,7 @@ type NewEventProcessorParams struct {
 	ChallengePersister     model.ChallengePersister
 	PollPersister          model.PollPersister
 	AppealPersister        model.AppealPersister
-	TokenPurchasePersister model.TokenPurchasePersister
+	TokenTransferPersister model.TokenTransferPersister
 	ContentScraper         model.ContentScraper
 	MetadataScraper        model.MetadataScraper
 	CivilMetadataScraper   model.CivilMetadataScraper
@@ -123,7 +123,7 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		}
 		_, err = e.cvlTokenProcessor.Process(event)
 		if err != nil {
-			log.Errorf("Error processing token purchase event: err: %v\n", err)
+			log.Errorf("Error processing token transfer event: err: %v\n", err)
 		}
 
 	}

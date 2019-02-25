@@ -28,7 +28,7 @@ func testChallengePersister(p model.ChallengePersister) {
 func testAppealPersister(p model.AppealPersister) {
 }
 
-func testTokenPurchasePersister(p model.TokenPurchasePersister) {
+func testTokenTransferPersister(p model.TokenTransferPersister) {
 }
 
 func TestNullInterface(t *testing.T) {
@@ -41,5 +41,5 @@ func TestNullInterface(t *testing.T) {
 	testPollPersister(p)
 	testChallengePersister(p)
 	testAppealPersister(p)
-	testTokenPurchasePersister(p)
+	testTokenTransferPersister(p)
 }

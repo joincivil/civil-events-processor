@@ -26,15 +26,16 @@ import (
 )
 
 const (
-	postgresPort           = 5432
-	postgresDBName         = "civil_crawler"
-	postgresUser           = "docker"
-	postgresPswd           = "docker"
-	postgresHost           = "localhost"
-	govTestTableName       = "governance_event_test"
-	challengeTestTableName = "challenge_test"
-	pollTestTableName      = "poll_test"
-	appealTestTableName    = "appeal_test"
+	postgresPort               = 5432
+	postgresDBName             = "civil_crawler"
+	postgresUser               = "docker"
+	postgresPswd               = "docker"
+	postgresHost               = "localhost"
+	govTestTableName           = "governance_event_test"
+	challengeTestTableName     = "challenge_test"
+	pollTestTableName          = "poll_test"
+	appealTestTableName        = "appeal_test"
+	tokenTransferTestTableName = "token_transfer_test"
 
 	testAddress = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 )
@@ -72,8 +73,8 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreatePollTableQueryString(tableName)
 	case "appeal_test":
 		queryString = postgres.CreateAppealTableQueryString(tableName)
-	case "token_purchase_test":
-		queryString = postgres.CreateTokenPurchaseTableQueryString(tableName)
+	case "token_transfer_test":
+		queryString = postgres.CreateTokenTransferTableQueryString(tableName)
 	}
 
 	_, err = persister.db.Query(queryString)
@@ -100,8 +101,8 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 		_, err = persister.db.Query("DROP TABLE poll_test;")
 	case "appeal_test":
 		_, err = persister.db.Query("DROP TABLE appeal_test;")
-	case "token_purchase_test":
-		_, err = persister.db.Query("DROP TABLE token_purchase_test;")
+	case "token_transfer_test":
+		_, err = persister.db.Query("DROP TABLE token_transfer_test;")
 	}
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
@@ -2125,84 +2126,84 @@ func TestUpdateEventHashes(t *testing.T) {
 }
 
 /*
- * All tests for token purchase table:
+ * All tests for token transfer table:
  */
 
-func setupSampleTokenPurchase() *model.TokenPurchase {
+func setupSampleTokenTransfer() *model.TokenTransfer {
 	address1, _ := cstrings.RandomHexStr(32)
 	address2, _ := cstrings.RandomHexStr(32)
 	hex1, _ := cstrings.RandomHexStr(30)
 	hex2, _ := cstrings.RandomHexStr(30)
-	params := &model.TokenPurchaseParams{
-		PurchaserAddress: common.HexToAddress(address1),
-		SourceAddress:    common.HexToAddress(address2),
-		Amount:           big.NewInt(int64(mathrand.Intn(1000))),
-		PurchaseDate:     ctime.CurrentEpochSecsInInt64(),
-		BlockNumber:      uint64(mathrand.Intn(1000000)),
-		TxHash:           common.HexToHash(hex1),
-		TxIndex:          uint(mathrand.Intn(20)),
-		BlockHash:        common.HexToHash(hex2),
-		Index:            uint(mathrand.Intn(20)),
+	params := &model.TokenTransferParams{
+		ToAddress:    common.HexToAddress(address1),
+		FromAddress:  common.HexToAddress(address2),
+		Amount:       big.NewInt(int64(mathrand.Intn(1000))),
+		TransferDate: ctime.CurrentEpochSecsInInt64(),
+		BlockNumber:  uint64(mathrand.Intn(1000000)),
+		TxHash:       common.HexToHash(hex1),
+		TxIndex:      uint(mathrand.Intn(20)),
+		BlockHash:    common.HexToHash(hex2),
+		Index:        uint(mathrand.Intn(20)),
 	}
-	return model.NewTokenPurchase(params)
+	return model.NewTokenTransfer(params)
 }
 
-func setupTokenPurchaseTable(t *testing.T) *PostgresPersister {
-	persister, err := setupTestTable(tokenPurchaseTableName)
+func setupTokenTransferTable(t *testing.T) *PostgresPersister {
+	persister, err := setupTestTable(tokenTransferTestTableName)
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
 	return persister
 }
 
-func createAndSaveTestTokenPurchase(t *testing.T, persister *PostgresPersister) *model.TokenPurchase {
-	tokenPurchase := setupSampleTokenPurchase()
-	err := persister.createTokenPurchaseInTable(tokenPurchase, tokenPurchaseTableName)
+func createAndSaveTestTokenTransfer(t *testing.T, persister *PostgresPersister) *model.TokenTransfer {
+	transfer := setupSampleTokenTransfer()
+	err := persister.createTokenTransferInTable(transfer, tokenTransferTestTableName)
 	if err != nil {
-		t.Errorf("error saving token purchase: %v", err)
+		t.Errorf("error saving token transfer: %v", err)
 	}
-	return tokenPurchase
+	return transfer
 }
 
-func TestCreateTokenPurchase(t *testing.T) {
-	persister, err := setupTestTable(tokenPurchaseTableName)
+func TestCreateTokenTransfer(t *testing.T) {
+	persister, err := setupTestTable(tokenTransferTestTableName)
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(t, persister, tokenPurchaseTableName)
-	_ = createAndSaveTestTokenPurchase(t, persister)
+	defer deleteTestTable(t, persister, tokenTransferTestTableName)
+	_ = createAndSaveTestTokenTransfer(t, persister)
 }
 
-func TestGetTokenPurchasesForPurchaserAddress(t *testing.T) {
-	persister, err := setupTestTable(tokenPurchaseTableName)
+func TestGetTokenTransfersForToAddress(t *testing.T) {
+	persister, err := setupTestTable(tokenTransferTestTableName)
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(t, persister, tokenPurchaseTableName)
-	tokenPurchase := createAndSaveTestTokenPurchase(t, persister)
+	defer deleteTestTable(t, persister, tokenTransferTestTableName)
+	transfer := createAndSaveTestTokenTransfer(t, persister)
 
-	purchases, err := persister.tokenPurchasesByPurchaserAddressFromTable(
-		tokenPurchase.PurchaserAddress(),
-		tokenPurchaseTableName,
+	purchases, err := persister.tokenTransfersByToAddressFromTable(
+		transfer.ToAddress(),
+		tokenTransferTestTableName,
 	)
 	if err != nil {
-		t.Errorf("Should have not gotten error from purchases query: err: %v", err)
+		t.Errorf("Should have not gotten error from transfer query: err: %v", err)
 	}
 	if len(purchases) != 1 {
-		t.Errorf("Should have gotten 1 result for purchases")
+		t.Errorf("Should have gotten 1 result for transfers")
 	}
 	purchase := purchases[0]
 
-	if purchase.PurchaserAddress().Hex() != tokenPurchase.PurchaserAddress().Hex() {
-		t.Errorf("Should have gotten the same purchase address")
+	if purchase.ToAddress().Hex() != transfer.ToAddress().Hex() {
+		t.Errorf("Should have gotten the same to address")
 	}
-	if purchase.SourceAddress().Hex() != tokenPurchase.SourceAddress().Hex() {
-		t.Errorf("Should have gotten the same source address")
+	if purchase.FromAddress().Hex() != transfer.FromAddress().Hex() {
+		t.Errorf("Should have gotten the same from address")
 	}
-	if purchase.Amount().Int64() != tokenPurchase.Amount().Int64() {
+	if purchase.Amount().Int64() != transfer.Amount().Int64() {
 		t.Errorf("Should have gotten the same amount")
 	}
-	if purchase.PurchaseDate() != tokenPurchase.PurchaseDate() {
-		t.Errorf("Should have gotten the purchase date")
+	if purchase.TransferDate() != transfer.TransferDate() {
+		t.Errorf("Should have gotten the transfer date")
 	}
 }

@@ -38,7 +38,7 @@ const (
 	challengeTableName     = "challenge"
 	pollTableName          = "poll"
 	appealTableName        = "appeal"
-	tokenPurchaseTableName = "token_purchase"
+	tokenTransferTableName = "token_transfer"
 
 	lastUpdatedDateDBModelName = "LastUpdatedDateTs"
 
@@ -250,15 +250,15 @@ func (p *PostgresPersister) UpdateAppeal(appeal *model.Appeal, updatedFields []s
 	return p.updateAppealInTable(appeal, updatedFields, appealTableName)
 }
 
-// TokenPurchasesByPurchaserAddress gets all the token purchases for a given purchaser address
-func (p *PostgresPersister) TokenPurchasesByPurchaserAddress(addr common.Address) (
-	[]*model.TokenPurchase, error) {
-	return p.tokenPurchasesByPurchaserAddressFromTable(addr, tokenPurchaseTableName)
+// TokenTransfersByToAddress gets all the token transfers for a given purchaser address
+func (p *PostgresPersister) TokenTransfersByToAddress(addr common.Address) (
+	[]*model.TokenTransfer, error) {
+	return p.tokenTransfersByToAddressFromTable(addr, tokenTransferTableName)
 }
 
-// CreateTokenPurchase creates a new token purchase
-func (p *PostgresPersister) CreateTokenPurchase(purchase *model.TokenPurchase) error {
-	return p.createTokenPurchaseInTable(purchase, tokenPurchaseTableName)
+// CreateTokenTransfer creates a new token transfer
+func (p *PostgresPersister) CreateTokenTransfer(purchase *model.TokenTransfer) error {
+	return p.createTokenTransferInTable(purchase, tokenTransferTableName)
 }
 
 // CreateTables creates the tables for processor if they don't exist
@@ -271,7 +271,7 @@ func (p *PostgresPersister) CreateTables() error {
 	challengeTableQuery := postgres.CreateChallengeTableQuery()
 	pollTableQuery := postgres.CreatePollTableQuery()
 	appealTableQuery := postgres.CreateAppealTableQuery()
-	tokenPurchaseQuery := postgres.CreateTokenPurchaseTableQuery()
+	TokenTransferQuery := postgres.CreateTokenTransferTableQuery()
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -301,9 +301,9 @@ func (p *PostgresPersister) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Error creating appeal table in postgres: %v", err)
 	}
-	_, err = p.db.Exec(tokenPurchaseQuery)
+	_, err = p.db.Exec(TokenTransferQuery)
 	if err != nil {
-		return fmt.Errorf("Error creating token purchase table in postgres: %v", err)
+		return fmt.Errorf("Error creating token transfer table in postgres: %v", err)
 	}
 	return nil
 }
@@ -1337,15 +1337,15 @@ func (p *PostgresPersister) updateCronTable(cronData *postgres.CronData, tableNa
 	return nil
 }
 
-func (p *PostgresPersister) tokenPurchasesByPurchaserAddressFromTable(addr common.Address,
-	tableName string) ([]*model.TokenPurchase, error) {
-	purchases := []*model.TokenPurchase{}
-	queryString := p.tokenPurchasesByPurchaserAddressQuery(tableName)
+func (p *PostgresPersister) tokenTransfersByToAddressFromTable(addr common.Address,
+	tableName string) ([]*model.TokenTransfer, error) {
+	purchases := []*model.TokenTransfer{}
+	queryString := p.tokenTransfersByToAddressQuery(tableName)
 
-	dbPurchases := []*postgres.TokenPurchase{}
+	dbPurchases := []*postgres.TokenTransfer{}
 	err := p.db.Select(&dbPurchases, queryString, addr.Hex())
 	if err != nil {
-		return purchases, fmt.Errorf("Error retrieving token purchases from table: %v", err)
+		return purchases, fmt.Errorf("Error retrieving token transfers from table: %v", err)
 	}
 
 	if len(dbPurchases) == 0 {
@@ -1353,29 +1353,29 @@ func (p *PostgresPersister) tokenPurchasesByPurchaserAddressFromTable(addr commo
 	}
 
 	for _, dbPurchase := range dbPurchases {
-		purchases = append(purchases, dbPurchase.DbToTokenPurchase())
+		purchases = append(purchases, dbPurchase.DbToTokenTransfer())
 	}
 
 	return purchases, nil
 }
 
-func (p *PostgresPersister) tokenPurchasesByPurchaserAddressQuery(tableName string) string {
-	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.TokenPurchase{}, false, "")
+func (p *PostgresPersister) tokenTransfersByToAddressQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.TokenTransfer{}, false, "")
 	queryString := fmt.Sprintf( // nolint: gosec
-		"SELECT %s FROM %s WHERE purchaser_address = $1 ORDER BY purchase_date;",
+		"SELECT %s FROM %s WHERE to_address = $1 ORDER BY transfer_date;",
 		fieldNames,
 		tableName,
 	)
 	return queryString
 }
 
-func (p *PostgresPersister) createTokenPurchaseInTable(purchase *model.TokenPurchase,
+func (p *PostgresPersister) createTokenTransferInTable(purchase *model.TokenTransfer,
 	tableName string) error {
-	dbPurchase := postgres.NewTokenPurchase(purchase)
-	queryString := p.insertIntoDBQueryString(tableName, postgres.TokenPurchase{})
+	dbPurchase := postgres.NewTokenTransfer(purchase)
+	queryString := p.insertIntoDBQueryString(tableName, postgres.TokenTransfer{})
 	_, err := p.db.NamedExec(queryString, dbPurchase)
 	if err != nil {
-		return fmt.Errorf("Error saving token purchase to table: %v", err)
+		return fmt.Errorf("Error saving token transfer to table: %v", err)
 	}
 	return nil
 }
