@@ -1,12 +1,13 @@
 package processormain
 
 import (
-	"github.com/ethereum/go-ethereum/ethclient"
-	log "github.com/golang/glog"
-	"github.com/robfig/cron"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/ethereum/go-ethereum/ethclient"
+	log "github.com/golang/glog"
+	"github.com/robfig/cron"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
@@ -73,18 +74,19 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 		}
 
 		proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-			Client:                client,
-			ListingPersister:      persisters.Listing,
-			RevisionPersister:     persisters.ContentRevision,
-			GovEventPersister:     persisters.GovernanceEvent,
-			ChallengePersister:    persisters.Challenge,
-			PollPersister:         persisters.Poll,
-			AppealPersister:       persisters.Appeal,
-			ContentScraper:        helpers.ContentScraper(config),
-			MetadataScraper:       helpers.MetadataScraper(config),
-			CivilMetadataScraper:  helpers.CivilMetadataScraper(config),
-			GooglePubSub:          pubsub,
-			GooglePubSubTopicName: config.PubSubEventsTopicName,
+			Client:                 client,
+			ListingPersister:       persisters.Listing,
+			RevisionPersister:      persisters.ContentRevision,
+			GovEventPersister:      persisters.GovernanceEvent,
+			ChallengePersister:     persisters.Challenge,
+			PollPersister:          persisters.Poll,
+			AppealPersister:        persisters.Appeal,
+			TokenTransferPersister: persisters.TokenTransfer,
+			ContentScraper:         helpers.ContentScraper(config),
+			MetadataScraper:        helpers.MetadataScraper(config),
+			CivilMetadataScraper:   helpers.CivilMetadataScraper(config),
+			GooglePubSub:           pubsub,
+			GooglePubSubTopicName:  config.PubSubEventsTopicName,
 		})
 
 		RunProcessor(proc, persisters, events, lastTs)

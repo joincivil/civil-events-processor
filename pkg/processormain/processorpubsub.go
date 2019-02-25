@@ -3,10 +3,11 @@ package processormain
 import (
 	"encoding/json"
 	"errors"
-	log "github.com/golang/glog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	log "github.com/golang/glog"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -184,18 +185,19 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 	defer client.Close()
 
 	proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-		Client:                client,
-		ListingPersister:      persisters.Listing,
-		RevisionPersister:     persisters.ContentRevision,
-		GovEventPersister:     persisters.GovernanceEvent,
-		ChallengePersister:    persisters.Challenge,
-		PollPersister:         persisters.Poll,
-		AppealPersister:       persisters.Appeal,
-		ContentScraper:        helpers.ContentScraper(config),
-		MetadataScraper:       helpers.MetadataScraper(config),
-		CivilMetadataScraper:  helpers.CivilMetadataScraper(config),
-		GooglePubSub:          eventsPs,
-		GooglePubSubTopicName: config.PubSubEventsTopicName,
+		Client:                 client,
+		ListingPersister:       persisters.Listing,
+		RevisionPersister:      persisters.ContentRevision,
+		GovEventPersister:      persisters.GovernanceEvent,
+		ChallengePersister:     persisters.Challenge,
+		PollPersister:          persisters.Poll,
+		AppealPersister:        persisters.Appeal,
+		TokenTransferPersister: persisters.TokenTransfer,
+		ContentScraper:         helpers.ContentScraper(config),
+		MetadataScraper:        helpers.MetadataScraper(config),
+		CivilMetadataScraper:   helpers.CivilMetadataScraper(config),
+		GooglePubSub:           eventsPs,
+		GooglePubSubTopicName:  config.PubSubEventsTopicName,
 	})
 
 	// First run processor without pubsub:

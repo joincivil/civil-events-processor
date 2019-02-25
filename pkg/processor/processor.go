@@ -40,10 +40,15 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.MetadataScraper,
 		params.CivilMetadataScraper,
 	)
+	cvlTokenProcessor := NewCvlTokenEventProcessor(
+		params.Client,
+		params.TokenTransferPersister,
+	)
 	return &EventProcessor{
 		tcrEventProcessor:      tcrEventProcessor,
 		plcrEventProcessor:     plcrEventProcessor,
 		newsroomEventProcessor: newsroomEventProcessor,
+		cvlTokenProcessor:      cvlTokenProcessor,
 		googlePubSub:           params.GooglePubSub,
 		googlePubSubTopicName:  params.GooglePubSubTopicName,
 	}
@@ -51,18 +56,19 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 
 // NewEventProcessorParams defines the params needed to be passed to the processor
 type NewEventProcessorParams struct {
-	Client                bind.ContractBackend
-	ListingPersister      model.ListingPersister
-	RevisionPersister     model.ContentRevisionPersister
-	GovEventPersister     model.GovernanceEventPersister
-	ChallengePersister    model.ChallengePersister
-	PollPersister         model.PollPersister
-	AppealPersister       model.AppealPersister
-	ContentScraper        model.ContentScraper
-	MetadataScraper       model.MetadataScraper
-	CivilMetadataScraper  model.CivilMetadataScraper
-	GooglePubSub          *pubsub.GooglePubSub
-	GooglePubSubTopicName string
+	Client                 bind.ContractBackend
+	ListingPersister       model.ListingPersister
+	RevisionPersister      model.ContentRevisionPersister
+	GovEventPersister      model.GovernanceEventPersister
+	ChallengePersister     model.ChallengePersister
+	PollPersister          model.PollPersister
+	AppealPersister        model.AppealPersister
+	TokenTransferPersister model.TokenTransferPersister
+	ContentScraper         model.ContentScraper
+	MetadataScraper        model.MetadataScraper
+	CivilMetadataScraper   model.CivilMetadataScraper
+	GooglePubSub           *pubsub.GooglePubSub
+	GooglePubSubTopicName  string
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
@@ -71,6 +77,7 @@ type EventProcessor struct {
 	tcrEventProcessor      *TcrEventProcessor
 	plcrEventProcessor     *PlcrEventProcessor
 	newsroomEventProcessor *NewsroomEventProcessor
+	cvlTokenProcessor      *CvlTokenEventProcessor
 	googlePubSub           *pubsub.GooglePubSub
 	googlePubSubTopicName  string
 }
@@ -107,10 +114,18 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			}
 			continue
 		}
-		_, err = e.plcrEventProcessor.Process(event)
+		ran, err = e.plcrEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing plcr event: err: %v\n", err)
 		}
+		if ran {
+			continue
+		}
+		_, err = e.cvlTokenProcessor.Process(event)
+		if err != nil {
+			log.Errorf("Error processing token transfer event: err: %v\n", err)
+		}
+
 	}
 	log.Info("Finished Processing")
 	return err

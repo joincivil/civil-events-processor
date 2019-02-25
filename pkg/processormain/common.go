@@ -2,13 +2,16 @@ package processormain
 
 import (
 	"fmt"
+
 	log "github.com/golang/glog"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/utils"
+
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
 )
 
@@ -68,6 +71,7 @@ type InitializedPersisters struct {
 	Challenge       model.ChallengePersister
 	Poll            model.PollPersister
 	Appeal          model.AppealPersister
+	TokenTransfer   model.TokenTransferPersister
 }
 
 // InitPersisters inits the persisters from the config file
@@ -112,6 +116,11 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		log.Errorf("Error w AppealPersister: err: %v", err)
 		return nil, err
 	}
+	transferPersister, err := helpers.TokenTransferPersister(config)
+	if err != nil {
+		log.Errorf("Error w transferPersister: err: %v", err)
+		return nil, err
+	}
 	return &InitializedPersisters{
 		Cron:            cronPersister,
 		Event:           eventPersister,
@@ -121,6 +130,7 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		Challenge:       challengePersister,
 		Poll:            pollPersister,
 		Appeal:          appealPersister,
+		TokenTransfer:   transferPersister,
 	}, nil
 }
 

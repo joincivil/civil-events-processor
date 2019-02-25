@@ -204,3 +204,13 @@ func (n *NullPersister) CreateAppeal(appeal *model.Appeal) error {
 func (n *NullPersister) UpdateAppeal(appeal *model.Appeal, updatedFields []string) error {
 	return nil
 }
+
+// TokenTransfersByToAddress gets a list of token transfers by purchaser address
+func (n *NullPersister) TokenTransfersByToAddress(addr common.Address) ([]*model.TokenTransfer, error) {
+	return []*model.TokenTransfer{}, nil
+}
+
+// CreateTokenTransfer creates an token transfer
+func (n *NullPersister) CreateTokenTransfer(appeal *model.TokenTransfer) error {
+	return nil
+}

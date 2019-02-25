@@ -17,14 +17,15 @@ const (
 
 //TestPersister is a test persister
 type TestPersister struct {
-	Listings    map[string]*model.Listing
-	Revisions   map[string][]*model.ContentRevision
-	GovEvents   map[string][]*model.GovernanceEvent
-	Challenges  map[int]*model.Challenge
-	Appeals     map[int]*model.Appeal
-	Polls       map[int]*model.Poll
-	Timestamp   int64
-	EventHashes []string
+	Listings       map[string]*model.Listing
+	Revisions      map[string][]*model.ContentRevision
+	GovEvents      map[string][]*model.GovernanceEvent
+	Challenges     map[int]*model.Challenge
+	Appeals        map[int]*model.Appeal
+	Polls          map[int]*model.Poll
+	TokenTransfers map[string][]*model.TokenTransfer
+	Timestamp      int64
+	EventHashes    []string
 }
 
 func indexAddressInSlice(slice []common.Address, target common.Address) int {
@@ -454,6 +455,31 @@ func (t *TestPersister) EventHashesOfLastTimestampForCron() ([]string, error) {
 // UpdateEventHashesForCron updates the eventHashes saved in cron table
 func (t *TestPersister) UpdateEventHashesForCron(eventHashes []string) error {
 	t.EventHashes = eventHashes
+	return nil
+}
+
+// TokenTransfersByToAddress gets a list of token transfers by purchaser address
+func (t *TestPersister) TokenTransfersByToAddress(addr common.Address) (
+	[]*model.TokenTransfer, error) {
+	purchases, ok := t.TokenTransfers[addr.Hex()]
+	if !ok {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	return purchases, nil
+}
+
+// CreateTokenTransfer creates a new token transfer
+func (t *TestPersister) CreateTokenTransfer(purchase *model.TokenTransfer) error {
+	addr := purchase.ToAddress().Hex()
+	if t.TokenTransfers == nil {
+		t.TokenTransfers = map[string][]*model.TokenTransfer{}
+	}
+	purchases, ok := t.TokenTransfers[addr]
+	if !ok {
+		t.TokenTransfers[addr] = []*model.TokenTransfer{purchase}
+	} else {
+		t.TokenTransfers[addr] = append(purchases, purchase)
+	}
 	return nil
 }
 
