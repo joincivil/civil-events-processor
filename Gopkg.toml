@@ -45,3 +45,7 @@ required = ["github.com/99designs/gqlgen"]
 [[constraint]]
   branch = "master"
   name = "github.com/ethereum/go-ethereum"
+
+[[constraint]]
+  branch = "inna/338/db-rebuild"
+  name = "github.com/joincivil/civil-events-crawler"
