@@ -88,7 +88,8 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:b42be5a3601f833e0b9f2d6625d887ec1309764bfcac3d518f3db425dcd4ec5c"
+  branch = "master"
+  digest = "1:40bab48cac5bf434e74e17a435807ea470c5eba837e56c0864a55d83c9066fbc"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -130,8 +131,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "9dc5d1a915ac0e0bd8429d6ac41df50eec91de5f"
-  version = "v1.8.21"
+  revision = "2b75fa9d6142441c19b524890f9f3c87a0de4091"
 
 [[projects]]
   digest = "1:af43bdaaf86655a2343f113e9b293bbc16b12099eaeb223982bbe4d4c22ba14d"
@@ -231,7 +231,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dd6da7c2fc0129f4c1f7147f7b8b5ab715d559751aa78036a505eaed27cd8b63"
+  digest = "1:5f3f8ec4b4fd6bdb467c0759927f6e77b1723c2e59aadb58b5551b0f37b7b5d7"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -242,17 +242,18 @@
     "pkg/pubsub",
   ]
   pruneopts = "UT"
-  revision = "7e87f30adbe783c8394966bb6bd31bb32a5c3102"
+  revision = "e623f98c4b170604edd64c40eef0a6b7884b83b7"
 
 [[projects]]
   branch = "master"
-  digest = "1:5be82af81f03b4f5814e17ce58bf23781d4c26424df5a327a194f57c489949e8"
+  digest = "1:c1b49a13cf385a9fad3ea83c69328628582fde5c5e445c501b05efca70e1ec99"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
     "pkg/config",
     "pkg/eth",
     "pkg/generated/contract",
+    "pkg/jobs",
     "pkg/numbers",
     "pkg/persistence",
     "pkg/persistence/postgres",
@@ -261,7 +262,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "bfdbf7f59b4b2a6fca3b947e74b86d9fc10d4cee"
+  revision = "68ea090ad413b80e1ec8a91a7cf65c97fa3fab15"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"

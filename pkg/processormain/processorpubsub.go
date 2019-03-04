@@ -3,10 +3,11 @@ package processormain
 import (
 	"encoding/json"
 	"errors"
-	log "github.com/golang/glog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	log "github.com/golang/glog"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -66,6 +67,7 @@ func isNewsroomException(crawlerMsg *crawlerps.CrawlerPubSubMessage) bool {
 // RunProcessorPubSub runs processor upon receiving messages from pubsub
 func RunProcessorPubSub(persisters *InitializedPersisters, ps *cpubsub.GooglePubSub,
 	proc *processor.EventProcessor, quit <-chan bool) {
+	log.Info("Start listening for messages")
 Loop:
 	for {
 		select {
@@ -85,11 +87,13 @@ Loop:
 			}
 			var retrieveCriteria *crawlermodel.RetrieveEventsCriteria
 			if isNewsroomException(messData) {
+				log.Infof("Received newsroom exception message with ID: %v from crawler", msg.ID)
 				retrieveCriteria = &crawlermodel.RetrieveEventsCriteria{
 					FromTs:          lastTs,
 					ContractAddress: messData.ContractAddress,
 				}
 			} else {
+				log.Infof("Received regular message with ID: %v from crawler", msg.ID)
 				lastHashes, cronTableErr := persisters.Cron.EventHashesOfLastTimestampForCron()
 				if cronTableErr != nil {
 					log.Errorf("Error getting event hashes for last timestamp seen in cron: %v", cronTableErr)
@@ -181,18 +185,19 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 	defer client.Close()
 
 	proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-		Client:                client,
-		ListingPersister:      persisters.Listing,
-		RevisionPersister:     persisters.ContentRevision,
-		GovEventPersister:     persisters.GovernanceEvent,
-		ChallengePersister:    persisters.Challenge,
-		PollPersister:         persisters.Poll,
-		AppealPersister:       persisters.Appeal,
-		ContentScraper:        helpers.ContentScraper(config),
-		MetadataScraper:       helpers.MetadataScraper(config),
-		CivilMetadataScraper:  helpers.CivilMetadataScraper(config),
-		GooglePubSub:          eventsPs,
-		GooglePubSubTopicName: config.PubSubEventsTopicName,
+		Client:                 client,
+		ListingPersister:       persisters.Listing,
+		RevisionPersister:      persisters.ContentRevision,
+		GovEventPersister:      persisters.GovernanceEvent,
+		ChallengePersister:     persisters.Challenge,
+		PollPersister:          persisters.Poll,
+		AppealPersister:        persisters.Appeal,
+		TokenTransferPersister: persisters.TokenTransfer,
+		ContentScraper:         helpers.ContentScraper(config),
+		MetadataScraper:        helpers.MetadataScraper(config),
+		CivilMetadataScraper:   helpers.CivilMetadataScraper(config),
+		GooglePubSub:           eventsPs,
+		GooglePubSubTopicName:  config.PubSubEventsTopicName,
 	})
 
 	// First run processor without pubsub:
@@ -213,6 +218,5 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 	if len(events) > 0 {
 		RunProcessor(proc, persisters, events, lastTs)
 	}
-
 	RunProcessorPubSub(persisters, ps, proc, quitChan)
 }

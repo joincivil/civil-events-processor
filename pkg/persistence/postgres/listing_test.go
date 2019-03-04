@@ -1,31 +1,23 @@
 package postgres_test
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
+
 	cpostgres "github.com/joincivil/go-common/pkg/persistence/postgres"
-	"math/big"
+	cstrings "github.com/joincivil/go-common/pkg/strings"
 
 	// "reflect"
 	"testing"
 )
 
-// random hex string generation
-func randomHex(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
 func setupSampleListing() (*model.Listing, common.Address) {
-	address1, _ := randomHex(32)
-	address2, _ := randomHex(32)
-	address3, _ := randomHex(32)
+	address1, _ := cstrings.RandomHexStr(32)
+	address2, _ := cstrings.RandomHexStr(32)
+	address3, _ := cstrings.RandomHexStr(32)
 	contractAddress := common.HexToAddress(address1)
 	ownerAddr := common.HexToAddress(address2)
 	ownerAddresses := []common.Address{common.HexToAddress(address2), common.HexToAddress(address3)}
@@ -64,9 +56,9 @@ func setupSampleListing() (*model.Listing, common.Address) {
 }
 
 func setupSampleListingNoCharter() (*model.Listing, common.Address) {
-	address1, _ := randomHex(32)
-	address2, _ := randomHex(32)
-	address3, _ := randomHex(32)
+	address1, _ := cstrings.RandomHexStr(32)
+	address2, _ := cstrings.RandomHexStr(32)
+	address3, _ := cstrings.RandomHexStr(32)
 	contractAddress := common.HexToAddress(address1)
 	ownerAddr := common.HexToAddress(address2)
 	ownerAddresses := []common.Address{common.HexToAddress(address2), common.HexToAddress(address3)}

@@ -106,6 +106,16 @@ func PollPersister(config cconfig.PersisterConfig) (model.PollPersister, error) 
 	return p.(model.PollPersister), nil
 }
 
+// TokenTransferPersister is a helper function to return the token transfer persister based on
+// the given configuration
+func TokenTransferPersister(config cconfig.PersisterConfig) (model.TokenTransferPersister, error) {
+	p, err := persister(config)
+	if err != nil {
+		return nil, err
+	}
+	return p.(model.TokenTransferPersister), nil
+}
+
 func persister(config cconfig.PersisterConfig) (interface{}, error) {
 	if config.PersistType() == cconfig.PersisterTypePostgresql {
 		return postgresPersister(config)

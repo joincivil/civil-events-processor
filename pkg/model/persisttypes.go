@@ -158,3 +158,11 @@ type AppealPersister interface {
 	// UpdateAppeal updates an appeal
 	UpdateAppeal(appeal *Appeal, updatedFields []string) error
 }
+
+// TokenTransferPersister is the persister interface to store TokenTransfer
+type TokenTransferPersister interface {
+	// TokenTransfersByToAddress gets a list of token transfers by purchaser address
+	TokenTransfersByToAddress(addr common.Address) ([]*TokenTransfer, error)
+	// CreateTokenTransfer creates a new token transfer
+	CreateTokenTransfer(purchase *TokenTransfer) error
+}

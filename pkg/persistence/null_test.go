@@ -28,6 +28,9 @@ func testChallengePersister(p model.ChallengePersister) {
 func testAppealPersister(p model.AppealPersister) {
 }
 
+func testTokenTransferPersister(p model.TokenTransferPersister) {
+}
+
 func TestNullInterface(t *testing.T) {
 	p := &persistence.NullPersister{}
 
@@ -38,4 +41,5 @@ func TestNullInterface(t *testing.T) {
 	testPollPersister(p)
 	testChallengePersister(p)
 	testAppealPersister(p)
+	testTokenTransferPersister(p)
 }
