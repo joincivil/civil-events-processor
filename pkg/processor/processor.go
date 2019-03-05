@@ -39,9 +39,6 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.Client,
 		params.ListingPersister,
 		params.RevisionPersister,
-		params.ContentScraper,
-		params.MetadataScraper,
-		params.CivilMetadataScraper,
 	)
 	cvlTokenProcessor := NewCvlTokenEventProcessor(
 		params.Client,
@@ -67,9 +64,6 @@ type NewEventProcessorParams struct {
 	PollPersister          model.PollPersister
 	AppealPersister        model.AppealPersister
 	TokenTransferPersister model.TokenTransferPersister
-	ContentScraper         model.ContentScraper
-	MetadataScraper        model.MetadataScraper
-	CivilMetadataScraper   model.CivilMetadataScraper
 	GooglePubSub           *pubsub.GooglePubSub
 	GooglePubSubTopicName  string
 }

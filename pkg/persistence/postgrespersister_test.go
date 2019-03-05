@@ -43,11 +43,11 @@ const (
 func setupDBConnection() (*PostgresPersister, error) {
 	postgresPersister, err := NewPostgresPersister(postgresHost, postgresPort, postgresUser, postgresPswd, postgresDBName)
 	if err != nil {
-		fmt.Errorf("Error setting up new persister: err: %v", err)
+		return nil, fmt.Errorf("Error setting up new persister: err: %v", err)
 	}
 	err = postgresPersister.CreateTables()
 	if err != nil {
-		fmt.Errorf("Error setting up tables in db: %v", err)
+		return nil, fmt.Errorf("Error setting up tables in db: %v", err)
 	}
 	return postgresPersister, err
 }
@@ -298,6 +298,7 @@ func TestCreateListing(t *testing.T) {
 	tableName := "listing_test"
 	// create fake listing in listing_test
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -323,6 +324,7 @@ func TestCreateListing(t *testing.T) {
 func TestListingByAddress(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -349,6 +351,7 @@ func TestListingByAddress(t *testing.T) {
 func TestListingCharterByAddress(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -401,6 +404,7 @@ func TestListingCharterByAddress(t *testing.T) {
 func TestListingByAddressDoesNotExist(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -430,6 +434,7 @@ func TestListingByAddressDoesNotExist(t *testing.T) {
 func TestDBListingToModelListing(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -460,6 +465,7 @@ func TestDBListingToModelListing(t *testing.T) {
 func TestListingsByAddresses(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -500,6 +506,7 @@ func shuffleListingAddresses(slice []common.Address) []common.Address {
 func TestListingByAddressesInOrder(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -560,6 +567,7 @@ func TestListingByAddressesInOrder(t *testing.T) {
 func TestListingByAddressesInOrderAddressNotFound(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -601,6 +609,7 @@ func TestNilResultsListing(t *testing.T) {
 	// Query for listings that don't exist and make sure expected behavior is returned
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -637,6 +646,7 @@ func TestNilResultsListing(t *testing.T) {
 func TestUpdateListing(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -679,6 +689,7 @@ func TestUpdateListing(t *testing.T) {
 func TestDeleteListing(t *testing.T) {
 	tableName := "listing_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -721,6 +732,7 @@ func TestListingsByCriteria(t *testing.T) {
 	tableName := "listing_test"
 	joinTableName := "challenge_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -942,6 +954,7 @@ All tests for content_revision table:
 func TestCreateContentRevision(t *testing.T) {
 	tableName := "content_revision_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -970,6 +983,7 @@ func TestCreateContentRevision(t *testing.T) {
 func TestContentRevision(t *testing.T) {
 	tableName := "content_revision_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -996,6 +1010,7 @@ func TestContentRevision(t *testing.T) {
 func TestDBCRToModelCR(t *testing.T) {
 	tableName := "content_revision_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1027,6 +1042,7 @@ func TestDBCRToModelCR(t *testing.T) {
 func TestContentRevisions(t *testing.T) {
 	tableName := "content_revision_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1067,6 +1083,7 @@ func TestContentRevisions(t *testing.T) {
 func TestNilResultsContentRevision(t *testing.T) {
 	contRevTableName := "content_revision_test"
 	persister, err := setupTestTable(contRevTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1092,6 +1109,7 @@ func TestUpdateContentRevision(t *testing.T) {
 func TestDeleteContentRevision(t *testing.T) {
 	tableName := "content_revision_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1188,6 +1206,7 @@ All tests for governance_event table:
 // TestCreateGovernanceEvent tests that a GovernanceEvent is created
 func TestCreateGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	defer deleteTestTable(t, persister, govTestTableName)
 
 	_, _, _, _ = createAndSaveTestGovEvent(t, persister, false)
@@ -1205,6 +1224,7 @@ func TestCreateGovernanceEvent(t *testing.T) {
 
 func TestNilResultsGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	defer deleteTestTable(t, persister, govTestTableName)
 	txHashSample, _ := cstrings.RandomHexStr(30)
 	txHash := common.HexToHash(txHashSample)
@@ -1220,6 +1240,7 @@ func TestNilResultsGovernanceEvent(t *testing.T) {
 // TestGovernanceEventsByListingAddress tests that a GovernanceEvent is properly retrieved
 func TestGovernanceEventsByListingAddress(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	defer deleteTestTable(t, persister, govTestTableName)
 
 	_, listingAddr, _, _ := createAndSaveTestGovEvent(t, persister, false)
@@ -1239,6 +1260,7 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 // TestDBGovEventToModelGovEvent tests that the db listing can be properly converted to model listing
 func TestDBGovEventToModelGovEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	defer deleteTestTable(t, persister, govTestTableName)
 
 	modelGovernanceEvent, listingAddr, _, _ := createAndSaveTestGovEvent(t, persister, false)
@@ -1264,6 +1286,7 @@ func TestDBGovEventToModelGovEvent(t *testing.T) {
 // TODO(IS) : this will delete more than you want. need to put some kind of hash for the gov event.
 func TestDeleteGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	defer deleteTestTable(t, persister, govTestTableName)
 
 	modelGovernanceEvent, _, _, _ := createAndSaveTestGovEvent(t, persister, false)
@@ -1296,6 +1319,7 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 // TestGovEventsByCriteria tests GovernanceEvent by criteria query
 func TestGovEventsByCriteria(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	defer deleteTestTable(t, persister, govTestTableName)
 	var listingAddr common.Address
 	var timeMiddle int64
@@ -1362,6 +1386,7 @@ func TestGovEventsByCriteria(t *testing.T) {
 func TestGovEventsByTxHash(t *testing.T) {
 	tableName := "governance_event_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1514,6 +1539,7 @@ func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, rand
 
 func TestCreateChallenge(t *testing.T) {
 	persister, err := setupTestTable(challengeTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1524,6 +1550,7 @@ func TestCreateChallenge(t *testing.T) {
 
 func TestGetChallenge(t *testing.T) {
 	persister, err := setupTestTable(challengeTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1591,6 +1618,7 @@ func TestGetChallenge(t *testing.T) {
 
 func TestGetChallengesForListingAddresses(t *testing.T) {
 	persister, err := setupTestTable(challengeTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1685,6 +1713,7 @@ func TestGetChallengesForListingAddresses(t *testing.T) {
 
 func TestGetChallengesForListingAddress(t *testing.T) {
 	persister, err := setupTestTable(challengeTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1726,6 +1755,7 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 
 func TestNilResultsChallenges(t *testing.T) {
 	persister, err := setupTestTable(challengeTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1752,6 +1782,7 @@ func TestNilResultsChallenges(t *testing.T) {
 
 func TestUpdateChallenge(t *testing.T) {
 	persister, err := setupTestTable(challengeTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1806,6 +1837,7 @@ func setupSamplePoll(randListing bool) (*model.Poll, *big.Int) {
 
 func setupPollTable(t *testing.T) *PostgresPersister {
 	persister, err := setupTestTable(pollTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1826,6 +1858,7 @@ func createAndSaveTestPoll(t *testing.T, persister *PostgresPersister, randListi
 
 func TestCreatePoll(t *testing.T) {
 	persister, err := setupTestTable(pollTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1836,6 +1869,7 @@ func TestCreatePoll(t *testing.T) {
 
 func TestNilResultsPoll(t *testing.T) {
 	persister, err := setupTestTable(pollTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1853,6 +1887,7 @@ func TestNilResultsPoll(t *testing.T) {
 
 func TestUpdatePoll(t *testing.T) {
 	persister, err := setupTestTable(pollTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1929,6 +1964,7 @@ func createAndSaveTestAppeal(t *testing.T, persister *PostgresPersister, randLis
 
 func TestCreateAppeal(t *testing.T) {
 	persister, err := setupTestTable(appealTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1939,6 +1975,7 @@ func TestCreateAppeal(t *testing.T) {
 
 func TestUpdateAppeal(t *testing.T) {
 	persister, err := setupTestTable(appealTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1977,6 +2014,7 @@ func TestUpdateAppeal(t *testing.T) {
 
 func TestNilResultsAppeal(t *testing.T) {
 	persister, err := setupTestTable(appealTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -1999,6 +2037,7 @@ All tests for cron table:
 func TestTypeExistsInCronTable(t *testing.T) {
 	tableName := "cron_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -2045,6 +2084,7 @@ func TestTimestampOfLastEventForCron(t *testing.T) {
 func TestUpdateTimestampForCron(t *testing.T) {
 	tableName := "cron_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -2085,6 +2125,7 @@ func TestUpdateTimestampForCron(t *testing.T) {
 func TestLastEventHashesFromTable(t *testing.T) {
 	tableName := "cron_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -2103,6 +2144,7 @@ func TestLastEventHashesFromTable(t *testing.T) {
 func TestUpdateEventHashes(t *testing.T) {
 	tableName := "cron_test"
 	persister, err := setupTestTable(tableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -2167,6 +2209,7 @@ func createAndSaveTestTokenTransfer(t *testing.T, persister *PostgresPersister) 
 
 func TestCreateTokenTransfer(t *testing.T) {
 	persister, err := setupTestTable(tokenTransferTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
@@ -2176,6 +2219,7 @@ func TestCreateTokenTransfer(t *testing.T) {
 
 func TestGetTokenTransfersForToAddress(t *testing.T) {
 	persister, err := setupTestTable(tokenTransferTestTableName)
+	defer persister.Close()
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}

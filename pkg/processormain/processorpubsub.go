@@ -17,7 +17,6 @@ import (
 
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
 
-	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
@@ -193,9 +192,6 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		PollPersister:          persisters.Poll,
 		AppealPersister:        persisters.Appeal,
 		TokenTransferPersister: persisters.TokenTransfer,
-		ContentScraper:         helpers.ContentScraper(config),
-		MetadataScraper:        helpers.MetadataScraper(config),
-		CivilMetadataScraper:   helpers.CivilMetadataScraper(config),
 		GooglePubSub:           eventsPs,
 		GooglePubSubTopicName:  config.PubSubEventsTopicName,
 	})

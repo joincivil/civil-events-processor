@@ -165,7 +165,6 @@ func setupApplicationAndNewsroomProcessor(t *testing.T) (*contractutils.AllTestC
 		t.Fatalf("Unable to setup the contracts: %v", err)
 	}
 	persister := &testutils.TestPersister{}
-	scraper := &testutils.TestScraper{}
 	tcrProc := processor.NewTcrEventProcessor(
 		contracts.Client,
 		persister,
@@ -176,10 +175,7 @@ func setupApplicationAndNewsroomProcessor(t *testing.T) (*contractutils.AllTestC
 	newsroomProc := processor.NewNewsroomEventProcessor(
 		contracts.Client,
 		persister,
-		persister,
-		scraper,
-		scraper,
-		scraper)
+		persister)
 	return contracts, persister, newsroomProc
 }
 

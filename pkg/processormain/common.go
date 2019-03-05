@@ -2,6 +2,9 @@ package processormain
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	log "github.com/golang/glog"
 
@@ -50,6 +53,17 @@ func SaveLastEventInformation(persister model.CronPersister, events []*crawlermo
 		}
 	}
 	return nil
+}
+
+// SetupKillNotify inits cleanup hook when a kill command is sent to the process
+func SetupKillNotify(persisters *InitializedPersisters) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		ClosePersisters(persisters)
+		os.Exit(1)
+	}()
 }
 
 func initPubSubEvents(config *utils.ProcessorConfig, ps *cpubsub.GooglePubSub) (*cpubsub.GooglePubSub, error) {
@@ -132,6 +146,46 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		Appeal:          appealPersister,
 		TokenTransfer:   transferPersister,
 	}, nil
+}
+
+// ClosePersisters closes all the initialized persisters via Close()
+func ClosePersisters(persisters *InitializedPersisters) {
+	err := persisters.Cron.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	// err = persisters.Event.Close()
+	// if err != nil {
+	// 	log.Errorf("Error closing persister: err: %v", err)
+	// }
+	err = persisters.Listing.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	err = persisters.ContentRevision.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	err = persisters.GovernanceEvent.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	err = persisters.Challenge.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	err = persisters.Poll.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	err = persisters.Appeal.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	err = persisters.TokenTransfer.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
 }
 
 // GetLastEventInformation gets the timestamp and associated hashes for the last events processed

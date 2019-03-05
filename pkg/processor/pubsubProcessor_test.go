@@ -78,7 +78,6 @@ func TestPubsubBuildPayload(t *testing.T) {
 	)
 
 	persister := &testutils.TestPersister{}
-	scraper := &testutils.TestScraper{}
 	processorParams := &processor.NewEventProcessorParams{
 		Client:                contracts.Client,
 		ListingPersister:      persister,
@@ -87,9 +86,6 @@ func TestPubsubBuildPayload(t *testing.T) {
 		ChallengePersister:    persister,
 		PollPersister:         persister,
 		AppealPersister:       persister,
-		ContentScraper:        scraper,
-		MetadataScraper:       scraper,
-		CivilMetadataScraper:  scraper,
 		GooglePubSub:          pubsub,
 		GooglePubSubTopicName: topicName,
 	}

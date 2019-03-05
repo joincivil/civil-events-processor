@@ -20,6 +20,7 @@ import (
 	ctime "github.com/joincivil/go-common/pkg/time"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/scraper"
 )
 
 const (
@@ -33,28 +34,20 @@ const (
 
 // NewNewsroomEventProcessor is a convenience function to init an EventProcessor
 func NewNewsroomEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
-	revisionPersister model.ContentRevisionPersister,
-	contentScraper model.ContentScraper, metadataScraper model.MetadataScraper,
-	civilMetadataScraper model.CivilMetadataScraper) *NewsroomEventProcessor {
+	revisionPersister model.ContentRevisionPersister) *NewsroomEventProcessor {
 	return &NewsroomEventProcessor{
-		client:               client,
-		listingPersister:     listingPersister,
-		revisionPersister:    revisionPersister,
-		contentScraper:       contentScraper,
-		metadataScraper:      metadataScraper,
-		civilMetadataScraper: civilMetadataScraper,
+		client:            client,
+		listingPersister:  listingPersister,
+		revisionPersister: revisionPersister,
 	}
 }
 
 // NewsroomEventProcessor handles the processing of raw events into aggregated data
 // for use via the API.
 type NewsroomEventProcessor struct {
-	client               bind.ContractBackend
-	listingPersister     model.ListingPersister
-	revisionPersister    model.ContentRevisionPersister
-	contentScraper       model.ContentScraper
-	metadataScraper      model.MetadataScraper
-	civilMetadataScraper model.CivilMetadataScraper
+	client            bind.ContractBackend
+	listingPersister  model.ListingPersister
+	revisionPersister model.ContentRevisionPersister
 }
 
 // Process processes Newsroom Events into aggregated data
@@ -153,14 +146,14 @@ func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermo
 	}
 	contentHash := cbytes.Byte32ToHexString(content.ContentHash)
 
-	// Scrape the metadata and content for the revision
-	metadata, scraperContent, err := n.scrapeData(revisionURI.(string))
+	// Scrape the metadata or content for the revision
+	metadata, scraperContent, err := n.scrapeData(contentID.(*big.Int), revisionURI.(string))
 	if err != nil {
 		log.Errorf("Error scraping data: err: %v", err)
 	}
 
 	articlePayload := model.ArticlePayload{}
-	if metadata != nil {
+	if metadata != nil || scraperContent != nil {
 		articlePayload = n.scraperDataToPayload(metadata, scraperContent)
 	}
 
@@ -250,6 +243,22 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 	})
 	listing.SetCharter(updatedCharter)
 
+	// Try to get the charter data to get newsroom URL
+	// TODO(PN): Perhaps use the content revision here? Might not be in DB at this point.
+	_, charterData, chartErr := n.scrapeData(revision.ContractContentID(), revision.RevisionURI())
+	if chartErr != nil {
+		log.Errorf("Error retrieving charter data from IPFS: err: %v", chartErr)
+	}
+	if charterData != nil {
+		nrURL, ok := charterData.Data()["newsroomUrl"]
+		if !ok {
+			log.Errorf("Could not find newsroomUrl in the charter IPFS data: %v", charterData.URI())
+		} else {
+			listing.SetURL(nrURL.(string))
+			updatedFields = append(updatedFields, "url")
+		}
+	}
+
 	return n.listingPersister.UpdateListing(listing, updatedFields)
 }
 
@@ -272,7 +281,7 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 	// NOTE: This is the function that is called to get data from newsroom contract
 	// in the case events are out of order and persists a listing
 
-	// TODO(PN): How do I get the URL of the site?
+	// We retrieve the URL from the charter data in IPFS/content revision
 	url := ""
 
 	// charter is the first content item in the newsroom contract
@@ -299,6 +308,21 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 	charterContent, contErr := newsroom.GetRevision(&bind.CallOpts{}, charterContentID, latestRevisionID)
 	if contErr != nil {
 		return nil, fmt.Errorf("Error getting charter revision from Newsroom contract: %v ", contErr)
+	}
+
+	// Try to get the charter data to get newsroom URL
+	// TODO(PN): Perhaps use the content revision here? Might not be in DB at this point.
+	_, charterData, chartErr := n.scrapeData(big.NewInt(0), charterContent.Uri)
+	if chartErr != nil {
+		log.Errorf("Error retrieving charter data from IPFS: err: %v", chartErr)
+	}
+	if charterData != nil {
+		nrURL, ok := charterData.Data()["newsroomUrl"]
+		if !ok {
+			log.Errorf("Could not find newsroomUrl in the charter IPFS data: %v", charterData.URI())
+		} else {
+			url = nrURL.(string)
+		}
 	}
 
 	charter := model.NewCharter(&model.CharterParams{
@@ -339,58 +363,73 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 	return listing, err
 }
 
-func (n *NewsroomEventProcessor) scrapeData(metadataURL string) (
+func (n *NewsroomEventProcessor) scrapeData(contentID *big.Int, revisionURI string) (
 	*model.ScraperCivilMetadata, *model.ScraperContent, error) {
-	var err error
-	var civilMetadata *model.ScraperCivilMetadata
-	var content *model.ScraperContent
+	if revisionURI == "" {
+		return nil, nil, nil
+	}
 
-	if metadataURL != "" {
-		civilMetadata, err = n.civilMetadataScraper.ScrapeCivilMetadata(metadataURL)
+	// Ignore self-tx links for now
+	// This is context embedded in the transaction input data
+
+	// Basic IPFS charter support
+	// Charter is content 0
+	if strings.Contains(revisionURI, "ipfs://") && contentID.Int64() == 0 {
+		charterScraper := &scraper.CharterIPFSScraper{}
+		charterContent, err := charterScraper.ScrapeContent(revisionURI)
+		if err != nil {
+			return nil, nil, err
+		}
+		return nil, charterContent, nil
+
+		// If it looks like a wordpress metadata URI
+	} else if strings.Contains(revisionURI, "/wp-json/") {
+		metadataScraper := &scraper.CivilMetadataScraper{}
+		civilMetadata, err := metadataScraper.ScrapeCivilMetadata(revisionURI)
 		if err != nil {
 			return nil, nil, err
 		}
 		// TODO(PN): Hack to fix bad URLs received for metadata
 		// Remove this later after testing
 		if civilMetadata.Title() == "" && civilMetadata.RevisionContentHash() == "" {
-			metadataURL = strings.Replace(metadataURL, "/wp-json", "/crawler-pod/wp-json", -1)
-			civilMetadata, err = n.civilMetadataScraper.ScrapeCivilMetadata(metadataURL)
+			revisionURI = strings.Replace(revisionURI, "/wp-json", "/crawler-pod/wp-json", -1)
+			civilMetadata, err = metadataScraper.ScrapeCivilMetadata(revisionURI)
 			if err != nil {
 				return nil, nil, err
 			}
 		}
+		return civilMetadata, nil, nil
 	}
 
-	// TODO(PN): Use canonical URL or the revision URL here?
-	// TODO(PN): Commenting out the scraping of content until we make a decision on it
-
-	// if civilMetadata != nil && civilMetadata.RevisionContentURL() != "" {
-	// 	content, err = e.contentScraper.ScrapeContent(civilMetadata.RevisionContentURL())
-	// 	if err != nil {
-	// 		err = fmt.Errorf("Error scraping content: err: %v", err)
-	// 	}
-	// }
-	return civilMetadata, content, err
+	return nil, nil, nil
 }
 
+// TODO(PN): This isn't great, rework is needed later.
 func (n *NewsroomEventProcessor) scraperDataToPayload(metadata *model.ScraperCivilMetadata,
 	content *model.ScraperContent) model.ArticlePayload {
-	// TODO(PN): ArticlePayload should be a struct rather than a map
-	// TODO(PN): Do we need the content here?
 	payload := model.ArticlePayload{}
-	payload["title"] = metadata.Title()
-	payload["revisionContentHash"] = metadata.RevisionContentHash()
-	payload["revisionContentURL"] = metadata.RevisionContentURL()
-	payload["canonicalURL"] = metadata.CanonicalURL()
-	payload["slug"] = metadata.Slug()
-	payload["description"] = metadata.Description()
-	payload["primaryTag"] = metadata.PrimaryTag()
-	payload["revisionDate"] = metadata.RevisionDate()
-	payload["originalPublishDate"] = metadata.OriginalPublishDate()
-	payload["opinion"] = metadata.Opinion()
-	payload["schemaVersion"] = metadata.SchemaVersion()
-	payload["authors"] = n.buildContributors(metadata)
-	payload["images"] = n.buildImages(metadata)
+	if metadata != nil {
+		payload["title"] = metadata.Title()
+		payload["revisionContentHash"] = metadata.RevisionContentHash()
+		payload["revisionContentURL"] = metadata.RevisionContentURL()
+		payload["canonicalURL"] = metadata.CanonicalURL()
+		payload["slug"] = metadata.Slug()
+		payload["description"] = metadata.Description()
+		payload["primaryTag"] = metadata.PrimaryTag()
+		payload["revisionDate"] = metadata.RevisionDate()
+		payload["originalPublishDate"] = metadata.OriginalPublishDate()
+		payload["opinion"] = metadata.Opinion()
+		payload["schemaVersion"] = metadata.SchemaVersion()
+		payload["authors"] = n.buildContributors(metadata)
+		payload["images"] = n.buildImages(metadata)
+	}
+	if content != nil {
+		payload["contentAuthor"] = content.Author()
+		payload["contentText"] = content.Text()
+		payload["contentURI"] = content.URI()
+		payload["contentHTML"] = content.HTML()
+		payload["contentData"] = content.Data()
+	}
 	return payload
 }
 
