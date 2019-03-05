@@ -1,13 +1,16 @@
 package processor
 
 import (
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/golang/glog"
 
-	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	"github.com/joincivil/go-common/pkg/pubsub"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+
+	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+
+	"github.com/joincivil/go-common/pkg/pubsub"
 )
 
 func isStringInSlice(slice []string, target string) bool {
@@ -92,10 +95,15 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	}
 
 	for _, event := range events {
+		if log.V(2) {
+			log.Infof("Process event: %v", spew.Sprintf("%#+v", event))
+		}
+
 		if event == nil {
 			log.Errorf("Nil event found, should not be nil")
 			continue
 		}
+
 		ran, err = e.newsroomEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing newsroom event: err: %v\n", err)
@@ -103,6 +111,7 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		if ran {
 			continue
 		}
+
 		ran, err = e.tcrEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
@@ -114,6 +123,7 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			}
 			continue
 		}
+
 		ran, err = e.plcrEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing plcr event: err: %v\n", err)
@@ -121,6 +131,7 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		if ran {
 			continue
 		}
+
 		_, err = e.cvlTokenProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing token transfer event: err: %v\n", err)
