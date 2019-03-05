@@ -31,6 +31,8 @@ func main() {
 		os.Exit(2)
 	}
 
+	processormain.SetupKillNotify(persisters)
+
 	if config.CronConfig != "" {
 		processormain.ProcessorCronMain(config, persisters)
 	} else {

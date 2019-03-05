@@ -7,10 +7,11 @@ import (
 	"errors"
 	"fmt"
 
-	// log "github.com/golang/glog"
 	"math/big"
 	"strings"
 	"time"
+
+	log "github.com/golang/glog"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
@@ -66,6 +67,21 @@ func NewPostgresPersister(host string, port int, user string, password string, d
 // PostgresPersister holds the DB connection and persistence
 type PostgresPersister struct {
 	db *sqlx.DB
+}
+
+// Close shuts down the connections to postgres
+func (p *PostgresPersister) Close() error {
+	if p.db != nil {
+		return p.db.Close()
+	}
+	return nil
+}
+
+func (p *PostgresPersister) closeRows(rows *sqlx.Rows) {
+	err := rows.Close()
+	if err != nil {
+		log.Errorf("Error closing rows: err: %v", err)
+	}
 }
 
 // ListingsByCriteria returns a slice of Listings by ListingCriteria sorted by creation timestamp
@@ -405,6 +421,7 @@ func (p *PostgresPersister) listingsByAddressesFromTableInOrder(addresses []comm
 
 	query = p.db.Rebind(query)
 	rows, err := p.db.Queryx(query, args...)
+	defer p.closeRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving listings from table: %v", err)
 	}
@@ -730,6 +747,7 @@ func (p *PostgresPersister) governanceEventsByListingAddressFromTable(address co
 func (p *PostgresPersister) governanceEventsByTxHashFromTable(txHash common.Hash, tableName string) ([]*model.GovernanceEvent, error) {
 	queryString := p.governanceEventsByTxHashQuery(txHash, tableName)
 	rows, err := p.db.Queryx(queryString)
+	defer p.closeRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving governance events from table: %v", err)
 	}
@@ -932,6 +950,7 @@ func (p *PostgresPersister) challengesByChallengeIDsInTableInOrder(challengeIDs 
 
 	query = p.db.Rebind(query)
 	rows, err := p.db.Queryx(query, args...)
+	defer p.closeRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving challenges from table: %v", err)
 	}
@@ -984,6 +1003,7 @@ func (p *PostgresPersister) challengesByListingAddressesInTable(addrs []common.A
 
 	query = p.db.Rebind(query)
 	rows, err := p.db.Queryx(query, args...)
+	defer p.closeRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving challenges from table: %v", err)
 	}
@@ -1130,6 +1150,7 @@ func (p *PostgresPersister) pollsByPollIDsInTableInOrder(pollIDs []int, pollTabl
 
 	query = p.db.Rebind(query)
 	rows, err := p.db.Queryx(query, args...)
+	defer p.closeRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving challenges from table: %v", err)
 	}
@@ -1227,6 +1248,7 @@ func (p *PostgresPersister) appealsByChallengeIDsInTableInOrder(challengeIDs []i
 
 	query = p.db.Rebind(query)
 	rows, err := p.db.Queryx(query, args...)
+	defer p.closeRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving challenges from table: %v", err)
 	}
