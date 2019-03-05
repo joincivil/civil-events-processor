@@ -254,13 +254,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c1b49a13cf385a9fad3ea83c69328628582fde5c5e445c501b05efca70e1ec99"
+  digest = "1:ea9abb8abb299b5a59cba8261367a401bd41b3bbe8ee0d99cd6361e5f9bae403"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
     "pkg/config",
     "pkg/eth",
     "pkg/generated/contract",
+    "pkg/http",
     "pkg/jobs",
     "pkg/numbers",
     "pkg/persistence",
@@ -646,6 +647,7 @@
     "github.com/joincivil/go-common/pkg/bytes",
     "github.com/joincivil/go-common/pkg/config",
     "github.com/joincivil/go-common/pkg/generated/contract",
+    "github.com/joincivil/go-common/pkg/http",
     "github.com/joincivil/go-common/pkg/numbers",
     "github.com/joincivil/go-common/pkg/persistence",
     "github.com/joincivil/go-common/pkg/persistence/postgres",

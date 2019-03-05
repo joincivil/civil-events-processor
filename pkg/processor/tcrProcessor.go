@@ -813,6 +813,7 @@ func (t *TcrEventProcessor) newListingFromApplication(event *crawlermodel.Event,
 		return fmt.Errorf("Error getting Name from Newsroom contract: %v ", nameErr)
 	}
 
+	// We retrieve the URL from the charter data in IPFS/content revision
 	url := ""
 
 	ownerAddr, err := newsroom.Owner(&bind.CallOpts{})
@@ -975,6 +976,7 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 		return nil, fmt.Errorf("Error getting Name from Newsroom contract: %v ", nameErr)
 	}
 
+	// We retrieve the URL from the charter data in IPFS/content revision
 	url := ""
 
 	ownerAddr, err := newsroom.Owner(&bind.CallOpts{})
