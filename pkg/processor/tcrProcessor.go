@@ -10,8 +10,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+
 	"github.com/joincivil/civil-events-processor/pkg/model"
 
 	"github.com/joincivil/go-common/pkg/generated/contract"
