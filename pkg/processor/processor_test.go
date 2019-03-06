@@ -167,18 +167,14 @@ func TestProcessor(t *testing.T) {
 		t.Fatalf("Unable to setup the contracts: %v", err)
 	}
 	persister := &testutils.TestPersister{}
-	scraper := &testutils.TestScraper{}
 	processorParams := &processor.NewEventProcessorParams{
-		Client:               contracts.Client,
-		ListingPersister:     persister,
-		RevisionPersister:    persister,
-		GovEventPersister:    persister,
-		ChallengePersister:   persister,
-		PollPersister:        persister,
-		AppealPersister:      persister,
-		ContentScraper:       scraper,
-		MetadataScraper:      scraper,
-		CivilMetadataScraper: scraper,
+		Client:             contracts.Client,
+		ListingPersister:   persister,
+		RevisionPersister:  persister,
+		GovEventPersister:  persister,
+		ChallengePersister: persister,
+		PollPersister:      persister,
+		AppealPersister:    persister,
 	}
 	proc := processor.NewEventProcessor(processorParams)
 	events := setupEventList(t, contracts)

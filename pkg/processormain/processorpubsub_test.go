@@ -6,6 +6,12 @@
 package processormain_test
 
 import (
+	"math/big"
+	"os"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	contractutils "github.com/joincivil/civil-events-crawler/pkg/contractutils"
@@ -17,11 +23,6 @@ import (
 	"github.com/joincivil/go-common/pkg/generated/contract"
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
 	ctime "github.com/joincivil/go-common/pkg/time"
-	"math/big"
-	"os"
-	"sync"
-	"testing"
-	"time"
 )
 
 const (
@@ -212,7 +213,6 @@ func setupCrawlerPubSub(t *testing.T) *crawlerpubsub.CrawlerPubSub {
 func TestProcessorPubSub(t *testing.T) {
 	cps := setupCrawlerPubSub(t)
 	testPersister := &testutils.TestPersister{}
-	testScraper := &testutils.TestScraper{}
 	testEventPersister := &TestEventPersister{}
 	persisters := &processormain.InitializedPersisters{
 		Cron:            testPersister,
@@ -236,16 +236,13 @@ func TestProcessorPubSub(t *testing.T) {
 	watchedEvent2 := returnContractApplicationWatchedEvent(t, contracts.NewsroomAddr)
 
 	proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-		Client:               contracts.Client,
-		ListingPersister:     testPersister,
-		RevisionPersister:    testPersister,
-		GovEventPersister:    testPersister,
-		ChallengePersister:   testPersister,
-		PollPersister:        testPersister,
-		AppealPersister:      testPersister,
-		ContentScraper:       testScraper,
-		MetadataScraper:      testScraper,
-		CivilMetadataScraper: testScraper,
+		Client:             contracts.Client,
+		ListingPersister:   testPersister,
+		RevisionPersister:  testPersister,
+		GovEventPersister:  testPersister,
+		ChallengePersister: testPersister,
+		PollPersister:      testPersister,
+		AppealPersister:    testPersister,
 	})
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -292,7 +289,6 @@ func TestProcessorPubSub(t *testing.T) {
 func TestMessageOrder(t *testing.T) {
 	cps := setupCrawlerPubSub(t)
 	testPersister := &testutils.TestPersister{}
-	testScraper := &testutils.TestScraper{}
 	testEventPersister := &TestEventPersister{}
 	persisters := &processormain.InitializedPersisters{
 		Cron:            testPersister,
@@ -311,16 +307,13 @@ func TestMessageOrder(t *testing.T) {
 	}
 
 	proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-		Client:               contracts.Client,
-		ListingPersister:     testPersister,
-		RevisionPersister:    testPersister,
-		GovEventPersister:    testPersister,
-		ChallengePersister:   testPersister,
-		PollPersister:        testPersister,
-		AppealPersister:      testPersister,
-		ContentScraper:       testScraper,
-		MetadataScraper:      testScraper,
-		CivilMetadataScraper: testScraper,
+		Client:             contracts.Client,
+		ListingPersister:   testPersister,
+		RevisionPersister:  testPersister,
+		GovEventPersister:  testPersister,
+		ChallengePersister: testPersister,
+		PollPersister:      testPersister,
+		AppealPersister:    testPersister,
 	})
 
 	quitChan := make(chan bool)

@@ -38,6 +38,11 @@ func indexAddressInSlice(slice []common.Address, target common.Address) int {
 	return -1
 }
 
+// Close does nothing here
+func (t *TestPersister) Close() error {
+	return nil
+}
+
 // ListingsByCriteria returns a slice of Listings based on ListingCriteria
 func (t *TestPersister) ListingsByCriteria(criteria *model.ListingCriteria) ([]*model.Listing, error) {
 	listings := make([]*model.Listing, len(t.Listings))
