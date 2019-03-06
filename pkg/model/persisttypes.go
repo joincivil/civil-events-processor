@@ -166,3 +166,12 @@ type TokenTransferPersister interface {
 	// CreateTokenTransfer creates a new token transfer
 	CreateTokenTransfer(purchase *TokenTransfer) error
 }
+
+// VersionDataPersister handles storing and receiving version table data.
+type VersionDataPersister interface {
+	// RetrieveVersion
+	RetrieveVersion(tableType string) (string, error)
+
+	// SaveVersion
+	SaveVersion(tableType string, versionNumber string) error
+}

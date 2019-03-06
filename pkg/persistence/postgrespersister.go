@@ -21,6 +21,8 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 
+	crawlerPostgres "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres"
+
 	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	cpostgres "github.com/joincivil/go-common/pkg/persistence/postgres"
 	cstrings "github.com/joincivil/go-common/pkg/strings"
@@ -39,6 +41,7 @@ const (
 	pollTableName          = "poll"
 	appealTableName        = "appeal"
 	tokenTransferTableName = "token_transfer"
+	processorServiceName   = "processor"
 
 	lastUpdatedDateDBModelName = "LastUpdatedDateTs"
 
@@ -65,7 +68,13 @@ func NewPostgresPersister(host string, port int, user string, password string, d
 
 // PostgresPersister holds the DB connection and persistence
 type PostgresPersister struct {
-	db *sqlx.DB
+	db      *sqlx.DB
+	version *string
+}
+
+// GetTableName formats tabletype with version of this persister to return the table name
+func (p *PostgresPersister) GetTableName(tableType string) string {
+	return fmt.Sprintf("%s_%s", tableType, *p.version)
 }
 
 // ListingsByCriteria returns a slice of Listings by ListingCriteria sorted by creation timestamp
@@ -261,17 +270,47 @@ func (p *PostgresPersister) CreateTokenTransfer(purchase *model.TokenTransfer) e
 	return p.createTokenTransferInTable(purchase, tokenTransferTableName)
 }
 
+// SaveVersion saves the version for this persistence
+func (p *PostgresPersister) SaveVersion(versionNumber *string) error {
+	err := p.saveVersionToTable(crawlerPostgres.VersionTableName, versionNumber)
+	if err != nil {
+		return err
+	}
+	p.version = versionNumber
+	return nil
+}
+
+// PersisterVersion returns the latest version of this persistence
+func (p *PostgresPersister) PersisterVersion() (*string, error) {
+	return p.persisterVersionFromTable(crawlerPostgres.VersionTableName)
+}
+
+// InitProcessorVersion inits this persistence version to versionNumber if specified, else gets version from db
+func (p *PostgresPersister) InitProcessorVersion(versionNumber *string) error {
+	if versionNumber == nil {
+		var err error
+		versionNumber, err = p.PersisterVersion()
+		if err != nil {
+			if err == cpersist.ErrPersisterNoResults {
+				return fmt.Errorf("VersionNumber needs to be specified, err: %v", err)
+			}
+			return fmt.Errorf("Error retrieving existing VersionNumber, err: %v", err)
+		}
+	}
+	p.version = versionNumber
+	return nil
+}
+
 // CreateTables creates the tables for processor if they don't exist
 func (p *PostgresPersister) CreateTables() error {
-	// this needs to get all the event tables for processor
-	contRevTableQuery := postgres.CreateContentRevisionTableQuery()
-	govEventTableQuery := postgres.CreateGovernanceEventTableQuery()
-	listingTableQuery := postgres.CreateListingTableQuery()
-	cronTableQuery := postgres.CreateCronTableQuery()
-	challengeTableQuery := postgres.CreateChallengeTableQuery()
-	pollTableQuery := postgres.CreatePollTableQuery()
-	appealTableQuery := postgres.CreateAppealTableQuery()
-	TokenTransferQuery := postgres.CreateTokenTransferTableQuery()
+	contRevTableQuery := postgres.CreateContentRevisionTableQuery(p.GetTableName(postgres.ContentRevisionTableBaseName))
+	govEventTableQuery := postgres.CreateGovernanceEventTableQuery(p.GetTableName(postgres.GovernanceEventTableBaseName))
+	listingTableQuery := postgres.CreateListingTableQuery(p.GetTableName(postgres.ListingTableBaseName))
+	cronTableQuery := postgres.CreateCronTableQuery(p.GetTableName(postgres.CronTableBaseName))
+	challengeTableQuery := postgres.CreateChallengeTableQuery(p.GetTableName(postgres.ChallengeTableBaseName))
+	pollTableQuery := postgres.CreatePollTableQuery(p.GetTableName(postgres.PollTableBaseName))
+	appealTableQuery := postgres.CreateAppealTableQuery(p.GetTableName(postgres.AppealTableBaseName))
+	tokenTransferQuery := postgres.CreateTokenTransferTableQuery(p.GetTableName(postgres.TokenTransferTableBaseName))
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -301,7 +340,7 @@ func (p *PostgresPersister) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Error creating appeal table in postgres: %v", err)
 	}
-	_, err = p.db.Exec(TokenTransferQuery)
+	_, err = p.db.Exec(tokenTransferQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating token transfer table in postgres: %v", err)
 	}
@@ -310,37 +349,81 @@ func (p *PostgresPersister) CreateTables() error {
 
 // CreateIndices creates the indices for DB if they don't exist
 func (p *PostgresPersister) CreateIndices() error {
-	indexQuery := postgres.ContentRevisionTableIndices()
+	indexQuery := postgres.CreateContentRevisionTableIndicesQuery(postgres.ContentRevisionTableBaseName)
 	_, err := p.db.Exec(indexQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating content revision table indices in postgres: %v", err)
 	}
-	indexQuery = postgres.GovernanceEventTableIndices()
+	indexQuery = postgres.CreateGovernanceEventTableIndicesQuery(postgres.GovernanceEventTableBaseName)
 	_, err = p.db.Exec(indexQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating gov events table indices in postgres: %v", err)
 	}
-	indexQuery = postgres.ListingTableIndices()
+	indexQuery = postgres.CreateListingTableIndicesQuery(postgres.ListingTableBaseName)
 	_, err = p.db.Exec(indexQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating listing table indices in postgres: %v", err)
 	}
-	indexQuery = postgres.ChallengeTableIndices()
+	indexQuery = postgres.CreateChallengeTableIndicesQuery(postgres.ChallengeTableBaseName)
 	_, err = p.db.Exec(indexQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating challenge table indices in postgres: %v", err)
 	}
-	// indexQuery = postgres.PollTableIndices()
+	// indexQuery = postgres.CreatePollTableIndicesQuery(postgres.PollTableBaseName)
 	// _, err = p.db.Exec(indexQuery)
 	// if err != nil {
 	// 	return fmt.Errorf("Error creating poll table indices in postgres: %v", err)
 	// }
-	// indexQuery = postgres.AppealTableIndices()
+	// indexQuery = postgres.CreateAppealTableIndicesQuery(postgres.AppealTableBaseName)
 	// _, err = p.db.Exec(indexQuery)
 	// if err != nil {
 	// 	return fmt.Errorf("Error creating appeal table indices in postgres: %v", err)
 	// }
+	// indexQuery = postgres.CreateTokenTransferTableIndicesQuery(postgres.TokenTransferTableBaseName)
+	// _, err = p.db.Exec(indexQuery)
+	// if err != nil {
+	// 	return fmt.Errorf("Error creating token_transfer table indices in postgres: %v", err)
+	// }
 	return err
+}
+
+func (p *PostgresPersister) persisterVersionFromTable(tableName string) (*string, error) {
+	if p.version == nil {
+		version, err := p.retrieveVersionFromTable(tableName)
+		if err != nil {
+			return nil, err
+		}
+		p.version = version
+	}
+	return p.version, nil
+}
+
+func (p *PostgresPersister) retrieveVersionFromTable(tableName string) (*string, error) {
+	dbVersion := []crawlerPostgres.Version{}
+	queryString := fmt.Sprintf(`SELECT * FROM %s WHERE service_name=$1 ORDER BY last_updated_timestamp DESC LIMIT 1;`, tableName) // nolint: gosec
+	err := p.db.Select(&dbVersion, queryString, processorServiceName)
+	if err != nil {
+		return nil, err
+	}
+	if len(dbVersion) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	return dbVersion[0].Version, nil
+}
+
+// saveVersionToTable saves the version
+func (p *PostgresPersister) saveVersionToTable(tableName string, versionNumber *string) error {
+	dbVersionStruct := crawlerPostgres.Version{
+		Version:           versionNumber,
+		ServiceName:       processorServiceName,
+		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64()}
+
+	queryString := cpostgres.InsertIntoDBQueryString(tableName, crawlerPostgres.Version{})
+	_, err := p.db.NamedExec(queryString, dbVersionStruct)
+	if err != nil {
+		return fmt.Errorf("Error saving version to table: %v", err)
+	}
+	return nil
 }
 
 func (p *PostgresPersister) insertIntoDBQueryString(tableName string, dbModelStruct interface{}) string {
