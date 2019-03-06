@@ -72,6 +72,14 @@
   revision = "ed77733ec07dfc8a513741138419b8d9d3de9d2d"
 
 [[projects]]
+  digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  pruneopts = "UT"
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
+
+[[projects]]
   digest = "1:e47d51dab652d26c3fba6f8cba403f922d02757a82abdc77e90df7948daf296e"
   name = "github.com/deckarep/golang-set"
   packages = ["."]
@@ -246,13 +254,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c1b49a13cf385a9fad3ea83c69328628582fde5c5e445c501b05efca70e1ec99"
+  digest = "1:ea9abb8abb299b5a59cba8261367a401bd41b3bbe8ee0d99cd6361e5f9bae403"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
     "pkg/config",
     "pkg/eth",
     "pkg/generated/contract",
+    "pkg/http",
     "pkg/jobs",
     "pkg/numbers",
     "pkg/persistence",
@@ -621,6 +630,7 @@
   input-imports = [
     "cloud.google.com/go/pubsub",
     "github.com/99designs/gqlgen",
+    "github.com/davecgh/go-spew/spew",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
     "github.com/ethereum/go-ethereum/core/types",
@@ -633,10 +643,12 @@
     "github.com/joincivil/civil-events-crawler/pkg/generated/common",
     "github.com/joincivil/civil-events-crawler/pkg/model",
     "github.com/joincivil/civil-events-crawler/pkg/persistence",
+    "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres",
     "github.com/joincivil/civil-events-crawler/pkg/pubsub",
     "github.com/joincivil/go-common/pkg/bytes",
     "github.com/joincivil/go-common/pkg/config",
     "github.com/joincivil/go-common/pkg/generated/contract",
+    "github.com/joincivil/go-common/pkg/http",
     "github.com/joincivil/go-common/pkg/numbers",
     "github.com/joincivil/go-common/pkg/persistence",
     "github.com/joincivil/go-common/pkg/persistence/postgres",

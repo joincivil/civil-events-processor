@@ -10,7 +10,6 @@ import (
 	"github.com/robfig/cron"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/utils"
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
@@ -82,9 +81,6 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 			PollPersister:          persisters.Poll,
 			AppealPersister:        persisters.Appeal,
 			TokenTransferPersister: persisters.TokenTransfer,
-			ContentScraper:         helpers.ContentScraper(config),
-			MetadataScraper:        helpers.MetadataScraper(config),
-			CivilMetadataScraper:   helpers.CivilMetadataScraper(config),
 			GooglePubSub:           pubsub,
 			GooglePubSubTopicName:  config.PubSubEventsTopicName,
 		})

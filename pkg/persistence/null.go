@@ -13,6 +13,11 @@ import (
 // Implements the ListingPersister, ContentRevisionPersister, and GovernanceEventPersister
 type NullPersister struct{}
 
+// Close does nothing
+func (n *NullPersister) Close() error {
+	return nil
+}
+
 // ListingsByCriteria returns all listings by ListingCriteria
 func (n *NullPersister) ListingsByCriteria(criteria *model.ListingCriteria) ([]*model.Listing, error) {
 	return []*model.Listing{}, nil

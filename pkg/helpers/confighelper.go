@@ -10,8 +10,6 @@ import (
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence"
-	"github.com/joincivil/civil-events-processor/pkg/scraper"
-	"github.com/joincivil/civil-events-processor/pkg/utils"
 
 	cconfig "github.com/joincivil/go-common/pkg/config"
 )
@@ -159,22 +157,4 @@ func postgresPersister(config cconfig.PersisterConfig, versionNumber string) (*p
 		return nil, err
 	}
 	return persister, nil
-}
-
-// CivilMetadataScraper is a helper function to return a CivilMetadataScraper based on
-// the given configuration
-func CivilMetadataScraper(config *utils.ProcessorConfig) model.CivilMetadataScraper {
-	return &scraper.CivilMetadataScraper{}
-}
-
-// ContentScraper is a helper function to return a ContentScraper based on
-// the given configuration
-func ContentScraper(config *utils.ProcessorConfig) model.ContentScraper {
-	return &scraper.NullScraper{}
-}
-
-// MetadataScraper is a helper function to return a MetadataScraper based on
-// the given configuration
-func MetadataScraper(config *utils.ProcessorConfig) model.MetadataScraper {
-	return &scraper.NullScraper{}
 }

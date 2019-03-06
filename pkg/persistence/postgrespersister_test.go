@@ -376,8 +376,11 @@ All tests for listing table:
 func TestCreateListing(t *testing.T) {
 	// create fake listing in listing_test
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	modelListing, _ := setupSampleListing()
 	// save to test table
 	err := persister.createListingForTable(modelListing, tableName)
@@ -397,9 +400,13 @@ func TestCreateListing(t *testing.T) {
 
 // TestListingByAddress tests that the query we are using to get Listing works
 func TestListingByAddress(t *testing.T) {
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	// create fake listing in listing_test
 	modelListing, modelListingAddress := setupSampleListing()
 
@@ -420,9 +427,13 @@ func TestListingByAddress(t *testing.T) {
 
 // TestListingCharterByAddress tests that the query we are using to get Listing works
 func TestListingCharterByAddress(t *testing.T) {
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	// create fake listing in listing_test
 	modelListing, modelListingAddress := setupSampleListing()
 
@@ -469,10 +480,13 @@ func TestListingCharterByAddress(t *testing.T) {
 
 // TestListingByAddress tests that the query we are using to get Listing works
 func TestListingByAddressDoesNotExist(t *testing.T) {
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
 
 	defer deleteTestTable(t, persister, tableName)
+
 	// create fake listing in listing_test
 	modelListing, _ := setupSampleListing()
 
@@ -496,8 +510,11 @@ func TestListingByAddressDoesNotExist(t *testing.T) {
 
 // TestDBListingToModelListing tests that the db listing can be properly converted to model listing
 func TestDBListingToModelListing(t *testing.T) {
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// create fake listing in listing_test
@@ -524,7 +541,9 @@ func TestDBListingToModelListing(t *testing.T) {
 // Test retrieving multiple listings
 func TestListingsByAddresses(t *testing.T) {
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// create fake listings in listing_test
@@ -560,8 +579,11 @@ func shuffleListingAddresses(slice []common.Address) []common.Address {
 
 // Test that orered function for IN query returns results in order:
 func TestListingByAddressesInOrder(t *testing.T) {
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	numListings := 10
@@ -617,8 +639,11 @@ func TestListingByAddressesInOrder(t *testing.T) {
 
 // There are nil addresses that slip through
 func TestListingByAddressesInOrderAddressNotFound(t *testing.T) {
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	numListings := 10
@@ -655,9 +680,13 @@ func TestListingByAddressesInOrderAddressNotFound(t *testing.T) {
 
 func TestNilResultsListing(t *testing.T) {
 	// Query for listings that don't exist and make sure expected behavior is returned
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	randHex, _ := cstrings.RandomHexStr(32)
 	randHex2, _ := cstrings.RandomHexStr(32)
 	testAddress1 := common.HexToAddress(randHex)
@@ -688,8 +717,11 @@ func TestNilResultsListing(t *testing.T) {
 
 // TestUpdateListing tests that updating the Listing works
 func TestUpdateListing(t *testing.T) {
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	modelListing, modelListingAddress := setupSampleListing()
@@ -727,8 +759,11 @@ func TestUpdateListing(t *testing.T) {
 
 // TestDeleteListing tests that the deleting the Listing works
 func TestDeleteListing(t *testing.T) {
+
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	modelListing, _ := setupSampleListing()
@@ -767,9 +802,11 @@ func TestDeleteListing(t *testing.T) {
 func TestListingsByCriteria(t *testing.T) {
 	joinTableName := "challenge_test"
 	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(listingTestTableName)
 	_ = setupTestTable(t, joinTableName)
 	joinTableName = persister.GetTableName(joinTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 	defer deleteTestTable(t, persister, joinTableName)
 
@@ -981,8 +1018,11 @@ All tests for content_revision table:
 
 // TestCreateContentRevision tests that a ContentRevision is created
 func TestCreateContentRevision(t *testing.T) {
+
 	persister := setupTestTable(t, contentRevisionTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
@@ -1006,8 +1046,11 @@ func TestCreateContentRevision(t *testing.T) {
 
 // TestContentRevision tests that a content revision can be retrieved
 func TestContentRevision(t *testing.T) {
+
 	persister := setupTestTable(t, contentRevisionTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
@@ -1029,8 +1072,11 @@ func TestContentRevision(t *testing.T) {
 
 // TestDBCRToModelCR tests that the db listing can be properly converted to model listing
 func TestDBCRToModelCR(t *testing.T) {
+
 	persister := setupTestTable(t, contentRevisionTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
@@ -1057,8 +1103,11 @@ func TestDBCRToModelCR(t *testing.T) {
 
 // TestContentRevision tests that multiple content revisions can be retrieved
 func TestContentRevisions(t *testing.T) {
+
 	persister := setupTestTable(t, contentRevisionTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// create multiple contentRevisions
@@ -1095,8 +1144,10 @@ func TestContentRevisions(t *testing.T) {
 
 func TestNilResultsContentRevision(t *testing.T) {
 	persister := setupTestTable(t, contentRevisionTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(contentRevisionTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	address1, _ := cstrings.RandomHexStr(32)
 	contractAddress := common.HexToAddress(address1)
 	contentID := big.NewInt(0)
@@ -1116,8 +1167,11 @@ func TestUpdateContentRevision(t *testing.T) {
 
 // TestDeleteContentRevision tests that the deleting the ContentRevision works
 func TestDeleteContentRevision(t *testing.T) {
+
 	persister := setupTestTable(t, contentRevisionTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
@@ -1208,6 +1262,7 @@ All tests for governance_event table:
 // TestCreateGovernanceEvent tests that a GovernanceEvent is created
 func TestCreateGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(govTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1226,8 +1281,10 @@ func TestCreateGovernanceEvent(t *testing.T) {
 
 func TestNilResultsGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(govTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	txHashSample, _ := cstrings.RandomHexStr(30)
 	txHash := common.HexToHash(txHashSample)
 	govEvent, err := persister.governanceEventsByTxHashFromTable(txHash, tableName)
@@ -1242,6 +1299,7 @@ func TestNilResultsGovernanceEvent(t *testing.T) {
 // TestGovernanceEventsByListingAddress tests that a GovernanceEvent is properly retrieved
 func TestGovernanceEventsByListingAddress(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(govTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1262,6 +1320,7 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 // TestDBGovEventToModelGovEvent tests that the db listing can be properly converted to model listing
 func TestDBGovEventToModelGovEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(govTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1288,6 +1347,7 @@ func TestDBGovEventToModelGovEvent(t *testing.T) {
 // TODO(IS) : this will delete more than you want. need to put some kind of hash for the gov event.
 func TestDeleteGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(govTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1321,8 +1381,10 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 // TestGovEventsByCriteria tests GovernanceEvent by criteria query
 func TestGovEventsByCriteria(t *testing.T) {
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(govTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	var listingAddr common.Address
 	var timeMiddle int64
 	var timeStart int64
@@ -1386,8 +1448,11 @@ func TestGovEventsByCriteria(t *testing.T) {
 
 // TestGovEventsByCriteria tests GovernanceEvent by txhash query
 func TestGovEventsByTxHash(t *testing.T) {
+
 	persister := setupGovEventTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(govTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample governanceEvent
@@ -1533,16 +1598,20 @@ func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, rand
 
 func TestCreateChallenge(t *testing.T) {
 	persister := setupChallengeTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(challengeTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	_, _ = createAndSaveTestChallenge(t, persister, true)
 
 }
 
 func TestGetChallenge(t *testing.T) {
 	persister := setupChallengeTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(challengeTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	modelChallenge, challengeID := createAndSaveTestChallenge(t, persister, true)
 
 	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder(
@@ -1606,6 +1675,7 @@ func TestGetChallenge(t *testing.T) {
 
 func TestGetChallengesForListingAddresses(t *testing.T) {
 	persister := setupChallengeTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(challengeTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1698,8 +1768,10 @@ func TestGetChallengesForListingAddresses(t *testing.T) {
 
 func TestGetChallengesForListingAddress(t *testing.T) {
 	persister := setupChallengeTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(challengeTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	_, _ = createAndSaveTestChallenge(t, persister, false)
 	_, _ = createAndSaveTestChallenge(t, persister, false)
 	_, _ = createAndSaveTestChallenge(t, persister, false)
@@ -1737,6 +1809,7 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 
 func TestNilResultsChallenges(t *testing.T) {
 	persister := setupChallengeTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(challengeTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1761,6 +1834,7 @@ func TestNilResultsChallenges(t *testing.T) {
 
 func TestUpdateChallenge(t *testing.T) {
 	persister := setupChallengeTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(challengeTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1830,14 +1904,17 @@ func createAndSaveTestPoll(t *testing.T, persister *PostgresPersister, randListi
 
 func TestCreatePoll(t *testing.T) {
 	persister := setupPollTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(pollTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	_, _ = createAndSaveTestPoll(t, persister, true)
 
 }
 
 func TestNilResultsPoll(t *testing.T) {
 	persister := setupPollTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(pollTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1853,6 +1930,7 @@ func TestNilResultsPoll(t *testing.T) {
 
 func TestUpdatePoll(t *testing.T) {
 	persister := setupPollTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(pollTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1924,14 +2002,17 @@ func createAndSaveTestAppeal(t *testing.T, persister *PostgresPersister, randLis
 
 func TestCreateAppeal(t *testing.T) {
 	persister := setupAppealTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(appealTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	_, _ = createAndSaveTestAppeal(t, persister, true)
 
 }
 
 func TestUpdateAppeal(t *testing.T) {
 	persister := setupAppealTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(appealTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1969,6 +2050,7 @@ func TestUpdateAppeal(t *testing.T) {
 
 func TestNilResultsAppeal(t *testing.T) {
 	persister := setupAppealTestTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(appealTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -1987,8 +2069,11 @@ All tests for cron table:
 */
 
 func TestTypeExistsInCronTable(t *testing.T) {
+
 	persister := setupTestTable(t, cronTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(cronTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// insert something
@@ -2012,6 +2097,7 @@ func TestTypeExistsInCronTable(t *testing.T) {
 
 func TestTimestampOfLastEventForCron(t *testing.T) {
 	persister := setupTestTable(t, cronTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(cronTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
@@ -2027,10 +2113,12 @@ func TestTimestampOfLastEventForCron(t *testing.T) {
 }
 
 func TestUpdateTimestampForCron(t *testing.T) {
-	persister := setupTestTable(t, cronTestTableName)
-	tableName := persister.GetTableName(cronTestTableName)
-	defer deleteTestTable(t, persister, tableName)
 
+	persister := setupTestTable(t, cronTestTableName)
+	defer persister.Close()
+	tableName := persister.GetTableName(cronTestTableName)
+
+	defer deleteTestTable(t, persister, tableName)
 	newTimestamp := int64(1212121212)
 	err := persister.updateCronTimestampInTable(newTimestamp, tableName)
 	if err != nil {
@@ -2064,8 +2152,11 @@ func TestUpdateTimestampForCron(t *testing.T) {
 }
 
 func TestLastEventHashesFromTable(t *testing.T) {
+
 	persister := setupTestTable(t, cronTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(cronTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// There should be no rows in the table. In this case lastEventHashes should insert a nil value.
@@ -2079,8 +2170,11 @@ func TestLastEventHashesFromTable(t *testing.T) {
 }
 
 func TestUpdateEventHashes(t *testing.T) {
+
 	persister := setupTestTable(t, cronTestTableName)
+	defer persister.Close()
 	tableName := persister.GetTableName(cronTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	newEventHashes := []string{"testhash1", "testhash2"}
@@ -2129,7 +2223,7 @@ func setupTokenTransferTable(t *testing.T) *PostgresPersister {
 
 func createAndSaveTestTokenTransfer(t *testing.T, persister *PostgresPersister) *model.TokenTransfer {
 	transfer := setupSampleTokenTransfer()
-	err := persister.createTokenTransferInTable(transfer, tokenTransferTestTableName)
+	err := persister.createTokenTransferInTable(transfer, persister.GetTableName(tokenTransferTestTableName))
 	if err != nil {
 		t.Errorf("error saving token transfer: %v", err)
 	}
@@ -2138,15 +2232,19 @@ func createAndSaveTestTokenTransfer(t *testing.T, persister *PostgresPersister) 
 
 func TestCreateTokenTransfer(t *testing.T) {
 	persister := setupTokenTransferTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(tokenTransferTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	_ = createAndSaveTestTokenTransfer(t, persister)
 }
 
 func TestGetTokenTransfersForToAddress(t *testing.T) {
 	persister := setupTokenTransferTable(t)
+	defer persister.Close()
 	tableName := persister.GetTableName(tokenTransferTestTableName)
 	defer deleteTestTable(t, persister, tableName)
+
 	transfer := createAndSaveTestTokenTransfer(t, persister)
 
 	purchases, err := persister.tokenTransfersByToAddressFromTable(
