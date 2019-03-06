@@ -303,14 +303,17 @@ func (p *PostgresPersister) PersisterVersion() (*string, error) {
 
 // InitProcessorVersion inits this persistence version to versionNumber if specified, else gets version from db
 func (p *PostgresPersister) InitProcessorVersion(versionNumber *string) error {
-	if versionNumber == nil {
-		var err error
-		versionNumber, err = p.PersisterVersion()
+	currentVersion, err := p.PersisterVersion()
+	if err != nil && versionNumber == nil {
+		if err == cpersist.ErrPersisterNoResults {
+			return fmt.Errorf("No version in version table, specify a version: err %v", err)
+		}
+		return err
+	}
+	if currentVersion != versionNumber {
+		err := p.SaveVersion(versionNumber)
 		if err != nil {
-			if err == cpersist.ErrPersisterNoResults {
-				return fmt.Errorf("VersionNumber needs to be specified, err: %v", err)
-			}
-			return fmt.Errorf("Error retrieving existing VersionNumber, err: %v", err)
+			return err
 		}
 	}
 	p.version = versionNumber

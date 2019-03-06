@@ -177,6 +177,7 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
 	}
+	deleteTestVersionTable(t, persister)
 }
 
 func createTestVersionTable(t *testing.T, persister *PostgresPersister) {
@@ -188,7 +189,7 @@ func createTestVersionTable(t *testing.T, persister *PostgresPersister) {
 }
 
 func deleteTestVersionTable(t *testing.T, persister *PostgresPersister) {
-	_, err := persister.db.Query(fmt.Sprintf("DROP TABLE %v;", versionTestTableName))
+	_, err := persister.db.Query(fmt.Sprintf("DROP TABLE IF EXISTS %v;", versionTestTableName))
 	if err != nil {
 		t.Errorf("error: %v", err)
 	}
