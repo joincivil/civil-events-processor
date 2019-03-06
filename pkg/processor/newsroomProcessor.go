@@ -26,6 +26,7 @@ import (
 const (
 	listingNameFieldName    = "Name"
 	ownerAddressesFieldName = "OwnerAddresses"
+	urlFieldName            = "URL"
 
 	defaultCharterContentID = 0
 	// approvalDateNoUpdate    = int64(-1)
@@ -255,7 +256,7 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 			log.Errorf("Could not find newsroomUrl in the charter IPFS data: %v", charterData.URI())
 		} else {
 			listing.SetURL(nrURL.(string))
-			updatedFields = append(updatedFields, "url")
+			updatedFields = append(updatedFields, urlFieldName)
 		}
 	}
 
