@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	log "github.com/golang/glog"
 	"github.com/robfig/cron"
+	"github.com/shurcooL/graphql"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
@@ -72,6 +73,8 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 			return
 		}
 
+		graphqlClient := graphql.NewClient(config.CivilGraphQLURL, nil)
+
 		proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
 			Client:                 client,
 			ListingPersister:       persisters.Listing,
@@ -83,6 +86,7 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 			TokenTransferPersister: persisters.TokenTransfer,
 			GooglePubSub:           pubsub,
 			GooglePubSubTopicName:  config.PubSubEventsTopicName,
+			GraphQLClient:          graphqlClient,
 		})
 
 		RunProcessor(proc, persisters, events, lastTs)

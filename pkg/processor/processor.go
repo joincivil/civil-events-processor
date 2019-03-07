@@ -3,6 +3,7 @@ package processor
 import (
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/golang/glog"
+	"github.com/shurcooL/graphql"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
@@ -42,6 +43,7 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 	)
 	cvlTokenProcessor := NewCvlTokenEventProcessor(
 		params.Client,
+		params.GraphQLClient,
 		params.TokenTransferPersister,
 	)
 	return &EventProcessor{
@@ -66,6 +68,7 @@ type NewEventProcessorParams struct {
 	TokenTransferPersister model.TokenTransferPersister
 	GooglePubSub           *pubsub.GooglePubSub
 	GooglePubSubTopicName  string
+	GraphQLClient          *graphql.Client
 }
 
 // EventProcessor handles the processing of raw events into aggregated data

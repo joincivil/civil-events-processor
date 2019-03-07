@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/shurcooL/graphql"
 
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
@@ -18,10 +20,11 @@ import (
 )
 
 // NewCvlTokenEventProcessor is a convenience function to init an Event processor
-func NewCvlTokenEventProcessor(client bind.ContractBackend,
+func NewCvlTokenEventProcessor(client bind.ContractBackend, graphqlClient *graphql.Client,
 	transferPersister model.TokenTransferPersister) *CvlTokenEventProcessor {
 	return &CvlTokenEventProcessor{
 		client:            client,
+		graphqlClient:     graphqlClient,
 		transferPersister: transferPersister,
 	}
 }
@@ -30,6 +33,7 @@ func NewCvlTokenEventProcessor(client bind.ContractBackend,
 // for use via the API.
 type CvlTokenEventProcessor struct {
 	client            bind.ContractBackend
+	graphqlClient     *graphql.Client
 	transferPersister model.TokenTransferPersister
 }
 
@@ -79,14 +83,34 @@ func (c *CvlTokenEventProcessor) processCvlTokenTransfer(event *crawlermodel.Eve
 	}
 	transferDate := event.Timestamp()
 
-	paddr := toAddress.(common.Address)
-	caddr := fromAddress.(common.Address)
+	toaddr := toAddress.(common.Address)
+	fromaddr := fromAddress.(common.Address)
+
+	// Figure out the token/cvl values
+	cvlPrice := big.NewFloat(0.0)
+	ethPrice := big.NewFloat(0.0)
+
+	cprice, err := c.fetchCvlPrice()
+	if err != nil {
+		log.Errorf("Error fetching cvl price: err: %v", err)
+	} else {
+		cvlPrice = cprice
+	}
+	eprice, err := c.fetchEthPrice()
+	if err != nil {
+		log.Errorf("Error fetching eth price: err: %v", err)
+	} else {
+		ethPrice = eprice
+	}
 
 	params := &model.TokenTransferParams{
-		ToAddress:    paddr,
-		FromAddress:  caddr,
+		ToAddress:    toaddr,
+		FromAddress:  fromaddr,
 		Amount:       amount.(*big.Int),
 		TransferDate: transferDate,
+		CvlPrice:     cvlPrice,
+		EthPrice:     ethPrice,
+		EventHash:    event.Hash(),
 		BlockNumber:  event.BlockNumber(),
 		TxHash:       event.TxHash(),
 		TxIndex:      event.TxIndex(),
@@ -95,7 +119,7 @@ func (c *CvlTokenEventProcessor) processCvlTokenTransfer(event *crawlermodel.Eve
 	}
 	newPurchase := model.NewTokenTransfer(params)
 
-	purchases, err := c.transferPersister.TokenTransfersByToAddress(paddr)
+	purchases, err := c.transferPersister.TokenTransfersByToAddress(toaddr)
 	if err != nil {
 		if err != cpersist.ErrPersisterNoResults {
 			return fmt.Errorf("Error retrieving token transfer: err: %v", err)
@@ -116,4 +140,39 @@ func (c *CvlTokenEventProcessor) processCvlTokenTransfer(event *crawlermodel.Eve
 	}
 
 	return c.transferPersister.CreateTokenTransfer(newPurchase)
+}
+
+func (c *CvlTokenEventProcessor) fetchCvlPrice() (*big.Float, error) {
+	if c.graphqlClient == nil {
+		log.Infof("No graphql client init to fetch cvl price")
+		return nil, nil
+	}
+
+	var priceQuery struct {
+		Price graphql.Float `graphql:"storefrontCvlPrice"`
+	}
+
+	err := c.graphqlClient.Query(context.Background(), &priceQuery, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return big.NewFloat(float64(priceQuery.Price)), nil
+}
+
+func (c *CvlTokenEventProcessor) fetchEthPrice() (*big.Float, error) {
+	if c.graphqlClient == nil {
+		return nil, fmt.Errorf("No graphql client init to fetch eth price")
+	}
+
+	var priceQuery struct {
+		Price graphql.Float `graphql:"storefrontEthPrice"`
+	}
+
+	err := c.graphqlClient.Query(context.Background(), &priceQuery, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return big.NewFloat(float64(priceQuery.Price)), nil
 }

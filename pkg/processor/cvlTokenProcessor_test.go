@@ -6,6 +6,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/shurcooL/graphql"
+
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
@@ -17,6 +20,10 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/testutils"
 )
 
+const (
+	graphQLStagingURL = "https://graphql.staging.civil.app/v1/query"
+)
+
 func setupCvlTokenEventProcessor(t *testing.T) (*contractutils.AllTestContracts,
 	*testutils.TestPersister, *processor.CvlTokenEventProcessor) {
 	contracts, err := contractutils.SetupAllTestContracts()
@@ -24,8 +31,10 @@ func setupCvlTokenEventProcessor(t *testing.T) (*contractutils.AllTestContracts,
 		t.Fatalf("Unable to setup the contracts: %v", err)
 	}
 	persister := &testutils.TestPersister{}
+	graphqlClient := graphql.NewClient(graphQLStagingURL, nil)
 	proc := processor.NewCvlTokenEventProcessor(
 		contracts.Client,
+		graphqlClient,
 		persister,
 	)
 	return contracts, persister, proc
@@ -102,6 +111,21 @@ func TestProcessTransfer(t *testing.T) {
 		t.Errorf("FromAddress should have been the same")
 	}
 	if purchase.Amount() != value.(*big.Int) {
-		t.Errorf("Purchase amoutn should have been the same")
+		t.Errorf("Purchase amount should have been the same")
+	}
+	if purchase.EventHash() == "" {
+		t.Errorf("Should not have gotten an empty event hash")
+	}
+	if purchase.CvlPrice() == nil {
+		t.Fatalf("Should have gotten a cvl price")
+	}
+	if purchase.EthPrice() == nil {
+		t.Errorf("Should have gotten a eth price")
+	}
+	if val, _ := purchase.CvlPrice().Float64(); val <= 0.0 {
+		t.Errorf("CvlPrice should have set a value: %v", purchase.CvlPrice())
+	}
+	if val, _ := purchase.EthPrice().Float64(); val <= 0.0 {
+		t.Errorf("EthPrice should have set a value: %v", purchase.EthPrice())
 	}
 }

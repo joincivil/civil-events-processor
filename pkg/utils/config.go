@@ -31,6 +31,10 @@ type ProcessorConfig struct {
 	PubSubCrawlTopicName  string `split_words:"true" desc:"Sets GPubSub topic name for crawler. Set if using pubsub to run the processor."`
 	PubSubCrawlSubName    string `split_words:"true" desc:"Sets GPubSub subscription name. Needs to be set to run processor using pubsub updates."`
 
+	// CivilGraphqlURL enables call to retrieve data from Civil.
+	// Should pass in the URL to the GraphQL endpoint to enable.
+	CivilGraphQLURL string `envconfig:"civil_graphql_url" desc:"URL of the Civil GraphQL endpoint"`
+
 	PersisterType            cconfig.PersisterType `ignored:"true"`
 	PersisterTypeName        string                `split_words:"true" required:"true" desc:"Sets the persister type to use"`
 	PersisterPostgresAddress string                `split_words:"true" desc:"If persister type is Postgresql, sets the address"`

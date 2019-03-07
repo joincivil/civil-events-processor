@@ -11,6 +11,9 @@ type TokenTransferParams struct {
 	ToAddress    common.Address
 	FromAddress  common.Address
 	Amount       *big.Int
+	CvlPrice     *big.Float
+	EthPrice     *big.Float
+	EventHash    string
 	TransferDate int64
 	BlockNumber  uint64
 	TxHash       common.Hash
@@ -25,7 +28,10 @@ func NewTokenTransfer(params *TokenTransferParams) *TokenTransfer {
 		toAddress:    params.ToAddress,
 		fromAddress:  params.FromAddress,
 		amount:       params.Amount,
+		cvlPrice:     params.CvlPrice,
+		ethPrice:     params.EthPrice,
 		transferDate: params.TransferDate,
+		eventHash:    params.EventHash,
 		blockData: BlockData{
 			blockNumber: params.BlockNumber,
 			txHash:      params.TxHash.Hex(),
@@ -47,7 +53,17 @@ type TokenTransfer struct {
 	// amount in gwei, not tokens
 	amount *big.Int
 
+	// best estimation price of CVL around time of transfer
+	// if 0, likely unable to give good estimation
+	cvlPrice *big.Float
+
+	// best estimation price of ETH around time of transfer
+	// if 0, likely unable to give good estimation
+	ethPrice *big.Float
+
 	transferDate int64
+
+	eventHash string
 
 	blockData BlockData
 }
@@ -73,10 +89,27 @@ func (t *TokenTransfer) AmountInToken() *big.Int {
 	return t.amount.Quo(t.amount, big.NewInt(1e18))
 }
 
+// CvlPrice is the best estimation price of CVL at time of transfer
+// if 0, likely unable to give good estimation
+func (t *TokenTransfer) CvlPrice() *big.Float {
+	return t.cvlPrice
+}
+
+// EthPrice is the best estimation price of ETH at time of transfer
+// if 0, likely unable to give good estimation
+func (t *TokenTransfer) EthPrice() *big.Float {
+	return t.ethPrice
+}
+
 // TransferDate is the purchase date
 // Should be based on the block timestamp
 func (t *TokenTransfer) TransferDate() int64 {
 	return t.transferDate
+}
+
+// EventHash returns the hash of the event for this transfer
+func (t *TokenTransfer) EventHash() string {
+	return t.eventHash
 }
 
 // BlockData has all the block data from the block associated with the event
@@ -97,6 +130,9 @@ func (t *TokenTransfer) Equals(purchase *TokenTransfer) bool {
 		return false
 	}
 	if t.transferDate != purchase.TransferDate() {
+		return false
+	}
+	if t.blockData.TxHash() == purchase.blockData.TxHash() {
 		return false
 	}
 	return true

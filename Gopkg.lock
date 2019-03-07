@@ -333,6 +333,18 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:070fd6646e4774dadf633e813a587e152f9386fad277e60a7c6907096a687efe"
+  name = "github.com/shurcooL/graphql"
+  packages = [
+    ".",
+    "ident",
+    "internal/jsonutil",
+  ]
+  pruneopts = "UT"
+  revision = "d48a9a75455f6af30244670bc0c9d0e38e7392b5"
+
+[[projects]]
+  branch = "master"
   digest = "1:685fdfea42d825ebd39ee0994354b46c374cf2c2b2d97a41a8dee1807c6a9b62"
   name = "github.com/syndtr/goleveldb"
   packages = [
@@ -657,6 +669,7 @@
     "github.com/kelseyhightower/envconfig",
     "github.com/lib/pq",
     "github.com/robfig/cron",
+    "github.com/shurcooL/graphql",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

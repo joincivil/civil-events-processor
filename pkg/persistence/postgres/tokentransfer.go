@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/joincivil/go-common/pkg/numbers"
@@ -26,7 +27,10 @@ func CreateTokenTransferTableQueryString(tableName string) string {
 			to_address TEXT,
 			from_address TEXT,
 			amount NUMERIC,
+			cvl_price NUMERIC,
+			eth_price NUMERIC,
 			transfer_date INT,
+            event_hash TEXT UNIQUE,
 			block_data JSONB
 		);
 	`, tableName)
@@ -52,7 +56,14 @@ func NewTokenTransfer(transfer *model.TokenTransfer) *TokenTransfer {
 	dbTransfer.ToAddress = transfer.ToAddress().Hex()
 	dbTransfer.FromAddress = transfer.FromAddress().Hex()
 	dbTransfer.Amount = numbers.BigIntToFloat64(transfer.Amount())
+	if transfer.CvlPrice() != nil {
+		dbTransfer.CvlPrice, _ = transfer.CvlPrice().Float64()
+	}
+	if transfer.EthPrice() != nil {
+		dbTransfer.EthPrice, _ = transfer.EthPrice().Float64()
+	}
 	dbTransfer.TransferDate = transfer.TransferDate()
+	dbTransfer.EventHash = transfer.EventHash()
 	dbTransfer.BlockData = make(cpostgres.JsonbPayload)
 	dbTransfer.fillBlockData(transfer.BlockData())
 	return dbTransfer
@@ -66,7 +77,13 @@ type TokenTransfer struct {
 
 	Amount float64 `db:"amount"` // Amount in gwei, not token
 
+	CvlPrice float64 `db:"cvl_price"`
+
+	EthPrice float64 `db:"eth_price"`
+
 	TransferDate int64 `db:"transfer_date"`
+
+	EventHash string `db:"event_hash"` // Hash from the Event for this transfer
 
 	BlockData cpostgres.JsonbPayload `db:"block_data"`
 }
@@ -77,6 +94,9 @@ func (t *TokenTransfer) DbToTokenTransfer() *model.TokenTransfer {
 	params.ToAddress = common.HexToAddress(t.ToAddress)
 	params.FromAddress = common.HexToAddress(t.FromAddress)
 	params.Amount = numbers.Float64ToBigInt(t.Amount)
+	params.CvlPrice = big.NewFloat(t.CvlPrice)
+	params.EthPrice = big.NewFloat(t.EthPrice)
+	params.EventHash = t.EventHash
 	params.TransferDate = t.TransferDate
 
 	params.BlockNumber = uint64(t.BlockData["blockNumber"].(float64))
