@@ -437,12 +437,22 @@ func (p *PostgresPersister) saveVersionToTable(tableName string, versionNumber *
 		ServiceName:       processorServiceName,
 		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64()}
 
-	queryString := cpostgres.InsertIntoDBQueryString(tableName, crawlerPostgres.Version{})
+	queryString := p.upsertVersionDataQueryString(tableName, crawlerPostgres.Version{})
 	_, err := p.db.NamedExec(queryString, dbVersionStruct)
 	if err != nil {
 		return fmt.Errorf("Error saving version to table: %v", err)
 	}
 	return nil
+}
+
+func (p *PostgresPersister) upsertVersionDataQueryString(tableName string, dbModelStruct interface{}) string {
+	onConflict := "version, service_name"
+	timestampField := "last_updated_timestamp"
+	timestampValue := ":last_updated_timestamp"
+	fieldNames, fieldNamesColon := cpostgres.StructFieldsForQuery(dbModelStruct, true, "")
+	queryString := fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO UPDATE SET %s=%s;",
+		tableName, fieldNames, fieldNamesColon, onConflict, timestampField, timestampValue) // nolint: gosec
+	return queryString
 }
 
 func (p *PostgresPersister) insertIntoDBQueryString(tableName string, dbModelStruct interface{}) string {
@@ -1010,7 +1020,7 @@ func (p *PostgresPersister) updateChallengeQuery(updatedFields []string, tableNa
 }
 
 func (p *PostgresPersister) challengeByChallengeIDFromTable(challengeID int, tableName string) (*model.Challenge, error) {
-	challenges, err := p.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTableName)
+	challenges, err := p.challengesByChallengeIDsInTableInOrder([]int{challengeID}, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -1028,12 +1038,10 @@ func (p *PostgresPersister) challengesByChallengeIDsInTableInOrder(challengeIDs 
 
 	challengeIDsString := cstrings.ListIntToListString(challengeIDs)
 	queryString := p.challengesByChallengeIDsQuery(tableName)
-
 	query, args, err := sqlx.In(queryString, challengeIDsString)
 	if err != nil {
 		return nil, fmt.Errorf("Error preparing 'IN' statement: %v", err)
 	}
-
 	query = p.db.Rebind(query)
 	rows, err := p.db.Queryx(query, args...)
 	defer p.closeRows(rows)

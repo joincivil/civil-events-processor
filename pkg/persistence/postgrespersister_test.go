@@ -1919,13 +1919,13 @@ func TestNilResultsPoll(t *testing.T) {
 	tableName := persister.GetTableName(pollTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
-	pollID := 0
-	poll, err := persister.pollByPollIDFromTable(pollID)
-	if poll != nil {
-		t.Errorf("Poll should be nil but is %v", poll)
+	pollIDs := []int{0}
+	poll, err := persister.pollsByPollIDsInTableInOrder(pollIDs, tableName)
+	if err != nil {
+		t.Errorf("Error getting poll id results, err: %v", err)
 	}
-	if err != cpersist.ErrPersisterNoResults {
-		t.Errorf("Error should be %v but is %v", cpersist.ErrPersisterNoResults, err)
+	if poll[0] != nil {
+		t.Errorf("Poll should be nil but is %v", poll)
 	}
 }
 
@@ -2055,13 +2055,13 @@ func TestNilResultsAppeal(t *testing.T) {
 	tableName := persister.GetTableName(appealTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
-	challengeID := 0
-	appeal, err := persister.appealByChallengeIDFromTable(challengeID)
-	if appeal != nil {
+	challengeIDs := []int{0}
+	appeal, err := persister.appealsByChallengeIDsInTableInOrder(challengeIDs, tableName)
+	if appeal[0] != nil {
 		t.Errorf("Appeal should be nil but is %v", appeal)
 	}
-	if err != cpersist.ErrPersisterNoResults {
-		t.Errorf("Error should be %v but is %v", cpersist.ErrPersisterNoResults, err)
+	if err != nil {
+		t.Errorf("Error getting appeals, err: %v", err)
 	}
 }
 

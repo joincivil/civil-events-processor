@@ -239,7 +239,7 @@
 
 [[projects]]
   branch = "inna/338/db-rebuild"
-  digest = "1:28d77677b4f14828cb0955009304f6a6bd4571ea50875325acebc09894f3b294"
+  digest = "1:092695b1c7c20b23b2da77632381dc672045dd5912272056b68b07d315d8676d"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -250,7 +250,7 @@
     "pkg/pubsub",
   ]
   pruneopts = "UT"
-  revision = "0ca6cdb18e28f8c2932bf8a97b7f94e0cae9b81e"
+  revision = "6fcbe417db9ad2dfe5b5a4ddd50b0043a413f757"
 
 [[projects]]
   branch = "master"
