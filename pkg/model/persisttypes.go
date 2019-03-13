@@ -182,12 +182,3 @@ type TokenTransferPersister interface {
 	// Close shuts down the persister
 	Close() error
 }
-
-// VersionDataPersister handles storing and receiving version table data.
-type VersionDataPersister interface {
-	// RetrieveVersion
-	RetrieveVersion(tableType string) (string, error)
-
-	// SaveVersion
-	SaveVersion(tableType string, versionNumber string) error
-}

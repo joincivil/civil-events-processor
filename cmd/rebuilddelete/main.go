@@ -3,7 +3,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	log "github.com/golang/glog"
 	"os"
 
@@ -57,7 +56,6 @@ func main() {
 		postgres.PollTableBaseName,
 		postgres.TokenTransferTableBaseName,
 	}
-	fmt.Println(versions)
 	for _, version := range versions {
 		for _, tableName := range tableNames {
 			currTableName := fmt.Sprintf("%s_%s", tableName, version)
