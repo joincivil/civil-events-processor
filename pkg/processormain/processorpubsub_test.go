@@ -327,7 +327,7 @@ func TestMessageOrder(t *testing.T) {
 		watchedEvent := createNewsroomNameChangedEvent(t, "namechange1", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent})
 		cps.PublishProcessorTriggerMessage()
-		time.Sleep(10)
+		time.Sleep(10 * time.Second)
 		watchedEvent2 := createNewsroomNameChangedEvent(t, "namechange2", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent2})
 		cps.PublishProcessorTriggerMessage()

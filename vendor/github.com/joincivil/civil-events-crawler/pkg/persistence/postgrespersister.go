@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	crawlerServiceName = "crawler"
+	//CrawlerServiceName is the name of the crawler service
+	CrawlerServiceName = "crawler"
 	// Could make this configurable later if needed
 	maxOpenConns    = 50
 	maxIdleConns    = 10
@@ -59,9 +60,38 @@ func (p *PostgresPersister) PersisterVersion() (*string, error) {
 	return p.persisterVersionFromTable(postgres.VersionTableName)
 }
 
+// OldVersions returns all versions except for the most recent one for this service
+func (p *PostgresPersister) OldVersions(serviceName string) ([]string, error) {
+	return p.oldVersionsFromTable(serviceName, postgres.VersionTableName)
+}
+
 // GetTableName formats tabletype with version of this persister to return the table name
 func (p *PostgresPersister) GetTableName(tableType string) string {
 	return fmt.Sprintf("%s_%s", tableType, *p.version)
+}
+
+// DropTable drops the table with the specified tableName
+func (p *PostgresPersister) DropTable(tableName string) error {
+	_, err := p.db.Query(fmt.Sprintf("DROP TABLE IF EXISTS %v;", tableName)) // nolint: gosec
+	return err
+}
+
+// UpdateExistenceFalseForVersionTable updates the tableName's exists field to false in the version table
+func (p *PostgresPersister) UpdateExistenceFalseForVersionTable(tableName string, versionNumber string,
+	serviceName string) error {
+	dbVersionStruct := postgres.Version{
+		Version:     &versionNumber,
+		ServiceName: serviceName,
+		Exists:      false}
+	onConflict := fmt.Sprintf("%s, %s", postgres.VersionFieldName, postgres.ServiceFieldName)
+	updatedFields := []string{postgres.ExistsFieldName}
+	queryString := p.upsertVersionDataQueryString(tableName, dbVersionStruct, onConflict,
+		updatedFields)
+	_, err := p.db.NamedExec(queryString, dbVersionStruct)
+	if err != nil {
+		return fmt.Errorf("Error saving version to table: %v", err)
+	}
+	return nil
 }
 
 // SaveVersion saves the version for this persistence
@@ -192,10 +222,28 @@ func (p *PostgresPersister) persisterVersionFromTable(tableName string) (*string
 	return p.version, nil
 }
 
+func (p *PostgresPersister) oldVersionsFromTable(serviceName string, tableName string) ([]string, error) {
+	dbVersions := []postgres.Version{}
+	queryStringLargest := fmt.Sprintf(`SELECT MAX(last_updated_timestamp) FROM %s WHERE service_name='%s'`,
+		tableName, serviceName) // nolint: gosec
+	queryString := fmt.Sprintf(`SELECT * FROM %s WHERE service_name=$1 AND exists=true AND last_updated_timestamp !=(%s)`,
+		tableName, queryStringLargest) // nolint: gosec
+	err := p.db.Select(&dbVersions, queryString, serviceName)
+	if err != nil {
+		return []string{}, err
+	}
+	versions := []string{}
+	for _, version := range dbVersions {
+		versions = append(versions, *version.Version)
+	}
+
+	return versions, nil
+}
+
 func (p *PostgresPersister) retrieveVersionFromTable(tableName string) (*string, error) {
 	dbVersion := []postgres.Version{}
 	queryString := fmt.Sprintf(`SELECT * FROM %s WHERE service_name=$1 ORDER BY last_updated_timestamp DESC LIMIT 1;`, tableName) // nolint: gosec
-	err := p.db.Select(&dbVersion, queryString, crawlerServiceName)
+	err := p.db.Select(&dbVersion, queryString, CrawlerServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -209,9 +257,13 @@ func (p *PostgresPersister) retrieveVersionFromTable(tableName string) (*string,
 func (p *PostgresPersister) saveVersionToTable(tableName string, versionNumber *string) error {
 	dbVersionStruct := postgres.Version{
 		Version:           versionNumber,
-		ServiceName:       crawlerServiceName,
-		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64()}
-	queryString := p.upsertVersionDataQueryString(tableName, dbVersionStruct)
+		ServiceName:       CrawlerServiceName,
+		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
+		Exists:            true}
+	onConflict := fmt.Sprintf("%s, %s", postgres.VersionFieldName, postgres.ServiceFieldName)
+	updateFields := []string{postgres.LastUpdatedTsFieldName, postgres.ExistsFieldName}
+	queryString := p.upsertVersionDataQueryString(tableName, dbVersionStruct, onConflict,
+		updateFields)
 	_, err := p.db.NamedExec(queryString, dbVersionStruct)
 	if err != nil {
 		return fmt.Errorf("Error saving version to table: %v", err)
@@ -219,14 +271,19 @@ func (p *PostgresPersister) saveVersionToTable(tableName string, versionNumber *
 	return nil
 }
 
-func (p *PostgresPersister) upsertVersionDataQueryString(tableName string, dbModelStruct interface{}) string {
-	onConflict := "version, service_name"
-	timestampField := "last_updated_timestamp"
-	timestampValue := ":last_updated_timestamp"
+func (p *PostgresPersister) upsertVersionDataQueryString(tableName string, dbModelStruct interface{},
+	onConflict string, updatedFields []string) string {
+	var queryString strings.Builder
 	fieldNames, fieldNamesColon := cpostgres.StructFieldsForQuery(dbModelStruct, true, "")
-	queryString := fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO UPDATE SET %s=%s;",
-		tableName, fieldNames, fieldNamesColon, onConflict, timestampField, timestampValue) // nolint: gosec
-	return queryString
+	queryString.WriteString(fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO UPDATE SET ",
+		tableName, fieldNames, fieldNamesColon, onConflict)) // nolint: gosec
+	for idx, field := range updatedFields {
+		queryString.WriteString(fmt.Sprintf("%s=:%s", field, field)) // nolint: gosec
+		if idx+1 < len(updatedFields) {
+			queryString.WriteString(", ") // nolint: gosec
+		}
+	}
+	return queryString.String()
 }
 
 func (p *PostgresPersister) saveEventsToTable(events []*model.Event, tableName string) error {
@@ -299,9 +356,9 @@ func (p *PostgresPersister) retrieveEventsQuery(tableName string, criteria *mode
 			queryBuf.WriteString(notInQuery) // nolint: gosec
 		}
 		if criteria.Reverse {
-			queryBuf.WriteString(" ORDER BY e.id DESC") // nolint: gosec
+			queryBuf.WriteString(" ORDER BY e.timestamp DESC, e.id DESC") // nolint: gosec
 		} else {
-			queryBuf.WriteString(" ORDER BY e.id") // nolint: gosec
+			queryBuf.WriteString(" ORDER BY e.timestamp, e.id") // nolint: gosec
 		}
 		if criteria.Offset > 0 {
 			queryBuf.WriteString(" OFFSET :offset") // nolint: gosec

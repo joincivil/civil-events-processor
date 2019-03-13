@@ -239,7 +239,7 @@
 
 [[projects]]
   branch = "inna/338/db-rebuild"
-  digest = "1:463506cec576102653990081543b5113dfc97c77d7f0bd7a963666e50af1ced2"
+  digest = "1:b6034362482cc6202d6bdc7f73d458ca4196bf2841a05f5683fed8fee58afc9b"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -248,9 +248,10 @@
     "pkg/persistence",
     "pkg/persistence/postgres",
     "pkg/pubsub",
+    "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "1f7d89592955105f8c78e2010f1d037ab4b2fb8d"
+  revision = "201f025b39188ded785440653e1c4ffb0d32afbf"
 
 [[projects]]
   branch = "master"
@@ -330,6 +331,18 @@
   pruneopts = "UT"
   revision = "9a47f48565a795472d43519dd49aac781f3034fb"
   version = "v1.6.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:070fd6646e4774dadf633e813a587e152f9386fad277e60a7c6907096a687efe"
+  name = "github.com/shurcooL/graphql"
+  packages = [
+    ".",
+    "ident",
+    "internal/jsonutil",
+  ]
+  pruneopts = "UT"
+  revision = "d48a9a75455f6af30244670bc0c9d0e38e7392b5"
 
 [[projects]]
   branch = "master"
@@ -645,6 +658,7 @@
     "github.com/joincivil/civil-events-crawler/pkg/persistence",
     "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres",
     "github.com/joincivil/civil-events-crawler/pkg/pubsub",
+    "github.com/joincivil/civil-events-crawler/pkg/utils",
     "github.com/joincivil/go-common/pkg/bytes",
     "github.com/joincivil/go-common/pkg/config",
     "github.com/joincivil/go-common/pkg/generated/contract",

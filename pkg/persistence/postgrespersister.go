@@ -34,8 +34,9 @@ import (
 // NOTE(IS): cpersist.ErrPersisterNoResults is only returned for single queries
 
 const (
+	// ProcessorServiceName is the name for the processor service
+	ProcessorServiceName       = "processor"
 	lastUpdatedDateDBModelName = "LastUpdatedDateTs"
-	processorServiceName       = "processor"
 
 	// Could make this configurable later if needed
 	maxOpenConns    = 50
@@ -450,7 +451,7 @@ func (p *PostgresPersister) persisterVersionFromTable(tableName string) (*string
 func (p *PostgresPersister) retrieveVersionFromTable(tableName string) (*string, error) {
 	dbVersion := []crawlerPostgres.Version{}
 	queryString := fmt.Sprintf(`SELECT * FROM %s WHERE service_name=$1 ORDER BY last_updated_timestamp DESC LIMIT 1;`, tableName) // nolint: gosec
-	err := p.db.Select(&dbVersion, queryString, processorServiceName)
+	err := p.db.Select(&dbVersion, queryString, ProcessorServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -464,8 +465,9 @@ func (p *PostgresPersister) retrieveVersionFromTable(tableName string) (*string,
 func (p *PostgresPersister) saveVersionToTable(tableName string, versionNumber *string) error {
 	dbVersionStruct := crawlerPostgres.Version{
 		Version:           versionNumber,
-		ServiceName:       processorServiceName,
-		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64()}
+		ServiceName:       ProcessorServiceName,
+		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
+		Exists:            true}
 
 	queryString := p.upsertVersionDataQueryString(tableName, crawlerPostgres.Version{})
 	_, err := p.db.NamedExec(queryString, dbVersionStruct)
