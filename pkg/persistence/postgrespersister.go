@@ -468,8 +468,10 @@ func (p *PostgresPersister) saveVersionToTable(tableName string, versionNumber *
 		ServiceName:       ProcessorServiceName,
 		LastUpdatedDateTs: ctime.CurrentEpochSecsInInt64(),
 		Exists:            true}
-
-	queryString := p.upsertVersionDataQueryString(tableName, crawlerPostgres.Version{})
+	onConflict := fmt.Sprintf("%s, %s", crawlerPostgres.VersionFieldName, crawlerPostgres.ServiceFieldName)
+	updateFields := []string{crawlerPostgres.LastUpdatedTsFieldName, crawlerPostgres.ExistsFieldName}
+	queryString := p.upsertVersionDataQueryString(tableName, dbVersionStruct, onConflict,
+		updateFields)
 	_, err := p.db.NamedExec(queryString, dbVersionStruct)
 	if err != nil {
 		return fmt.Errorf("Error saving version to table: %v", err)
@@ -477,14 +479,19 @@ func (p *PostgresPersister) saveVersionToTable(tableName string, versionNumber *
 	return nil
 }
 
-func (p *PostgresPersister) upsertVersionDataQueryString(tableName string, dbModelStruct interface{}) string {
-	onConflict := "version, service_name"
-	timestampField := "last_updated_timestamp"
-	timestampValue := ":last_updated_timestamp"
+func (p *PostgresPersister) upsertVersionDataQueryString(tableName string, dbModelStruct interface{},
+	onConflict string, updatedFields []string) string {
+	var queryString strings.Builder
 	fieldNames, fieldNamesColon := cpostgres.StructFieldsForQuery(dbModelStruct, true, "")
-	queryString := fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO UPDATE SET %s=%s;",
-		tableName, fieldNames, fieldNamesColon, onConflict, timestampField, timestampValue) // nolint: gosec
-	return queryString
+	queryString.WriteString(fmt.Sprintf("INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO UPDATE SET ",
+		tableName, fieldNames, fieldNamesColon, onConflict)) // nolint: gosec
+	for idx, field := range updatedFields {
+		queryString.WriteString(fmt.Sprintf("%s=:%s", field, field)) // nolint: gosec
+		if idx+1 < len(updatedFields) {
+			queryString.WriteString(", ") // nolint: gosec
+		}
+	}
+	return queryString.String()
 }
 
 func (p *PostgresPersister) insertIntoDBQueryString(tableName string, dbModelStruct interface{}) string {

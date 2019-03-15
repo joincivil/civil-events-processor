@@ -264,3 +264,65 @@ func TestCreateAndProcOwnershipTransferredEvent(t *testing.T) {
 		t.Errorf("Should have updated the listing with new owner")
 	}
 }
+
+func TestUpdateListingCharterRevision(t *testing.T) {
+	contracts, persister, nwsrmProc := setupApplicationAndNewsroomProcessor(t)
+	newLink := "ipfs://zb34W52j4ctZtqo99ko7D64TWbsaF5DzFuw1A7gntSJfFfEwV"
+	revision := &contract.NewsroomContractRevisionUpdated{
+		Editor:     common.HexToAddress(editorAddress),
+		ContentId:  big.NewInt(0),
+		RevisionId: big.NewInt(0),
+		Uri:        newLink,
+		Raw: types.Log{
+			Address:     contracts.NewsroomAddr,
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 888889,
+			TxHash:      common.Hash{},
+			TxIndex:     3,
+			BlockHash:   common.Hash{},
+			Index:       4,
+			Removed:     false,
+		},
+	}
+
+	listing, ok := persister.Listings[contracts.NewsroomAddr.Hex()]
+	if !ok {
+		t.Errorf("Listing not found in persister")
+	}
+
+	if listing.Charter().URI() == newLink {
+		t.Errorf("Should not have updated URI: %v", listing.Charter().URI())
+	}
+
+	if listing.URL() == "https://coloradosun.com" {
+		t.Errorf("Should not have updated listing URL: %v", listing.URL())
+	}
+
+	event, _ := crawlermodel.NewEventFromContractEvent(
+		"RevisionUpdated",
+		"NewsroomContract",
+		contracts.NewsroomAddr,
+		revision,
+		ctime.CurrentEpochSecsInInt64(),
+		crawlermodel.Watcher,
+	)
+	_, err := nwsrmProc.Process(event)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+
+	listing, ok = persister.Listings[contracts.NewsroomAddr.Hex()]
+	if !ok {
+		t.Errorf("Listing not found in persister")
+	}
+
+	if listing.Charter().URI() != newLink {
+		t.Errorf("Should have updated the URI: %v", listing.Charter().URI())
+	}
+
+	if listing.URL() != "https://coloradosun.com" {
+		t.Errorf("Should have updated the listing URL: %v", listing.URL())
+	}
+
+}

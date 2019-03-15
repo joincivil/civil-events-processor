@@ -335,6 +335,12 @@ func (t *TcrEventProcessor) processTCRApplicationWhitelisted(event *crawlermodel
 	existingListing.SetWhitelisted(whitelisted)
 	existingListing.SetLastGovernanceState(model.GovernanceStateAppWhitelisted)
 	updatedFields := []string{whitelistedFieldName, lastGovStateFieldName}
+
+	if existingListing.ApprovalDateTs() == approvalDateEmptyValue {
+		existingListing.SetApprovalDateTs(event.Timestamp())
+		updatedFields = append(updatedFields, approvalDateFieldName)
+	}
+
 	return t.listingPersister.UpdateListing(existingListing, updatedFields)
 }
 
@@ -719,6 +725,7 @@ func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddre
 		return err
 	}
 	existingListing.SetUnstakedDeposit(big.NewInt(0))
+	existingListing.SetApprovalDateTs(approvalDateEmptyValue)
 	existingListing.SetAppExpiry(big.NewInt(0))
 	existingListing.SetWhitelisted(false)
 	existingListing.SetChallengeID(big.NewInt(0))
@@ -727,6 +734,7 @@ func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddre
 	existingListing.ResetContributorAddresses()
 	updatedFields := []string{
 		unstakedDepositFieldName,
+		approvalDateFieldName,
 		appExpiryFieldName,
 		whitelistedFieldName,
 		challengeIDFieldName,
