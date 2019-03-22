@@ -182,3 +182,21 @@ type TokenTransferPersister interface {
 	// Close shuts down the persister
 	Close() error
 }
+
+// ParamProposalPersister is the persister interface to store ParameterProposal
+type ParamProposalPersister interface {
+	// CreateParamProposal creates a new parameter proposal
+	CreateParamProposal(paramProposal *ParameterProposal) error
+	// ParamProposalByPropID gets a parameter proposal from persistence using propID
+	ParamProposalByPropID(propID [32]byte) (*ParameterProposal, error)
+	// UpdateParamProposal updates parameter propsal in table
+	UpdateParamProposal(paramProposal *ParameterProposal, updatedFields []string) error
+	// Close shuts down the persister
+	Close() error
+}
+
+// // TCRParameterPersister is the persister interface to store current TCRParameters
+// type TCRParameterPersister interface {
+// 	// Close shuts down the persister
+// 	Close() error
+// }

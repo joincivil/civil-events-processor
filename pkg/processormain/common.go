@@ -77,15 +77,16 @@ func initPubSubEvents(config *utils.ProcessorConfig, ps *cpubsub.GooglePubSub) (
 
 // InitializedPersisters contains initialized persisters needed to run processor
 type InitializedPersisters struct {
-	Cron            model.CronPersister
-	Event           crawlermodel.EventDataPersister
-	Listing         model.ListingPersister
-	ContentRevision model.ContentRevisionPersister
-	GovernanceEvent model.GovernanceEventPersister
-	Challenge       model.ChallengePersister
-	Poll            model.PollPersister
-	Appeal          model.AppealPersister
-	TokenTransfer   model.TokenTransferPersister
+	Cron              model.CronPersister
+	Event             crawlermodel.EventDataPersister
+	Listing           model.ListingPersister
+	ContentRevision   model.ContentRevisionPersister
+	GovernanceEvent   model.GovernanceEventPersister
+	Challenge         model.ChallengePersister
+	Poll              model.PollPersister
+	Appeal            model.AppealPersister
+	TokenTransfer     model.TokenTransferPersister
+	ParameterProposal model.ParamProposalPersister
 }
 
 // InitPersisters inits the persisters from the config file
@@ -135,16 +136,22 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		log.Errorf("Error w transferPersister: err: %v", err)
 		return nil, err
 	}
+	paramProposalPersister, err := helpers.ParameterizerPersister(config)
+	if err != nil {
+		log.Errorf("Error w paramProposalPersister %v", err)
+		return nil, err
+	}
 	return &InitializedPersisters{
-		Cron:            cronPersister,
-		Event:           eventPersister,
-		Listing:         listingPersister,
-		ContentRevision: contentRevisionPersister,
-		GovernanceEvent: governanceEventPersister,
-		Challenge:       challengePersister,
-		Poll:            pollPersister,
-		Appeal:          appealPersister,
-		TokenTransfer:   transferPersister,
+		Cron:              cronPersister,
+		Event:             eventPersister,
+		Listing:           listingPersister,
+		ContentRevision:   contentRevisionPersister,
+		GovernanceEvent:   governanceEventPersister,
+		Challenge:         challengePersister,
+		Poll:              pollPersister,
+		Appeal:            appealPersister,
+		TokenTransfer:     transferPersister,
+		ParameterProposal: paramProposalPersister,
 	}, nil
 }
 
@@ -183,6 +190,10 @@ func ClosePersisters(persisters *InitializedPersisters) {
 		log.Errorf("Error closing persister: err: %v", err)
 	}
 	err = persisters.TokenTransfer.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	err = persisters.ParameterProposal.Close()
 	if err != nil {
 		log.Errorf("Error closing persister: err: %v", err)
 	}
