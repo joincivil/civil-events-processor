@@ -26,18 +26,18 @@ import (
 )
 
 const (
-	postgresPort               = 5432
-	postgresDBName             = "civil_crawler"
-	postgresUser               = "docker"
-	postgresPswd               = "docker"
-	postgresHost               = "localhost"
-	govTestTableName           = "governance_event_test"
-	challengeTestTableName     = "challenge_test"
-	pollTestTableName          = "poll_test"
-	appealTestTableName        = "appeal_test"
-	tokenTransferTestTableName = "token_transfer_test"
-
-	testAddress = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
+	postgresPort                   = 5432
+	postgresDBName                 = "civil_crawler"
+	postgresUser                   = "docker"
+	postgresPswd                   = "docker"
+	postgresHost                   = "localhost"
+	govTestTableName               = "governance_event_test"
+	challengeTestTableName         = "challenge_test"
+	pollTestTableName              = "poll_test"
+	appealTestTableName            = "appeal_test"
+	tokenTransferTestTableName     = "token_transfer_test"
+	parameterProposalTestTableName = "parameter_proposal_test"
+	testAddress                    = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 )
 
 func setupDBConnection() (*PostgresPersister, error) {
@@ -75,6 +75,8 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreateAppealTableQueryString(tableName)
 	case "token_transfer_test":
 		queryString = postgres.CreateTokenTransferTableQueryString(tableName)
+	case "parameter_proposal_test":
+		queryString = postgres.CreateParameterProposalTableQueryString(tableName)
 	}
 
 	_, err = persister.db.Query(queryString)
@@ -103,6 +105,8 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 		_, err = persister.db.Query("DROP TABLE appeal_test;")
 	case "token_transfer_test":
 		_, err = persister.db.Query("DROP TABLE token_transfer_test;")
+	case "parameter_proposal_test":
+		_, err = persister.db.Query("DROP TABLE parameter_proposal_test;")
 	}
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
@@ -2249,5 +2253,157 @@ func TestGetTokenTransfersForToAddress(t *testing.T) {
 	}
 	if purchase.TransferDate() != transfer.TransferDate() {
 		t.Errorf("Should have gotten the transfer date")
+	}
+}
+
+/*
+ * All tests for parameter_proposal table:
+ */
+
+func setupSampleParamProposal() *model.ParameterProposal {
+	return model.NewParameterProposal(
+		&model.ParameterProposalParams{
+			Name:              "commitStageLen",
+			Value:             big.NewInt(1800),
+			PropID:            [32]byte{0, 1},
+			Deposit:           big.NewInt(10000),
+			AppExpiry:         big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(1000)),
+			ChallengeID:       big.NewInt(3),
+			Proposer:          common.HexToAddress(testAddress),
+			Accepted:          true,
+			Expired:           false,
+			LastUpdatedDateTs: int64(12345678),
+		},
+	)
+}
+
+func setupSampleParamProposal2() *model.ParameterProposal {
+	return model.NewParameterProposal(
+		&model.ParameterProposalParams{
+			Name:              "commitStageLen",
+			Value:             big.NewInt(1200),
+			PropID:            [32]byte{0, 3},
+			Deposit:           big.NewInt(10000),
+			AppExpiry:         big.NewInt(124500),
+			ChallengeID:       big.NewInt(3),
+			Proposer:          common.HexToAddress(testAddress),
+			Accepted:          true,
+			Expired:           true,
+			LastUpdatedDateTs: int64(12345678),
+		},
+	)
+}
+func setupParamProposalTable(t *testing.T) *PostgresPersister {
+	persister, err := setupTestTable(parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	return persister
+}
+
+func createAndSaveTestParamProposal(t *testing.T, persister *PostgresPersister) *model.ParameterProposal {
+	paramProposal := setupSampleParamProposal()
+	err := persister.createParameterProposalInTable(paramProposal, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("error saving param proposal: %v", err)
+	}
+	return paramProposal
+}
+
+func createAndSaveTestParamProposal2(t *testing.T, persister *PostgresPersister) *model.ParameterProposal {
+	paramProposal := setupSampleParamProposal2()
+	err := persister.createParameterProposalInTable(paramProposal, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("error saving param proposal: %v", err)
+	}
+	return paramProposal
+}
+
+func TestCreateParameterProposal(t *testing.T) {
+	persister := setupParamProposalTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+	_ = createAndSaveTestParamProposal(t, persister)
+}
+
+func TestParamProposalByPropID(t *testing.T) {
+	persister := setupParamProposalTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+
+	paramProposal := createAndSaveTestParamProposal(t, persister)
+
+	propID := paramProposal.PropID()
+
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error saving parameter proposal to db: %v", err)
+	}
+
+	if dbParamProposal.Proposer().Hex() != paramProposal.Proposer().Hex() {
+		t.Error("ParameterProposal propser addresses don't match")
+	}
+}
+
+func TestParamProposalByName(t *testing.T) {
+	persister := setupParamProposalTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+
+	_ = createAndSaveTestParamProposal(t, persister)
+	_ = createAndSaveTestParamProposal2(t, persister)
+
+	name := "commitStageLen"
+	active := true
+	getAll := false
+
+	dbParamProposalsActive, err := persister.paramProposalByNameFromTable(name, active, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error getting parameter proposal from db %v", err)
+	}
+
+	if len(dbParamProposalsActive) != 1 {
+		t.Errorf("Number of active proposals should be 1 but is %v", len(dbParamProposalsActive))
+	}
+
+	dbAllParamProposals, err := persister.paramProposalByNameFromTable(name, getAll, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error getting parameter proposal from db %v", err)
+	}
+
+	if len(dbAllParamProposals) != 2 {
+		t.Errorf("Number of proposals should be 2 but is %v", len(dbAllParamProposals))
+	}
+}
+
+func TestUpdateParamProposal(t *testing.T) {
+	persister := setupParamProposalTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+
+	paramProposal := createAndSaveTestParamProposal(t, persister)
+	paramProposal.SetAccepted(false)
+	paramProposal.SetExpired(true)
+
+	propID := paramProposal.PropID()
+
+	updatedFields := []string{"Accepted", "Expired"}
+
+	err := persister.updateParamProposalInTable(paramProposal, updatedFields, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error updating parameter proposal, %v", err)
+	}
+
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error getting param proposal from db, err %v", err)
+	}
+
+	if dbParamProposal.Accepted() {
+		t.Error("Wrong value for accepted field after update")
+	}
+
+	if !dbParamProposal.Expired() {
+		t.Error("Wrong value for expired field after update")
 	}
 }

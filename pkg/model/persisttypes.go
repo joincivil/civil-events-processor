@@ -189,6 +189,8 @@ type ParamProposalPersister interface {
 	CreateParamProposal(paramProposal *ParameterProposal) error
 	// ParamProposalByPropID gets a parameter proposal from persistence using propID
 	ParamProposalByPropID(propID [32]byte) (*ParameterProposal, error)
+	// ParamProposalByName gets parameter proposals by name from persistence
+	ParamProposalByName(name string, active bool) ([]*ParameterProposal, error)
 	// UpdateParamProposal updates parameter propsal in table
 	UpdateParamProposal(paramProposal *ParameterProposal, updatedFields []string) error
 	// Close shuts down the persister

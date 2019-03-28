@@ -288,6 +288,11 @@ func (p *PostgresPersister) ParamProposalByPropID(propID [32]byte) (*model.Param
 	return p.paramProposalByPropIDFromTable(propID, postgres.ParameterProposalTableName)
 }
 
+// ParamProposalByName gets parameter proposals by name. active=true will get only active
+func (p *PostgresPersister) ParamProposalByName(name string, active bool) ([]*model.ParameterProposal, error) {
+	return p.paramProposalByNameFromTable(name, active, postgres.ParameterProposalTableName)
+}
+
 // UpdateParamProposal updates a parameter proposal
 func (p *PostgresPersister) UpdateParamProposal(paramProposal *model.ParameterProposal,
 	updatedFields []string) error {
@@ -1455,6 +1460,33 @@ func (p *PostgresPersister) paramProposalByPropIDFromTable(propID [32]byte,
 	return paramProposal, nil
 }
 
+func (p *PostgresPersister) paramProposalByNameFromTable(name string,
+	active bool, tableName string) ([]*model.ParameterProposal, error) {
+
+	paramProposalData := []postgres.ParameterProposal{}
+	queryString := p.paramProposalQueryByName(tableName, active)
+	err := p.db.Select(&paramProposalData, queryString, name)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving parameter proposals from table: %v", err)
+	}
+
+	if len(paramProposalData) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	paramProposals := make([]*model.ParameterProposal, len(paramProposalData))
+
+	for index, dbProp := range paramProposalData {
+		modelProp, err := dbProp.DbToParameterProposalData()
+		if err != nil {
+			return nil, err
+		}
+		paramProposals[index] = modelProp
+	}
+
+	return paramProposals, nil
+}
+
 func (p *PostgresPersister) updateParamProposalInTable(paramProposal *model.ParameterProposal,
 	updatedFields []string, tableName string) error {
 
@@ -1485,6 +1517,15 @@ func (p *PostgresPersister) updateParamProposalQuery(updatedFields []string, tab
 func (p *PostgresPersister) paramProposalQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.ParameterProposal{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE prop_id=$1", fieldNames, tableName) // nolint: gosec
+	return queryString
+}
+
+func (p *PostgresPersister) paramProposalQueryByName(tableName string, active bool) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.ParameterProposal{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE name=$1", fieldNames, tableName) // nolint: gosec
+	if active {
+		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
+	}
 	return queryString
 }
 

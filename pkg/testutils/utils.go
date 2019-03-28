@@ -508,6 +508,23 @@ func (t *TestPersister) ParamProposalByPropID(propID [32]byte) (*model.Parameter
 	return paramProposal, nil
 }
 
+// ParamProposalByName gets parameter proposals by name from persistence
+func (t *TestPersister) ParamProposalByName(name string, active bool) ([]*model.ParameterProposal, error) {
+	proposals := []*model.ParameterProposal{}
+
+	for _, prop := range t.ParameterProposal {
+		if name != prop.Name() {
+			continue
+		}
+		if active && prop.Expired() {
+			continue
+		}
+		proposals = append(proposals, prop)
+
+	}
+	return proposals, nil
+}
+
 // UpdateParamProposal updates parameter propsal in table
 func (t *TestPersister) UpdateParamProposal(paramProposal *model.ParameterProposal, updatedFields []string) error {
 	propID := paramProposal.PropID()
