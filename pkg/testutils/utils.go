@@ -17,15 +17,16 @@ const (
 
 //TestPersister is a test persister
 type TestPersister struct {
-	Listings       map[string]*model.Listing
-	Revisions      map[string][]*model.ContentRevision
-	GovEvents      map[string][]*model.GovernanceEvent
-	Challenges     map[int]*model.Challenge
-	Appeals        map[int]*model.Appeal
-	Polls          map[int]*model.Poll
-	TokenTransfers map[string][]*model.TokenTransfer
-	Timestamp      int64
-	EventHashes    []string
+	Listings          map[string]*model.Listing
+	Revisions         map[string][]*model.ContentRevision
+	GovEvents         map[string][]*model.GovernanceEvent
+	Challenges        map[int]*model.Challenge
+	Appeals           map[int]*model.Appeal
+	Polls             map[int]*model.Poll
+	TokenTransfers    map[string][]*model.TokenTransfer
+	ParameterProposal map[[32]byte]*model.ParameterProposal
+	Timestamp         int64
+	EventHashes       []string
 }
 
 func indexAddressInSlice(slice []common.Address, target common.Address) int {
@@ -486,6 +487,33 @@ func (t *TestPersister) CreateTokenTransfer(purchase *model.TokenTransfer) error
 		t.TokenTransfers[addr] = append(purchases, purchase)
 	}
 	return nil
+}
+
+// CreateParamProposal creates a new parameter proposal
+func (t *TestPersister) CreateParamProposal(paramProposal *model.ParameterProposal) error {
+	propID := paramProposal.PropID()
+	if t.ParameterProposal == nil {
+		t.ParameterProposal = map[[32]byte]*model.ParameterProposal{}
+	}
+	t.ParameterProposal[propID] = paramProposal
+	return nil
+}
+
+// ParamProposalByPropID gets a parameter proposal from persistence using propID
+func (t *TestPersister) ParamProposalByPropID(propID [32]byte) (*model.ParameterProposal, error) {
+	paramProposal, ok := t.ParameterProposal[propID]
+	if !ok {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	return paramProposal, nil
+}
+
+// UpdateParamProposal updates parameter propsal in table
+func (t *TestPersister) UpdateParamProposal(paramProposal *model.ParameterProposal, updatedFields []string) error {
+	propID := paramProposal.PropID()
+	t.ParameterProposal[propID] = paramProposal
+	return nil
+
 }
 
 // TestScraper is a testscraper
