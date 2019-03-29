@@ -260,7 +260,7 @@ func (p *ParameterizerEventProcessor) newParameterizationFromProposal(event *cra
 	})
 
 	// newParamProposal
-	err := p.paramProposalPersister.CreateParamProposal(paramProposal)
+	err := p.paramProposalPersister.CreateParameterProposal(paramProposal)
 	return err
 }
 

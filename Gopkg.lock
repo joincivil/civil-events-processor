@@ -238,8 +238,8 @@
   revision = "0dae4fefe7c0e190f7b5a78dac28a1c82cc8d849"
 
 [[projects]]
-  branch = "master"
-  digest = "1:9fe73064b1fe096c32ec3fd447f7c175e19cdfe7904d34fb97a999b78b5821ce"
+  branch = "inna/103/parameterizer-tracking"
+  digest = "1:e90bd9690dc7dd2ea515900b9c37c4459436387bdb51a2bf6c4e9f7e152eeb2f"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -251,7 +251,7 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "ce29e27a252252693f6041560e182323288fbae9"
+  revision = "fd0a818d1ff4443c67dee85d4e5658a04928c5b1"
 
 [[projects]]
   branch = "master"

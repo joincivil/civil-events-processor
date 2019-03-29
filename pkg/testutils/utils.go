@@ -489,8 +489,8 @@ func (t *TestPersister) CreateTokenTransfer(purchase *model.TokenTransfer) error
 	return nil
 }
 
-// CreateParamProposal creates a new parameter proposal
-func (t *TestPersister) CreateParamProposal(paramProposal *model.ParameterProposal) error {
+// CreateParameterProposal creates a new parameter proposal
+func (t *TestPersister) CreateParameterProposal(paramProposal *model.ParameterProposal) error {
 	propID := paramProposal.PropID()
 	if t.ParameterProposal == nil {
 		t.ParameterProposal = map[[32]byte]*model.ParameterProposal{}

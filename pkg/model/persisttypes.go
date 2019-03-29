@@ -185,8 +185,8 @@ type TokenTransferPersister interface {
 
 // ParamProposalPersister is the persister interface to store ParameterProposal
 type ParamProposalPersister interface {
-	// CreateParamProposal creates a new parameter proposal
-	CreateParamProposal(paramProposal *ParameterProposal) error
+	// CreateParameterProposal creates a new parameter proposal
+	CreateParameterProposal(paramProposal *ParameterProposal) error
 	// ParamProposalByPropID gets a parameter proposal from persistence using propID
 	ParamProposalByPropID(propID [32]byte) (*ParameterProposal, error)
 	// ParamProposalByName gets parameter proposals by name from persistence
