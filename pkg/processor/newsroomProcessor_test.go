@@ -191,7 +191,7 @@ func TestNewsroomProcessor(t *testing.T) {
 	if len(persister.Revisions) != 1 {
 		t.Error("Should be one revision")
 	}
-
+	memoryCheck(t)
 }
 
 func TestProcessNameChanged(t *testing.T) {
@@ -204,6 +204,7 @@ func TestProcessNameChanged(t *testing.T) {
 	if listing.Name() != eventPayload["NewName"] {
 		t.Errorf("Listing name is not correct %v %v", listing.Name(), eventPayload["NewName"])
 	}
+	memoryCheck(t)
 }
 
 func TestCreateAndProcRevisionUpdatedEvent(t *testing.T) {
@@ -248,7 +249,7 @@ func TestCreateAndProcRevisionUpdatedEvent(t *testing.T) {
 	}
 
 	// NOTE: Getting errors with contract calls for RevisionUpdated event that's not a charter
-
+	memoryCheck(t)
 }
 
 func TestCreateAndProcOwnershipTransferredEvent(t *testing.T) {
@@ -263,6 +264,7 @@ func TestCreateAndProcOwnershipTransferredEvent(t *testing.T) {
 	if listing.OwnerAddresses()[0].Hex() != eventPayload["NewOwner"].(common.Address).Hex() {
 		t.Errorf("Should have updated the listing with new owner")
 	}
+	memoryCheck(t)
 }
 
 func TestUpdateListingCharterRevision(t *testing.T) {
@@ -324,5 +326,5 @@ func TestUpdateListingCharterRevision(t *testing.T) {
 	if listing.URL() != "https://coloradosun.com" {
 		t.Errorf("Should have updated the listing URL: %v", listing.URL())
 	}
-
+	memoryCheck(t)
 }
