@@ -50,6 +50,3 @@ required = ["github.com/99designs/gqlgen"]
   name = "github.com/davecgh/go-spew"
   version = "1.1.1"
 
-[[constraint]]
-  name = "github.com/joincivil/civil-events-crawler"
-  branch = "inna/103/parameterizer-tracking"

@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -607,9 +608,10 @@ func setupTcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *testutil
 }
 
 func memoryCheck(t *testing.T) {
-	// var m runtime.MemStats
-	// runtime.ReadMemStats(&m)
-	//t.Logf("alloc = %v, totalalloc = %v, sys = %v", m.Alloc, m.TotalAlloc, m.Sys)
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	time.Sleep(300 * time.Millisecond)
+	// fmt.Printf("alloc = %v, totalalloc = %v, sys = %v, gor = %v\n", m.Alloc, m.TotalAlloc, m.Sys, runtime.NumGoroutine())
 	runtime.GC()
 }
 
