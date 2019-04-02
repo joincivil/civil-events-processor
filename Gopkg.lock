@@ -239,7 +239,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6e3c79129d2d29d59e1e34c819e5d9fcf0c436888861e4ac526e5884aae81a3e"
+  digest = "1:e90bd9690dc7dd2ea515900b9c37c4459436387bdb51a2bf6c4e9f7e152eeb2f"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -248,9 +248,10 @@
     "pkg/persistence",
     "pkg/persistence/postgres",
     "pkg/pubsub",
+    "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "53f76f633cb18396d02f49dd62d3e333e9c9acde"
+  revision = "0cb1d5e068b3f0a1eea1fd77ebb82279c01e0036"
 
 [[projects]]
   branch = "master"
@@ -330,6 +331,18 @@
   pruneopts = "UT"
   revision = "9a47f48565a795472d43519dd49aac781f3034fb"
   version = "v1.6.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:070fd6646e4774dadf633e813a587e152f9386fad277e60a7c6907096a687efe"
+  name = "github.com/shurcooL/graphql"
+  packages = [
+    ".",
+    "ident",
+    "internal/jsonutil",
+  ]
+  pruneopts = "UT"
+  revision = "d48a9a75455f6af30244670bc0c9d0e38e7392b5"
 
 [[projects]]
   branch = "master"
