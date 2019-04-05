@@ -245,7 +245,7 @@ func TestParameterizerEventProcessor(t *testing.T) {
 	if len(persister.ParameterProposal) != 1 {
 		t.Error("Should have only 1 parameter proposal in persister")
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestProcessProposalAccepted(t *testing.T) {
@@ -261,7 +261,7 @@ func TestProcessProposalAccepted(t *testing.T) {
 	if !persistedProp.Accepted() {
 		t.Error("Persisted proposal accepted field should be true")
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestProcessProposalExpired(t *testing.T) {
@@ -277,7 +277,7 @@ func TestProcessProposalExpired(t *testing.T) {
 	if !persistedProp.Expired() {
 		t.Error("Persisted proposal accepted field should be true")
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestProcessNewChallenge(t *testing.T) {
@@ -293,7 +293,7 @@ func TestProcessNewChallenge(t *testing.T) {
 	if persistedChallenge.ListingAddress().Hex() != contracts.ParamAddr.Hex() {
 		t.Error("Persisted challenge listingaddress fields do not match")
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestProcessChallengeFailed(t *testing.T) {
@@ -310,7 +310,7 @@ func TestProcessChallengeFailed(t *testing.T) {
 	if !persistedChallenge.Resolved() {
 		t.Error("Persisted challenge should be resolved")
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestProcessChallengeSucceeded(t *testing.T) {
@@ -327,5 +327,5 @@ func TestProcessChallengeSucceeded(t *testing.T) {
 	if !persistedChallenge.Resolved() {
 		t.Error("Persisted challenge should be resolved")
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }

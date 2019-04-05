@@ -93,37 +93,37 @@ func createAndProcRevisionUpdatedEventCharter(t *testing.T, contracts *contractu
 
 // NOTE(IS): Commenting this out bc not working
 // func createAndProcRevisionUpdatedEvent(t *testing.T, contracts *contractutils.AllTestContracts,
-// 	nwsrmProc *processor.NewsroomEventProcessor) *crawlermodel.Event {
-// 	revision := &contract.NewsroomContractRevisionUpdated{
-// 		Editor:     common.HexToAddress(editorAddress),
-// 		ContentId:  big.NewInt(1),
-// 		RevisionId: big.NewInt(0),
-// 		Uri:        "http://joincivil.com/content",
-// 		Raw: types.Log{
-// 			Address:     contracts.NewsroomAddr,
-// 			Topics:      []common.Hash{},
-// 			Data:        []byte{},
-// 			BlockNumber: 888889,
-// 			TxHash:      common.Hash{},
-// 			TxIndex:     3,
-// 			BlockHash:   common.Hash{},
-// 			Index:       4,
-// 			Removed:     false,
-// 		},
-// 	}
-// 	event, _ := crawlermodel.NewEventFromContractEvent(
-// 		"RevisionUpdated",
-// 		"NewsroomContract",
-// 		contracts.NewsroomAddr,
-// 		revision,
-// 		ctime.CurrentEpochSecsInInt64(),
-// 		crawlermodel.Watcher,
-// 	)
-// 	_, err := nwsrmProc.Process(event)
-// 	if err != nil {
-// 		t.Errorf("Should not have failed processing events: err: %v", err)
-// 	}
-// 	return event
+//  nwsrmProc *processor.NewsroomEventProcessor) *crawlermodel.Event {
+//  revision := &contract.NewsroomContractRevisionUpdated{
+//      Editor:     common.HexToAddress(editorAddress),
+//      ContentId:  big.NewInt(1),
+//      RevisionId: big.NewInt(0),
+//      Uri:        "http://joincivil.com/content",
+//      Raw: types.Log{
+//          Address:     contracts.NewsroomAddr,
+//          Topics:      []common.Hash{},
+//          Data:        []byte{},
+//          BlockNumber: 888889,
+//          TxHash:      common.Hash{},
+//          TxIndex:     3,
+//          BlockHash:   common.Hash{},
+//          Index:       4,
+//          Removed:     false,
+//      },
+//  }
+//  event, _ := crawlermodel.NewEventFromContractEvent(
+//      "RevisionUpdated",
+//      "NewsroomContract",
+//      contracts.NewsroomAddr,
+//      revision,
+//      ctime.CurrentEpochSecsInInt64(),
+//      crawlermodel.Watcher,
+//  )
+//  _, err := nwsrmProc.Process(event)
+//  if err != nil {
+//      t.Errorf("Should not have failed processing events: err: %v", err)
+//  }
+//  return event
 // }
 
 func createAndProcOwnershipTransferredEvent(t *testing.T, contracts *contractutils.AllTestContracts,
@@ -171,7 +171,7 @@ func setupApplicationAndNewsroomProcessor(t *testing.T) (*contractutils.AllTestC
 		persister,
 		persister,
 		persister)
-	_ = createAndProcAppEvent(t, contracts, tcrProc)
+	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 	newsroomProc := processor.NewNewsroomEventProcessor(
 		contracts.Client,
 		persister,
@@ -191,7 +191,7 @@ func TestNewsroomProcessor(t *testing.T) {
 	if len(persister.Revisions) != 1 {
 		t.Error("Should be one revision")
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestProcessNameChanged(t *testing.T) {
@@ -204,7 +204,7 @@ func TestProcessNameChanged(t *testing.T) {
 	if listing.Name() != eventPayload["NewName"] {
 		t.Errorf("Listing name is not correct %v %v", listing.Name(), eventPayload["NewName"])
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestCreateAndProcRevisionUpdatedEvent(t *testing.T) {
@@ -249,7 +249,7 @@ func TestCreateAndProcRevisionUpdatedEvent(t *testing.T) {
 	}
 
 	// NOTE: Getting errors with contract calls for RevisionUpdated event that's not a charter
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestCreateAndProcOwnershipTransferredEvent(t *testing.T) {
@@ -264,7 +264,7 @@ func TestCreateAndProcOwnershipTransferredEvent(t *testing.T) {
 	if listing.OwnerAddresses()[0].Hex() != eventPayload["NewOwner"].(common.Address).Hex() {
 		t.Errorf("Should have updated the listing with new owner")
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
 
 func TestUpdateListingCharterRevision(t *testing.T) {
@@ -326,5 +326,5 @@ func TestUpdateListingCharterRevision(t *testing.T) {
 	if listing.URL() != "https://coloradosun.com" {
 		t.Errorf("Should have updated the listing URL: %v", listing.URL())
 	}
-	memoryCheck(t)
+	memoryCheck(contracts)
 }
