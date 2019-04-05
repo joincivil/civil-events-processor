@@ -114,6 +114,16 @@ func TokenTransferPersister(config cconfig.PersisterConfig) (model.TokenTransfer
 	return p.(model.TokenTransferPersister), nil
 }
 
+// ParameterizerPersister is a helper function to return the parameterizerpersister based
+// on the given configureation
+func ParameterizerPersister(config cconfig.PersisterConfig) (model.ParamProposalPersister, error) {
+	p, err := persister(config)
+	if err != nil {
+		return nil, err
+	}
+	return p.(model.ParamProposalPersister), nil
+}
+
 func persister(config cconfig.PersisterConfig) (interface{}, error) {
 	if config.PersistType() == cconfig.PersisterTypePostgresql {
 		return postgresPersister(config)

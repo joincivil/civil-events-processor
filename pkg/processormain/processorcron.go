@@ -73,16 +73,17 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 		}
 
 		proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-			Client:                 client,
-			ListingPersister:       persisters.Listing,
-			RevisionPersister:      persisters.ContentRevision,
-			GovEventPersister:      persisters.GovernanceEvent,
-			ChallengePersister:     persisters.Challenge,
-			PollPersister:          persisters.Poll,
-			AppealPersister:        persisters.Appeal,
-			TokenTransferPersister: persisters.TokenTransfer,
-			GooglePubSub:           pubsub,
-			GooglePubSubTopicName:  config.PubSubEventsTopicName,
+			Client:                     client,
+			ListingPersister:           persisters.Listing,
+			RevisionPersister:          persisters.ContentRevision,
+			GovEventPersister:          persisters.GovernanceEvent,
+			ChallengePersister:         persisters.Challenge,
+			PollPersister:              persisters.Poll,
+			AppealPersister:            persisters.Appeal,
+			TokenTransferPersister:     persisters.TokenTransfer,
+			ParameterProposalPersister: persisters.ParameterProposal,
+			GooglePubSub:               pubsub,
+			GooglePubSubTopicName:      config.PubSubEventsTopicName,
 		})
 
 		RunProcessor(proc, persisters, events, lastTs)
