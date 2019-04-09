@@ -44,11 +44,17 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.Client,
 		params.TokenTransferPersister,
 	)
+	parameterizerProcessor := NewParameterizerEventProcessor(
+		params.Client,
+		params.ChallengePersister,
+		params.ParameterProposalPersister,
+	)
 	return &EventProcessor{
 		tcrEventProcessor:      tcrEventProcessor,
 		plcrEventProcessor:     plcrEventProcessor,
 		newsroomEventProcessor: newsroomEventProcessor,
 		cvlTokenProcessor:      cvlTokenProcessor,
+		parameterizerProcessor: parameterizerProcessor,
 		googlePubSub:           params.GooglePubSub,
 		googlePubSubTopicName:  params.GooglePubSubTopicName,
 	}
@@ -56,16 +62,17 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 
 // NewEventProcessorParams defines the params needed to be passed to the processor
 type NewEventProcessorParams struct {
-	Client                 bind.ContractBackend
-	ListingPersister       model.ListingPersister
-	RevisionPersister      model.ContentRevisionPersister
-	GovEventPersister      model.GovernanceEventPersister
-	ChallengePersister     model.ChallengePersister
-	PollPersister          model.PollPersister
-	AppealPersister        model.AppealPersister
-	TokenTransferPersister model.TokenTransferPersister
-	GooglePubSub           *pubsub.GooglePubSub
-	GooglePubSubTopicName  string
+	Client                     bind.ContractBackend
+	ListingPersister           model.ListingPersister
+	RevisionPersister          model.ContentRevisionPersister
+	GovEventPersister          model.GovernanceEventPersister
+	ChallengePersister         model.ChallengePersister
+	PollPersister              model.PollPersister
+	AppealPersister            model.AppealPersister
+	TokenTransferPersister     model.TokenTransferPersister
+	ParameterProposalPersister model.ParamProposalPersister
+	GooglePubSub               *pubsub.GooglePubSub
+	GooglePubSubTopicName      string
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
@@ -75,6 +82,7 @@ type EventProcessor struct {
 	plcrEventProcessor     *PlcrEventProcessor
 	newsroomEventProcessor *NewsroomEventProcessor
 	cvlTokenProcessor      *CvlTokenEventProcessor
+	parameterizerProcessor *ParameterizerEventProcessor
 	googlePubSub           *pubsub.GooglePubSub
 	googlePubSubTopicName  string
 }
@@ -131,6 +139,10 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			log.Errorf("Error processing token transfer event: err: %v\n", err)
 		}
 
+		_, err = e.parameterizerProcessor.Process(event)
+		if err != nil {
+			log.Errorf("Error processing parameterizer event: err: %v\n", err)
+		}
 	}
 	log.Info("Finished Processing")
 	return err

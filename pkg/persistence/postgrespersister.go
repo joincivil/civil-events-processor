@@ -22,6 +22,7 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 
+	cbytes "github.com/joincivil/go-common/pkg/bytes"
 	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	cpostgres "github.com/joincivil/go-common/pkg/persistence/postgres"
 	cstrings "github.com/joincivil/go-common/pkg/strings"
@@ -277,6 +278,28 @@ func (p *PostgresPersister) CreateTokenTransfer(purchase *model.TokenTransfer) e
 	return p.createTokenTransferInTable(purchase, tokenTransferTableName)
 }
 
+// CreateParameterProposal creates a new parameter proposal
+func (p *PostgresPersister) CreateParameterProposal(paramProposal *model.ParameterProposal) error {
+	return p.createParameterProposalInTable(paramProposal, postgres.ParameterProposalTableName)
+}
+
+// ParamProposalByPropID gets parameter proposal by propID
+func (p *PostgresPersister) ParamProposalByPropID(propID [32]byte) (*model.ParameterProposal, error) {
+	return p.paramProposalByPropIDFromTable(propID, postgres.ParameterProposalTableName)
+}
+
+// ParamProposalByName gets parameter proposals by name. active=true will get only active
+func (p *PostgresPersister) ParamProposalByName(name string, active bool) ([]*model.ParameterProposal, error) {
+	return p.paramProposalByNameFromTable(name, active, postgres.ParameterProposalTableName)
+}
+
+// UpdateParamProposal updates a parameter proposal
+func (p *PostgresPersister) UpdateParamProposal(paramProposal *model.ParameterProposal,
+	updatedFields []string) error {
+
+	return p.updateParamProposalInTable(paramProposal, updatedFields, postgres.ParameterProposalTableName)
+}
+
 // CreateTables creates the tables for processor if they don't exist
 func (p *PostgresPersister) CreateTables() error {
 	// this needs to get all the event tables for processor
@@ -287,7 +310,8 @@ func (p *PostgresPersister) CreateTables() error {
 	challengeTableQuery := postgres.CreateChallengeTableQuery()
 	pollTableQuery := postgres.CreatePollTableQuery()
 	appealTableQuery := postgres.CreateAppealTableQuery()
-	TokenTransferQuery := postgres.CreateTokenTransferTableQuery()
+	tokenTransferQuery := postgres.CreateTokenTransferTableQuery()
+	parameterProposalQuery := postgres.CreateParameterProposalQuery()
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -317,9 +341,13 @@ func (p *PostgresPersister) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Error creating appeal table in postgres: %v", err)
 	}
-	_, err = p.db.Exec(TokenTransferQuery)
+	_, err = p.db.Exec(tokenTransferQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating token transfer table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(parameterProposalQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating parameter proposal table in postgres: %v", err)
 	}
 	return nil
 }
@@ -1400,6 +1428,105 @@ func (p *PostgresPersister) createTokenTransferInTable(purchase *model.TokenTran
 		return fmt.Errorf("Error saving token transfer to table: %v", err)
 	}
 	return nil
+}
+
+func (p *PostgresPersister) createParameterProposalInTable(paramProposal *model.ParameterProposal,
+	tableName string) error {
+	dbParamProposal := postgres.NewParameterProposal(paramProposal)
+	queryString := p.insertIntoDBQueryString(tableName, postgres.ParameterProposal{})
+	_, err := p.db.NamedExec(queryString, dbParamProposal)
+	if err != nil {
+		return fmt.Errorf("Error saving parameter proposal to table: %v", err)
+	}
+	return nil
+}
+
+func (p *PostgresPersister) paramProposalByPropIDFromTable(propID [32]byte,
+	tableName string) (*model.ParameterProposal, error) {
+	paramProposalData := []postgres.ParameterProposal{}
+	queryString := p.paramProposalQuery(tableName)
+	propIDString := cbytes.Byte32ToHexString(propID)
+	err := p.db.Select(&paramProposalData, queryString, propIDString)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving parameter proposal from table: %v", err)
+	}
+	if len(paramProposalData) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	paramProposal, err := paramProposalData[0].DbToParameterProposalData()
+	if err != nil {
+		return nil, err
+	}
+	return paramProposal, nil
+}
+
+func (p *PostgresPersister) paramProposalByNameFromTable(name string,
+	active bool, tableName string) ([]*model.ParameterProposal, error) {
+
+	paramProposalData := []postgres.ParameterProposal{}
+	queryString := p.paramProposalQueryByName(tableName, active)
+	err := p.db.Select(&paramProposalData, queryString, name)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving parameter proposals from table: %v", err)
+	}
+
+	if len(paramProposalData) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	paramProposals := make([]*model.ParameterProposal, len(paramProposalData))
+
+	for index, dbProp := range paramProposalData {
+		modelProp, err := dbProp.DbToParameterProposalData()
+		if err != nil {
+			return nil, err
+		}
+		paramProposals[index] = modelProp
+	}
+
+	return paramProposals, nil
+}
+
+func (p *PostgresPersister) updateParamProposalInTable(paramProposal *model.ParameterProposal,
+	updatedFields []string, tableName string) error {
+
+	paramProposal.SetLastUpdatedDateTs(ctime.CurrentEpochSecsInInt64())
+	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
+
+	queryString, err := p.updateParamProposalQuery(updatedFields, tableName)
+	if err != nil {
+		return fmt.Errorf("Error creating query string for update: %v ", err)
+	}
+	dbParamProposal := postgres.NewParameterProposal(paramProposal)
+	_, err = p.db.NamedExec(queryString, dbParamProposal)
+	if err != nil {
+		return fmt.Errorf("Error updating fields in db: %v", err)
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateParamProposalQuery(updatedFields []string, tableName string) (string, error) {
+	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.ParameterProposal{})
+	if err != nil {
+		return "", err
+	}
+	queryString.WriteString(" WHERE prop_id=:prop_id;") // nolint: gosec
+	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) paramProposalQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.ParameterProposal{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE prop_id=$1", fieldNames, tableName) // nolint: gosec
+	return queryString
+}
+
+func (p *PostgresPersister) paramProposalQueryByName(tableName string, active bool) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.ParameterProposal{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE name=$1", fieldNames, tableName) // nolint: gosec
+	if active {
+		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
+	}
+	return queryString
 }
 
 func (p *PostgresPersister) typeExistsInCronTable(tableName string, dataType string) (string, error) {

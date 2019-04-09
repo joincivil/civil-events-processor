@@ -1,7 +1,6 @@
 package processor_test
 
 import (
-	// "fmt"
 	"math/big"
 	"reflect"
 	"testing"
@@ -149,7 +148,7 @@ func TestPlcrEventProcessor(t *testing.T) {
 	if len(persister.Polls) != 1 {
 		t.Error("Should have only 1 poll in persistence")
 	}
-
+	memoryCheck(contracts)
 }
 
 func TestProcessPollCreated(t *testing.T) {
@@ -175,7 +174,7 @@ func TestProcessPollCreated(t *testing.T) {
 	if !reflect.DeepEqual(poll.VoteQuorum(), pollEventPayload["VoteQuorum"].(*big.Int)) {
 		t.Error("Poll VoteQuorum is not correct")
 	}
-
+	memoryCheck(contracts)
 }
 
 func TestProcessVoteRevealed(t *testing.T) {
@@ -209,4 +208,5 @@ func TestProcessVoteRevealed(t *testing.T) {
 	if !reflect.DeepEqual(poll.VotesAgainst(), voteRevealedAgainstPayload["VotesAgainst"].(*big.Int)) {
 		t.Error("Poll VotesAgainst is not correct")
 	}
+	memoryCheck(contracts)
 }

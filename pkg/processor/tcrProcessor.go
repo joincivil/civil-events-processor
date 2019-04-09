@@ -1026,7 +1026,7 @@ func (t *TcrEventProcessor) persistNewListingFromContract(listingAddress common.
 
 func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Address,
 	challengeID *big.Int, listingAddress common.Address) (*model.Challenge, error) {
-	// NOTE(IS): In the event that there is no persisted Challenge, we can create a new listing using data
+	// NOTE(IS): In the event that there is no persisted Challenge, we can create a new challenge using data
 	// obtained by calling the smart contract.
 
 	tcrContract, err := contract.NewCivilTCRContract(tcrAddress, t.client)

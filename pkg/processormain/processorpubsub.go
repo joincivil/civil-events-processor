@@ -184,16 +184,17 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 	defer client.Close()
 
 	proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-		Client:                 client,
-		ListingPersister:       persisters.Listing,
-		RevisionPersister:      persisters.ContentRevision,
-		GovEventPersister:      persisters.GovernanceEvent,
-		ChallengePersister:     persisters.Challenge,
-		PollPersister:          persisters.Poll,
-		AppealPersister:        persisters.Appeal,
-		TokenTransferPersister: persisters.TokenTransfer,
-		GooglePubSub:           eventsPs,
-		GooglePubSubTopicName:  config.PubSubEventsTopicName,
+		Client:                     client,
+		ListingPersister:           persisters.Listing,
+		RevisionPersister:          persisters.ContentRevision,
+		GovEventPersister:          persisters.GovernanceEvent,
+		ChallengePersister:         persisters.Challenge,
+		PollPersister:              persisters.Poll,
+		AppealPersister:            persisters.Appeal,
+		TokenTransferPersister:     persisters.TokenTransfer,
+		ParameterProposalPersister: persisters.ParameterProposal,
+		GooglePubSub:               eventsPs,
+		GooglePubSubTopicName:      config.PubSubEventsTopicName,
 	})
 
 	// First run processor without pubsub:
