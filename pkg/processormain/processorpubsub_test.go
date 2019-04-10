@@ -14,13 +14,16 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+
 	contractutils "github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	crawlerpubsub "github.com/joincivil/civil-events-crawler/pkg/pubsub"
+
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/processormain"
 	"github.com/joincivil/civil-events-processor/pkg/testutils"
 	"github.com/joincivil/go-common/pkg/generated/contract"
+
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
@@ -154,7 +157,7 @@ func createNewsroomNameChangedEvent(t *testing.T, name string, address common.Ad
 func runProcessorPubSub(t *testing.T, wg *sync.WaitGroup, persisters *processormain.InitializedPersisters,
 	ps *crawlerpubsub.CrawlerPubSub, proc *processor.EventProcessor, quit <-chan bool) {
 	defer wg.Done()
-	processormain.RunProcessorPubSub(persisters, ps.GooglePubsub, proc, quit)
+	processormain.RunProcessorPubSub(persisters, ps.GooglePubsub, proc, quit, nil)
 }
 
 func setupCrawlerPubSub(t *testing.T) *crawlerpubsub.CrawlerPubSub {

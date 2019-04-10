@@ -1,12 +1,11 @@
 package processor
 
 import (
-	"errors"
-	"fmt"
 	"math/big"
 	"strings"
 
 	log "github.com/golang/glog"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -95,7 +94,7 @@ func (n *NewsroomEventProcessor) processNewsroomNameChanged(event *crawlermodel.
 	payload := event.EventPayload()
 	listing, err := n.retrieveOrCreateListingForNewsroomEvent(event)
 	if err != nil {
-		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
+		return errors.Wrap(err, "error retrieving listing or creating by address")
 	}
 	name, ok := payload["NewName"]
 	if !ok {
@@ -111,7 +110,7 @@ func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermo
 	// Create a new listing if none exists for the address in the event
 	_, err := n.retrieveOrCreateListingForNewsroomEvent(event)
 	if err != nil {
-		return fmt.Errorf("Error retrieving listing or creating by address: err: %v", err)
+		return errors.WithMessage(err, "error retrieving listing or creating by address")
 	}
 
 	payload := event.EventPayload()
@@ -138,12 +137,12 @@ func (n *NewsroomEventProcessor) processNewsroomRevisionUpdated(event *crawlermo
 	// Pull data from the newsroom contract
 	newsroom, err := contract.NewNewsroomContract(listingAddress, n.client)
 	if err != nil {
-		return fmt.Errorf("Error creating newsroom contract: err: %v", err)
+		return errors.WithMessage(err, "error creating newsroom contract")
 	}
 
 	content, err := newsroom.GetContent(&bind.CallOpts{}, contentID.(*big.Int))
 	if err != nil {
-		return fmt.Errorf("Error retrieving newsroom content: err: %v", err)
+		return errors.WithMessage(err, "error retrieving newsroom content")
 	}
 	contentHash := cbytes.Byte32ToHexString(content.ContentHash)
 
@@ -214,13 +213,13 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 	// events are out of order it will be incorrect.
 	// if listing.Charter() != nil {
 	// 	if revision.ContractRevisionID().Cmp(listing.Charter().RevisionID()) == 0 {
-	// 		return fmt.Errorf("Not updating listing charter, revision ids are the same")
+	// 		return errors.New("Not updating listing charter, revision ids are the same")
 	// 	}
 	// }
 
 	newsroom, newsErr := contract.NewNewsroomContract(revision.ListingAddress(), n.client)
 	if newsErr != nil {
-		return fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
+		return errors.WithMessage(err, "error reading from Newsroom contract")
 	}
 
 	charterContent, contErr := newsroom.GetRevision(
@@ -229,7 +228,7 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 		revision.ContractRevisionID(),
 	)
 	if contErr != nil {
-		return fmt.Errorf("Error getting charter revision from Newsroom contract: %v ", contErr)
+		return errors.WithMessage(contErr, "Error getting charter revision from Newsroom contract")
 	}
 
 	updatedFields := []string{"Charter"}
@@ -267,7 +266,7 @@ func (n *NewsroomEventProcessor) retrieveOrCreateListingForNewsroomEvent(event *
 	listingAddress := event.ContractAddress()
 	listing, err := n.listingPersister.ListingByAddress(listingAddress)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
-		return nil, err
+		return nil, errors.WithMessage(err, "error retrieving or creating listing")
 	}
 	if listing != nil {
 		return listing, nil
@@ -289,26 +288,26 @@ func (n *NewsroomEventProcessor) persistNewListing(listingAddress common.Address
 	charterContentID := big.NewInt(defaultCharterContentID)
 	newsroom, newsErr := contract.NewNewsroomContract(listingAddress, n.client)
 	if newsErr != nil {
-		return nil, fmt.Errorf("Error reading from Newsroom contract: %v ", newsErr)
+		return nil, errors.Errorf("error reading from Newsroom contract: %v ", newsErr)
 	}
 	name, nameErr := newsroom.Name(&bind.CallOpts{})
 	if nameErr != nil {
-		return nil, fmt.Errorf("Error getting Name from Newsroom contract: %v ", nameErr)
+		return nil, errors.Errorf("error getting Name from Newsroom contract: %v ", nameErr)
 	}
 
 	revisionCount, countErr := newsroom.RevisionCount(&bind.CallOpts{}, charterContentID)
 	if countErr != nil {
-		return nil, fmt.Errorf("Error getting RevisionCount from Newsroom contract: %v ", countErr)
+		return nil, errors.Errorf("error getting RevisionCount from Newsroom contract: %v ", countErr)
 	}
 	if revisionCount.Int64() <= 0 {
-		return nil, fmt.Errorf("Error there are no revisions for the charter: addr: %v", listingAddress)
+		return nil, errors.Errorf("error there are no revisions for the charter: addr: %v", listingAddress)
 	}
 
 	// latest revision should be total revisions - 1 for index
 	latestRevisionID := big.NewInt(revisionCount.Int64() - 1)
 	charterContent, contErr := newsroom.GetRevision(&bind.CallOpts{}, charterContentID, latestRevisionID)
 	if contErr != nil {
-		return nil, fmt.Errorf("Error getting charter revision from Newsroom contract: %v ", contErr)
+		return nil, errors.Errorf("Error getting charter revision from Newsroom contract: %v ", contErr)
 	}
 
 	// Try to get the charter data to get newsroom URL
