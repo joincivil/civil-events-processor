@@ -2,10 +2,12 @@
 
 
 [[projects]]
-  digest = "1:3663b5e9fe8e3fffe68c0d7bebc2823ddd7a9fbd01c51eea06a59ace9b900a20"
+  digest = "1:c98a29d4088336aa0ff6923426abf6bea429d512a1d9be780391f34b804ab475"
   name = "cloud.google.com/go"
   packages = [
     "compute/metadata",
+    "errorreporting",
+    "errorreporting/apiv1beta1",
     "iam",
     "internal/optional",
     "internal/version",
@@ -84,6 +86,14 @@
   packages = ["btcec"]
   pruneopts = "UT"
   revision = "aa6e0f35703c1438cc45860ddc0c3f6e6c633c93"
+
+[[projects]]
+  digest = "1:fed1f537c2f1269fe475a8556c393fe466641682d73ef8fd0491cd3aa1e47bad"
+  name = "github.com/certifi/gocertifi"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "deb3ae2ef2610fde3330947281941c562861188b"
+  version = "2018.01.18"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -166,6 +176,14 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:d18f6f088d7d8365df47f49dfa24b6ff6701a941118ffda30c589d1bd954074b"
+  name = "github.com/getsentry/raven-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f04e7487e9a6b9d9837d52743fb5f40576c56411"
+  version = "v0.2.0"
+
+[[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
   name = "github.com/go-stack/stack"
   packages = ["."]
@@ -182,7 +200,7 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  digest = "1:2de4d7f2c3cb21a81f945547031d6a4fd3c6bc9230c2c7dc620394868bb44888"
+  digest = "1:80f4debf54b0e37858e87d04dabd569bb347bb22426eabcafe94799e3b7933d9"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -196,6 +214,7 @@
     "ptypes/any",
     "ptypes/duration",
     "ptypes/empty",
+    "ptypes/struct",
     "ptypes/timestamp",
   ]
   pruneopts = "UT"
@@ -276,11 +295,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:488af7a3ccfa9458513d85db8b18c44d1ba9da4f0f7a1d5c6583b800ed7e1b79"
+  digest = "1:52d6c9d1c16503fdcea28e4dde6445c334d225ee66a48abc2df8f3dfc36f5c30"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
     "pkg/config",
+    "pkg/errors",
     "pkg/eth",
     "pkg/generated/contract",
     "pkg/http",
@@ -293,7 +313,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "eb2639fc228773e13f1f3b5bc5c49c6fe95a3d30"
+  revision = "0363615657eccffde8bafc2418e7787a8a568702"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
@@ -625,10 +645,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3225a050ce9eb2c772c3f4a173b89dba31f78be26da6e12651b93a6836cbea50"
+  digest = "1:917400bc2740d0a5b3c6e6d7cd19c0e5812b4f061c0296ad94195f707b93b804"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
+    "googleapis/api/label",
+    "googleapis/api/monitoredres",
+    "googleapis/devtools/clouderrorreporting/v1beta1",
     "googleapis/iam/v1",
     "googleapis/pubsub/v1",
     "googleapis/rpc/status",
@@ -746,6 +769,7 @@
     "github.com/joincivil/civil-events-crawler/pkg/pubsub",
     "github.com/joincivil/go-common/pkg/bytes",
     "github.com/joincivil/go-common/pkg/config",
+    "github.com/joincivil/go-common/pkg/errors",
     "github.com/joincivil/go-common/pkg/generated/contract",
     "github.com/joincivil/go-common/pkg/http",
     "github.com/joincivil/go-common/pkg/numbers",
@@ -756,6 +780,7 @@
     "github.com/joincivil/go-common/pkg/time",
     "github.com/kelseyhightower/envconfig",
     "github.com/lib/pq",
+    "github.com/pkg/errors",
     "github.com/robfig/cron",
   ]
   solver-name = "gps-cdcl"
