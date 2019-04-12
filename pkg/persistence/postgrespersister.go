@@ -545,9 +545,17 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 		queryBuf.WriteString(" ORDER BY name") // nolint: gosec
 
 	} else if criteria.SortBy == model.SortByApplied {
+		if !criteria.ActiveChallenge && !criteria.CurrentApplication {
+			p.addWhereAnd(queryBuf)
+			queryBuf.WriteString(" application_timestamp > 0") // nolint: gosec
+		}
 		queryBuf.WriteString(" ORDER BY application_timestamp") // nolint: gosec
 
 	} else if criteria.SortBy == model.SortByWhitelisted {
+		if !criteria.WhitelistedOnly {
+			p.addWhereAnd(queryBuf)
+			queryBuf.WriteString(" approval_timestamp > 0") // nolint: gosec
+		}
 		queryBuf.WriteString(" ORDER BY approval_timestamp") // nolint: gosec
 	}
 
