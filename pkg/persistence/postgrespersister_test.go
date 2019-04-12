@@ -740,33 +740,48 @@ func TestListingsByCriteria(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
+	defer deleteTestTable(t, persister, tableName)
 
 	_, err = setupTestTable(joinTableName)
 	if err != nil {
 		t.Errorf("Error connecting to DB: %v", err)
 	}
-	defer deleteTestTable(t, persister, tableName)
+	defer deleteTestTable(t, persister, joinTableName)
+
+	now := ctime.CurrentEpochSecsInInt64()
 
 	// whitelisted modellisting with active challenge
 	modelListingWhitelistedActiveChallenge, _ := setupSampleListing()
+	modelListingWhitelistedActiveChallenge.SetName("Test Listing E")
+	modelListingWhitelistedActiveChallenge.SetApprovalDateTs(now + int64(3))
 	challenge := setupChallengeByChallengeID(10, false)
 	// Create another modelListing that was rejected after challenge succeeded
 	modelListingRejected, _ := setupSampleListing()
+	modelListingRejected.SetName("Test Listing D")
+	modelListingRejected.SetApprovalDateTs(now + int64(2))
 	modelListingRejected.SetWhitelisted(false)
 	modelListingRejected.SetChallengeID(big.NewInt(0))
 	modelListingRejected.SetAppExpiry(big.NewInt(0))
 	// modelListing that is still in application phase, not whitelisted
 	modelListingApplicationPhase, _ := setupSampleListingUnchallenged()
+	modelListingApplicationPhase.SetName("Test Listing C")
+	modelListingApplicationPhase.SetApprovalDateTs(now)
 	appExpiry := big.NewInt(ctime.CurrentEpochSecsInInt64() + 100)
 	modelListingApplicationPhase.SetAppExpiry(appExpiry)
 	// modellisting that is whitelisted, never had a challenge
 	modelListingWhitelisted, _ := setupSampleListingUnchallenged()
+	modelListingWhitelisted.SetName("Test Listing G")
+	modelListingWhitelisted.SetApprovalDateTs(now + int64(10))
 	modelListingWhitelisted.SetWhitelisted(true)
 	// Create another modelListing where challenge failed
 	modelListingNoChallenge, _ := setupSampleListing()
+	modelListingNoChallenge.SetName("Test Listing A")
+	modelListingNoChallenge.SetApprovalDateTs(now + int64(5))
 	modelListingNoChallenge.SetChallengeID(big.NewInt(0))
 	// modelListing that passed application phase but not challenged so ready to be whitelisted
 	modelListingPastApplicationPhase, _ := setupSampleListingUnchallenged()
+	modelListingPastApplicationPhase.SetName("Test Listing Z")
+	modelListingPastApplicationPhase.SetApprovalDateTs(now + int64(8))
 	appExpiry = big.NewInt(ctime.CurrentEpochSecsInInt64() - 100)
 	modelListingPastApplicationPhase.SetAppExpiry(appExpiry)
 
@@ -909,6 +924,79 @@ func TestListingsByCriteria(t *testing.T) {
 		t.Errorf("Three listings should have been returned but there are %v", len(listingsFromDB))
 	}
 
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByName,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb := listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing A" {
+		t.Errorf("Should have returned Test Listing A as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing C" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy:   model.SortByName,
+		SortDesc: true,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing Z" {
+		t.Errorf("Should have returned Test Listing Z as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByName,
+		Offset: 3,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing E" {
+		t.Errorf("Should have returned Test Listing E as the first listing: %v", listingFromDb.Name())
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing: %v", listingFromDb.Name())
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByWhitelisted,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing C" {
+		t.Errorf("Should have returned Test Listing C as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing D" {
+		t.Errorf("Should have returned Test Listing D as the second listing")
+	}
 }
 
 /*

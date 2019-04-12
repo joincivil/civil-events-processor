@@ -538,7 +538,22 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 		queryBuf.WriteString(" creation_timestamp < :created_beforets") // nolint: gosec
 	}
 
-	queryBuf.WriteString(" ORDER BY creation_timestamp") // nolint: gosec
+	if criteria.SortBy == model.SortByUndefined || criteria.SortBy == model.SortByCreated {
+		queryBuf.WriteString(" ORDER BY creation_timestamp") // nolint: gosec
+
+	} else if criteria.SortBy == model.SortByName {
+		queryBuf.WriteString(" ORDER BY name") // nolint: gosec
+
+	} else if criteria.SortBy == model.SortByApplied {
+		queryBuf.WriteString(" ORDER BY application_timestamp") // nolint: gosec
+
+	} else if criteria.SortBy == model.SortByWhitelisted {
+		queryBuf.WriteString(" ORDER BY approval_timestamp") // nolint: gosec
+	}
+
+	if criteria.SortDesc {
+		queryBuf.WriteString(" DESC") // nolint: gosec
+	}
 
 	if criteria.Offset > 0 {
 		queryBuf.WriteString(" OFFSET :offset") // nolint: gosec
