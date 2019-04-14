@@ -732,6 +732,183 @@ func TestDeleteListing(t *testing.T) {
 	}
 }
 
+func TestListingByCriteriaSorts(t *testing.T) {
+	tableName := "listing_test"
+	joinTableName := "challenge_test"
+	persister, err := setupTestTable(tableName)
+	defer persister.Close()
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, tableName)
+
+	_, err = setupTestTable(joinTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	defer deleteTestTable(t, persister, joinTableName)
+
+	now := ctime.CurrentEpochSecsInInt64()
+
+	listing1, _ := setupSampleListing()
+	listing1.SetName("Test Listing E")
+	listing1.SetApprovalDateTs(now + int64(3))
+	listing1.SetApplicationDateTs(now + int64(3))
+	listing1.SetWhitelisted(true)
+
+	listing2, _ := setupSampleListing()
+	listing2.SetName("Test Listing C")
+	listing2.SetApprovalDateTs(0)
+	listing2.SetApplicationDateTs(0)
+
+	listing3, _ := setupSampleListingUnchallenged()
+	listing3.SetName("Test Listing G")
+	listing3.SetApprovalDateTs(now + int64(10))
+	listing3.SetApplicationDateTs(now + int64(10))
+	listing3.SetWhitelisted(true)
+
+	listing4, _ := setupSampleListing()
+	listing4.SetName("Test Listing A")
+	listing4.SetApprovalDateTs(0)
+	listing4.SetApplicationDateTs(0)
+
+	listing5, _ := setupSampleListingUnchallenged()
+	listing5.SetName("Test Listing Z")
+	listing5.SetApprovalDateTs(now + int64(10))
+	listing5.SetApplicationDateTs(now + int64(10))
+	listing5.SetWhitelisted(true)
+
+	listing6, _ := setupSampleListingUnchallenged()
+	listing6.SetName("Test Listing D")
+	listing6.SetApprovalDateTs(now + int64(10))
+	listing6.SetApplicationDateTs(now + int64(10))
+	listing6.SetWhitelisted(true)
+
+	err = persister.createListingForTable(listing1, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing2, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing3, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing4, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing5, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing6, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	listingsFromDB, err := persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByName,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb := listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing A" {
+		t.Errorf("Should have returned Test Listing A as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing C" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy:   model.SortByName,
+		SortDesc: true,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing Z" {
+		t.Errorf("Should have returned Test Listing Z as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByName,
+		Offset: 3,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing E" {
+		t.Errorf("Should have returned Test Listing E as the first listing: %v", listingFromDb.Name())
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing: %v", listingFromDb.Name())
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByApplied,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	if len(listingsFromDB) != 4 {
+		t.Errorf("Should have only returned 2 valid applied listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing E" {
+		t.Errorf("Should have returned Test Listing E as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByWhitelisted,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	if len(listingsFromDB) != 4 {
+		t.Errorf("Should have only returned 2 valid whitelisted listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing E" {
+		t.Errorf("Should have returned Test Listing E as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+}
+
 func TestListingsByCriteria(t *testing.T) {
 	tableName := "listing_test"
 	joinTableName := "challenge_test"
@@ -922,80 +1099,6 @@ func TestListingsByCriteria(t *testing.T) {
 	}
 	if len(listingsFromDB) != 3 {
 		t.Errorf("Three listings should have been returned but there are %v", len(listingsFromDB))
-	}
-
-	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
-		SortBy: model.SortByName,
-	}, tableName, joinTableName)
-	if err != nil {
-		t.Errorf("Error getting listing by criteria: %v", err)
-	}
-	if len(listingsFromDB) <= 0 {
-		t.Errorf("Should have returned some listings")
-	}
-	listingFromDb := listingsFromDB[0]
-	if listingFromDb.Name() != "Test Listing A" {
-		t.Errorf("Should have returned Test Listing A as the first listing")
-	}
-	listingFromDb = listingsFromDB[1]
-	if listingFromDb.Name() != "Test Listing C" {
-		t.Errorf("Should have returned Test Listing G as the second listing")
-	}
-
-	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
-		SortBy:   model.SortByName,
-		SortDesc: true,
-	}, tableName, joinTableName)
-	if err != nil {
-		t.Errorf("Error getting listing by criteria: %v", err)
-	}
-	if len(listingsFromDB) <= 0 {
-		t.Errorf("Should have returned some listings")
-	}
-	listingFromDb = listingsFromDB[0]
-	if listingFromDb.Name() != "Test Listing Z" {
-		t.Errorf("Should have returned Test Listing Z as the first listing")
-	}
-	listingFromDb = listingsFromDB[1]
-	if listingFromDb.Name() != "Test Listing G" {
-		t.Errorf("Should have returned Test Listing G as the second listing")
-	}
-
-	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
-		SortBy: model.SortByName,
-		Offset: 3,
-	}, tableName, joinTableName)
-	if err != nil {
-		t.Errorf("Error getting listing by criteria: %v", err)
-	}
-	if len(listingsFromDB) <= 0 {
-		t.Errorf("Should have returned some listings")
-	}
-	listingFromDb = listingsFromDB[0]
-	if listingFromDb.Name() != "Test Listing E" {
-		t.Errorf("Should have returned Test Listing E as the first listing: %v", listingFromDb.Name())
-	}
-	listingFromDb = listingsFromDB[1]
-	if listingFromDb.Name() != "Test Listing G" {
-		t.Errorf("Should have returned Test Listing G as the second listing: %v", listingFromDb.Name())
-	}
-
-	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
-		SortBy: model.SortByWhitelisted,
-	}, tableName, joinTableName)
-	if err != nil {
-		t.Errorf("Error getting listing by criteria: %v", err)
-	}
-	if len(listingsFromDB) <= 0 {
-		t.Errorf("Should have returned some listings")
-	}
-	listingFromDb = listingsFromDB[0]
-	if listingFromDb.Name() != "Test Listing C" {
-		t.Errorf("Should have returned Test Listing C as the first listing")
-	}
-	listingFromDb = listingsFromDB[1]
-	if listingFromDb.Name() != "Test Listing D" {
-		t.Errorf("Should have returned Test Listing D as the second listing")
 	}
 }
 
