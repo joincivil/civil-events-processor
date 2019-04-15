@@ -45,30 +45,41 @@ const (
 	appealGrantedFieldName               = "AppealGranted"
 	appealGrantedURIFieldName            = "AppealGrantedStatementURI"
 
+	didCollectFieldName     = "DidCollectAmount"
+	didUserCollectFieldName = "DidUserCollect"
+
+	isPassedFieldName = "IsPassed"
+
 	challengeIDResetValue = 0
 )
 
 // NewTcrEventProcessor is a convenience function to init an EventProcessor
 func NewTcrEventProcessor(client bind.ContractBackend, listingPersister model.ListingPersister,
 	challengePersister model.ChallengePersister, appealPersister model.AppealPersister,
-	govEventPersister model.GovernanceEventPersister) *TcrEventProcessor {
+	govEventPersister model.GovernanceEventPersister,
+	userChallengeDataPersister model.UserChallengeDataPersister,
+	pollPersister model.PollPersister) *TcrEventProcessor {
 	return &TcrEventProcessor{
-		client:             client,
-		listingPersister:   listingPersister,
-		challengePersister: challengePersister,
-		appealPersister:    appealPersister,
-		govEventPersister:  govEventPersister,
+		client:                     client,
+		listingPersister:           listingPersister,
+		challengePersister:         challengePersister,
+		appealPersister:            appealPersister,
+		govEventPersister:          govEventPersister,
+		userChallengeDataPersister: userChallengeDataPersister,
+		pollPersister:              pollPersister,
 	}
 }
 
 // TcrEventProcessor handles the processing of raw events into aggregated data
 // for use via the API.
 type TcrEventProcessor struct {
-	client             bind.ContractBackend
-	listingPersister   model.ListingPersister
-	challengePersister model.ChallengePersister
-	appealPersister    model.AppealPersister
-	govEventPersister  model.GovernanceEventPersister
+	client                     bind.ContractBackend
+	listingPersister           model.ListingPersister
+	challengePersister         model.ChallengePersister
+	appealPersister            model.AppealPersister
+	govEventPersister          model.GovernanceEventPersister
+	userChallengeDataPersister model.UserChallengeDataPersister
+	pollPersister              model.PollPersister
 }
 
 func (t *TcrEventProcessor) isValidCivilTCRContractEventName(name string) bool {
@@ -356,6 +367,17 @@ func (t *TcrEventProcessor) processTCRListingRemoved(event *crawlermodel.Event,
 
 func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
+
+	challengeID, err := t.challengeIDFromEvent(event)
+	if err != nil {
+		return err
+	}
+
+	err = t.setPollIsPassed(challengeID, true)
+	if err != nil {
+		return err
+	}
+
 	existingListing, err := t.getExistingListing(tcrAddress, listingAddress)
 	if err != nil {
 		return err
@@ -381,7 +403,18 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 
 func (t *TcrEventProcessor) processTCRChallengeSucceeded(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
-	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
+
+	challengeID, err := t.challengeIDFromEvent(event)
+	if err != nil {
+		return err
+	}
+
+	err = t.setPollIsPassed(challengeID, false)
+	if err != nil {
+		return err
+	}
+
+	err = t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateChallengeSucceeded)
 	if err != nil {
 		return fmt.Errorf("Error updating listing %v", err)
@@ -394,6 +427,17 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	if err != nil {
 		return err
 	}
+
+	payload := event.EventPayload()
+	reward, ok := payload["Reward"]
+	if !ok {
+		return errors.New("No reward found")
+	}
+	userAddress, ok := payload["Voter"]
+	if !ok {
+		return errors.New("No voter found")
+	}
+
 	tcrAddress := event.ContractAddress()
 	// NOTE(IS): This event doesn't emit listingAddress. Put empty address for now
 	// TODO(IS): Make sure this can get updated with a later event.
@@ -415,7 +459,37 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	if err != nil {
 		return fmt.Errorf("Error updating challenge %v, err: %v", existingChallenge.ChallengeID(), err)
 	}
+
+	userChallengeData, err := t.userChallengeDataPersister.UserChallengeDataByCriteria(
+		&model.UserChallengeDataCriteria{
+			UserAddress: userAddress.(common.Address).Hex(),
+			PollID:      challengeID.Uint64(),
+		},
+	)
+	if err != nil || len(userChallengeData) > 1 {
+		return fmt.Errorf("Error getting userChallengedata to update, err: %v", err)
+	}
+
+	userChallengeData[0].SetDidUserCollect(true)
+	userChallengeData[0].SetDidCollectAmount(reward.(*big.Int))
+	updatedUserFields := []string{didUserCollectFieldName, didCollectFieldName}
+
+	err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0], updatedUserFields)
+	if err != nil {
+		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
+	}
 	return nil
+}
+
+func (t *TcrEventProcessor) setPollIsPassed(pollID *big.Int, isPassed bool) error {
+	poll, err := t.pollPersister.PollByPollID(int(pollID.Int64()))
+	if err != nil {
+		return err
+	}
+	poll.SetIsPassed(isPassed)
+	updatedFields := []string{isPassedFieldName}
+
+	return t.pollPersister.UpdatePoll(poll, updatedFields)
 }
 
 func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event,
@@ -646,6 +720,7 @@ func (t *TcrEventProcessor) newAppealChallenge(event *crawlermodel.Event,
 	if err != nil {
 		return fmt.Errorf("Error retrieving requestAppealExpiries: err: %v", err)
 	}
+	challengeType := model.AppealChallengePollType
 	newAppealChallenge := model.NewChallenge(
 		appealChallengeID.(*big.Int),
 		listingAddress,
@@ -656,6 +731,7 @@ func (t *TcrEventProcessor) newAppealChallenge(event *crawlermodel.Event,
 		challengeRes.Stake,
 		challengeRes.TotalTokens,
 		requestAppealExpiry,
+		challengeType,
 		ctime.CurrentEpochSecsInInt64())
 
 	err = t.challengePersister.CreateChallenge(newAppealChallenge)
@@ -908,6 +984,7 @@ func (t *TcrEventProcessor) newChallengeFromChallenge(event *crawlermodel.Event,
 	if err != nil {
 		return nil, fmt.Errorf("Error calling function in TCR contract: err: %v", err)
 	}
+	challengeType := model.ChallengePollType
 	challenge := model.NewChallenge(
 		challengeID,
 		listingAddress,
@@ -918,6 +995,7 @@ func (t *TcrEventProcessor) newChallengeFromChallenge(event *crawlermodel.Event,
 		challengeRes.Stake,
 		challengeRes.TotalTokens,
 		requestAppealExpiry,
+		challengeType,
 		ctime.CurrentEpochSecsInInt64())
 
 	return challenge, nil
@@ -1043,6 +1121,7 @@ func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Ad
 	}
 	// TODO(IS): If not getting statement from Challenge event, is there a way to get statement?
 	statement := ""
+	challengeType := model.ChallengePollType
 	challenge := model.NewChallenge(
 		challengeID,
 		listingAddress,
@@ -1053,6 +1132,7 @@ func (t *TcrEventProcessor) persistNewChallengeFromContract(tcrAddress common.Ad
 		challengeRes.Stake,
 		challengeRes.TotalTokens,
 		requestAppealExpiry,
+		challengeType,
 		ctime.CurrentEpochSecsInInt64())
 
 	err = t.challengePersister.CreateChallenge(challenge)

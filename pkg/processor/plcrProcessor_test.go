@@ -10,20 +10,37 @@ import (
 
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
-	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
+	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
+	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
 	"github.com/joincivil/go-common/pkg/generated/contract"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 var (
-	pollID1 = big.NewInt(120)
+	pollID1      = big.NewInt(120)
+	testAddress2 = "0xDFe273082089bB7f70Ee36Eebcde64832FE97E58"
 )
 
+func createChallengeModel(t *testing.T) *model.Challenge {
+	return model.NewChallenge(
+		pollID1,
+		common.HexToAddress(testAddress2),
+		"",
+		big.NewInt(0),
+		common.HexToAddress(testAddress),
+		false,
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		model.ChallengePollType,
+		ctime.CurrentEpochSecsInInt64())
+}
+
 func createAndProcPollCreatedEvent(t *testing.T, contracts *contractutils.AllTestContracts,
-	plcrProc *processor.PlcrEventProcessor) *crawlermodel.Event {
+	plcrProc *processor.PlcrEventProcessor, persister *testutils.TestPersister) *crawlermodel.Event {
 	pollCreated := &contract.CivilPLCRVotingContractPollCreated{
 		VoteQuorum:    big.NewInt(100),
 		CommitEndDate: big.NewInt(1653860896),
@@ -46,6 +63,40 @@ func createAndProcPollCreatedEvent(t *testing.T, contracts *contractutils.AllTes
 		"CivilPLCRVotingContract",
 		contracts.PlcrAddr,
 		pollCreated,
+		ctime.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	challengeEvent := createChallengeModel(t)
+	_ = persister.CreateChallenge(challengeEvent)
+	_, err := plcrProc.Process(event)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	return event
+}
+
+func createAndProcVoteCommittedVotesForEvent(t *testing.T, contracts *contractutils.AllTestContracts,
+	plcrProc *processor.PlcrEventProcessor) *crawlermodel.Event {
+	voteCommitted := &contract.CivilPLCRVotingContractVoteCommitted{
+		PollID:    pollID1,
+		NumTokens: big.NewInt(100),
+		Voter:     common.HexToAddress(testAddress),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888880,
+			TxHash:      common.Hash{},
+			TxIndex:     4,
+			BlockHash:   common.Hash{},
+			Index:       7,
+			Removed:     false,
+		}}
+	event, _ := crawlermodel.NewEventFromContractEvent(
+		"_VoteCommitted",
+		"CivilPLCRVotingContract",
+		contracts.PlcrAddr,
+		voteCommitted,
 		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
@@ -92,6 +143,38 @@ func createAndProcVoteRevealedVotesForEvent(t *testing.T, contracts *contractuti
 	return event
 }
 
+func createAndProcVoteCommittedVotesAgstEvent(t *testing.T, contracts *contractutils.AllTestContracts,
+	plcrProc *processor.PlcrEventProcessor) *crawlermodel.Event {
+	voteCommitted := &contract.CivilPLCRVotingContractVoteCommitted{
+		PollID:    pollID1,
+		NumTokens: big.NewInt(100),
+		Voter:     common.HexToAddress(testAddress2),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888880,
+			TxHash:      common.Hash{},
+			TxIndex:     4,
+			BlockHash:   common.Hash{},
+			Index:       7,
+			Removed:     false,
+		}}
+	event, _ := crawlermodel.NewEventFromContractEvent(
+		"_VoteCommitted",
+		"CivilPLCRVotingContract",
+		contracts.PlcrAddr,
+		voteCommitted,
+		ctime.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	_, err := plcrProc.Process(event)
+	if err != nil {
+		t.Errorf("Should not have failed processing events: err: %v", err)
+	}
+	return event
+}
+
 func createAndProcVoteRevealedVotesAgstEvent(t *testing.T, contracts *contractutils.AllTestContracts,
 	plcrProc *processor.PlcrEventProcessor) *crawlermodel.Event {
 	voteRevealed := &contract.CivilPLCRVotingContractVoteRevealed{
@@ -100,7 +183,7 @@ func createAndProcVoteRevealedVotesAgstEvent(t *testing.T, contracts *contractut
 		VotesFor:     big.NewInt(0),
 		VotesAgainst: big.NewInt(500),
 		Choice:       big.NewInt(0),
-		Voter:        common.HexToAddress(testAddress),
+		Voter:        common.HexToAddress(testAddress2),
 		Salt:         big.NewInt(20),
 		Raw: types.Log{
 			Address:     common.HexToAddress(testAddress),
@@ -138,13 +221,15 @@ func setupPlcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *testuti
 	plcrProc := processor.NewPlcrEventProcessor(
 		contracts.Client,
 		persister,
+		persister,
+		persister,
 	)
 	return contracts, persister, plcrProc
 }
 
 func TestPlcrEventProcessor(t *testing.T) {
 	contracts, persister, plcrProc := setupPlcrProcessor(t)
-	_ = createAndProcPollCreatedEvent(t, contracts, plcrProc)
+	_ = createAndProcPollCreatedEvent(t, contracts, plcrProc, persister)
 	if len(persister.Polls) != 1 {
 		t.Error("Should have only 1 poll in persistence")
 	}
@@ -153,7 +238,7 @@ func TestPlcrEventProcessor(t *testing.T) {
 
 func TestProcessPollCreated(t *testing.T) {
 	contracts, persister, plcrProc := setupPlcrProcessor(t)
-	pollEvent := createAndProcPollCreatedEvent(t, contracts, plcrProc)
+	pollEvent := createAndProcPollCreatedEvent(t, contracts, plcrProc, persister)
 	pollEventPayload := pollEvent.EventPayload()
 	poll, ok := persister.Polls[int(pollID1.Int64())]
 	if !ok {
@@ -179,7 +264,8 @@ func TestProcessPollCreated(t *testing.T) {
 
 func TestProcessVoteRevealed(t *testing.T) {
 	contracts, persister, plcrProc := setupPlcrProcessor(t)
-	_ = createAndProcPollCreatedEvent(t, contracts, plcrProc)
+	_ = createAndProcPollCreatedEvent(t, contracts, plcrProc, persister)
+	_ = createAndProcVoteCommittedVotesForEvent(t, contracts, plcrProc)
 	voteRevealed := createAndProcVoteRevealedVotesForEvent(t, contracts, plcrProc)
 	voteRevealedPayload := voteRevealed.EventPayload()
 
@@ -193,7 +279,7 @@ func TestProcessVoteRevealed(t *testing.T) {
 	if !reflect.DeepEqual(poll.VotesAgainst(), voteRevealedPayload["VotesAgainst"].(*big.Int)) {
 		t.Error("Poll VotesAgainst is not correct")
 	}
-
+	_ = createAndProcVoteCommittedVotesAgstEvent(t, contracts, plcrProc)
 	voteRevealedAgainst := createAndProcVoteRevealedVotesAgstEvent(t, contracts, plcrProc)
 	voteRevealedAgainstPayload := voteRevealedAgainst.EventPayload()
 	poll, ok = persister.Polls[int(pollID1.Int64())]

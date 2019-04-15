@@ -341,6 +341,7 @@ func (p *ParameterizerEventProcessor) newChallenge(pAddress common.Address,
 		return nil, fmt.Errorf("Error calling function in TCR contract: err: %v", err)
 	}
 
+	challengeType := model.ParamProposalPollType
 	// NOTE(IS): In parameterizer contract, there's no TotalTokens, but WinningTokens
 	challenge := model.NewChallenge(
 		challengeID,
@@ -352,6 +353,7 @@ func (p *ParameterizerEventProcessor) newChallenge(pAddress common.Address,
 		challengeRes.Stake,
 		challengeRes.WinningTokens,
 		requestAppealExpiry,
+		challengeType,
 		ctime.CurrentEpochSecsInInt64())
 
 	err = p.challengePersister.CreateChallenge(challenge)

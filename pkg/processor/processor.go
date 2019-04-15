@@ -30,10 +30,14 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.ChallengePersister,
 		params.AppealPersister,
 		params.GovEventPersister,
+		params.UserChallengeDataPersister,
+		params.PollPersister,
 	)
 	plcrEventProcessor := NewPlcrEventProcessor(
 		params.Client,
 		params.PollPersister,
+		params.UserChallengeDataPersister,
+		params.ChallengePersister,
 	)
 	newsroomEventProcessor := NewNewsroomEventProcessor(
 		params.Client,
@@ -71,6 +75,7 @@ type NewEventProcessorParams struct {
 	AppealPersister            model.AppealPersister
 	TokenTransferPersister     model.TokenTransferPersister
 	ParameterProposalPersister model.ParamProposalPersister
+	UserChallengeDataPersister model.UserChallengeDataPersister
 	GooglePubSub               *pubsub.GooglePubSub
 	GooglePubSubTopicName      string
 }

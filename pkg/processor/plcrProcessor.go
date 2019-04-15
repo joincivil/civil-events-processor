@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	log "github.com/golang/glog"
 
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
@@ -21,21 +22,33 @@ import (
 const (
 	votesForFieldName     = "VotesFor"
 	votesAgainstFieldName = "VotesAgainst"
+	pollTypeFieldName     = "PollType"
+
+	didUserRevealFieldName = "UserDidReveal"
+	choiceFieldName        = "Choice"
+	saltFieldName          = "Salt"
+	didUserRescueFieldName = "DidUserRescue"
 )
 
 // NewPlcrEventProcessor is a convenience function to init an EventProcessor
-func NewPlcrEventProcessor(client bind.ContractBackend, pollPersister model.PollPersister) *PlcrEventProcessor {
+func NewPlcrEventProcessor(client bind.ContractBackend, pollPersister model.PollPersister,
+	userChallengeDataPersister model.UserChallengeDataPersister,
+	challengePersister model.ChallengePersister) *PlcrEventProcessor {
 	return &PlcrEventProcessor{
-		client:        client,
-		pollPersister: pollPersister,
+		client:                     client,
+		pollPersister:              pollPersister,
+		challengePersister:         challengePersister,
+		userChallengeDataPersister: userChallengeDataPersister,
 	}
 }
 
 // PlcrEventProcessor handles the processing of raw events into aggregated data
 // for use via the API.
 type PlcrEventProcessor struct {
-	client        bind.ContractBackend
-	pollPersister model.PollPersister
+	client                     bind.ContractBackend
+	pollPersister              model.PollPersister
+	challengePersister         model.ChallengePersister
+	userChallengeDataPersister model.UserChallengeDataPersister
 }
 
 func (p *PlcrEventProcessor) isValidPLCRContractEventName(name string) bool {
@@ -71,6 +84,13 @@ func (p *PlcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 		}
 		log.Infof("Handling PollCreated for pollID %v\n", pollID)
 		err = p.processPollCreated(event, pollID)
+	case "VoteCommitted":
+		pollID, pollIDerr := p.pollIDFromEvent(event)
+		if pollIDerr != nil {
+			log.Infof("Error retrieving pollID: %v", err)
+		}
+		log.Infof("Handling VoteCommitted for pollID %v\n", pollID)
+		err = p.processVoteCommitted(event, pollID)
 	case "VoteRevealed":
 		pollID, pollIDerr := p.pollIDFromEvent(event)
 		if pollIDerr != nil {
@@ -78,7 +98,16 @@ func (p *PlcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 		}
 		log.Infof("Handling VoteRevealed for pollID %v\n", pollID)
 		err = p.processVoteRevealed(event, pollID)
+	case "TokensRescued":
+		pollID, pollIDerr := p.pollIDFromEvent(event)
+		if pollIDerr != nil {
+			log.Infof("Error retrieving pollID: %v", err)
+		}
+		log.Infof("Handling TokensRescued for pollID %v\n", pollID)
+		err = p.processTokensRescued(event, pollID)
+
 	}
+
 	return ran, err
 }
 
@@ -111,16 +140,68 @@ func (p *PlcrEventProcessor) processPollCreated(event *crawlermodel.Event,
 		votesAgainst,
 		ctime.CurrentEpochSecsInInt64(),
 	)
+
 	return p.pollPersister.CreatePoll(poll)
+}
+
+func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
+	pollID *big.Int) error {
+	payload := event.EventPayload()
+	numTokens := payload["NumTokens"]
+	voterAddress := payload["Voter"]
+	userDidCommit := true
+
+	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
+	if err != nil && err != cpersist.ErrPersisterNoResults {
+		// TOODO: We should do contract call and save to DB bc it should exist in DB
+		return err
+	}
+	pollType := poll.PollType()
+
+	// NOTE: get poll type from challenge and set it in poll
+	if pollType == "" {
+		challenge, err := p.challengePersister.ChallengeByChallengeID(int(pollID.Int64()))
+		if err != nil {
+			return err
+		}
+		pollType = challenge.ChallengeType()
+		poll.SetPollType(pollType)
+		err = p.pollPersister.UpdatePoll(poll, []string{pollTypeFieldName})
+		if err != nil {
+			return err
+		}
+	}
+
+	userChallengeData := model.NewUserChallengeData(
+		voterAddress.(common.Address),
+		pollID,
+		numTokens.(*big.Int),
+		userDidCommit,
+		poll.RevealEndDate(),
+		pollType,
+		ctime.CurrentEpochSecsInInt64(),
+	)
+	return p.userChallengeDataPersister.CreateUserChallengeData(userChallengeData)
 }
 
 func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
 	pollID *big.Int) error {
+
 	payload := event.EventPayload()
+
 	choice, ok := payload["Choice"]
 	if !ok {
 		return errors.New("No choice found")
 	}
+	voter, ok := payload["Voter"]
+	if !ok {
+		return errors.New("No voter found")
+	}
+	salt, ok := payload["Salt"]
+	if !ok {
+		return errors.New("No salt found")
+	}
+
 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return err
@@ -129,6 +210,7 @@ func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
 		// TODO(IS): create new poll. If getting events in order, this shouldn't happen.
 		return fmt.Errorf("Error persisting poll: no poll with ID: %v", pollID)
 	}
+
 	var updatedFields []string
 	if choice.(*big.Int).Int64() == 1 {
 		votesFor, ok := payload["VotesFor"]
@@ -147,5 +229,60 @@ func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
 	}
 
 	err = p.pollPersister.UpdatePoll(poll, updatedFields)
-	return err
+	if err != nil {
+		return fmt.Errorf("Error updating poll, err: %v", err)
+	}
+
+	userChallengeData, err := p.userChallengeDataPersister.UserChallengeDataByCriteria(
+		&model.UserChallengeDataCriteria{
+			UserAddress: voter.(common.Address).Hex(),
+			PollID:      pollID.Uint64(),
+		},
+	)
+	if err != nil || len(userChallengeData) > 1 {
+		return fmt.Errorf("Error getting userChallengedata to update, err: %v", err)
+	}
+
+	didReveal := true
+	userChallengeData[0].SetUserDidReveal(didReveal)
+	userChallengeData[0].SetSalt(salt.(*big.Int))
+	userChallengeData[0].SetChoice(choice.(*big.Int))
+
+	updatedUserFields := []string{didUserRevealFieldName, saltFieldName, choiceFieldName}
+
+	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0], updatedUserFields)
+	if err != nil {
+		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
+	}
+
+	return nil
+}
+
+func (p *PlcrEventProcessor) processTokensRescued(event *crawlermodel.Event,
+	pollID *big.Int) error {
+
+	payload := event.EventPayload()
+	voter, ok := payload["Voter"]
+	if !ok {
+		return errors.New("No voter found")
+	}
+
+	// TODO(IS): Update user challengedata object with didUserRescue True,
+	userChallengeData, err := p.userChallengeDataPersister.UserChallengeDataByCriteria(
+		&model.UserChallengeDataCriteria{
+			UserAddress: voter.(common.Address).Hex(),
+			PollID:      pollID.Uint64(),
+		},
+	)
+	if err != nil || len(userChallengeData) > 1 {
+		return fmt.Errorf("Error getting userChallengedata to update, err: %v", err)
+	}
+
+	updatedUserFields := []string{didUserRescueFieldName}
+	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0], updatedUserFields)
+	if err != nil {
+		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
+	}
+
+	return nil
 }

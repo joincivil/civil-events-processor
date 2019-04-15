@@ -170,6 +170,8 @@ func setupApplicationAndNewsroomProcessor(t *testing.T) (*contractutils.AllTestC
 		persister,
 		persister,
 		persister,
+		persister,
+		persister,
 		persister)
 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 	newsroomProc := processor.NewNewsroomEventProcessor(

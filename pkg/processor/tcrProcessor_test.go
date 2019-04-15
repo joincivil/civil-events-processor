@@ -1,7 +1,7 @@
 package processor_test
 
 import (
-	"fmt"
+	// "fmt"
 	"math/big"
 	// "reflect"
 	"runtime"
@@ -30,11 +30,11 @@ var (
 func memoryCheck(contracts *contractutils.AllTestContracts) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	fmt.Printf("alloc = %v, totalalloc = %v, sys = %v, gor = %v\n",
-		m.Alloc/1000000,
-		m.TotalAlloc/1000000,
-		m.Sys/1000000,
-		runtime.NumGoroutine())
+	// fmt.Printf("alloc = %v, totalalloc = %v, sys = %v, gor = %v\n",
+	// 	m.Alloc/1000000,
+	// 	m.TotalAlloc/1000000,
+	// 	m.Sys/1000000,
+	// 	runtime.NumGoroutine())
 	// contracts.ClearStruct()
 	runtime.GC()
 }
