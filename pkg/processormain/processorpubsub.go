@@ -193,6 +193,7 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		AppealPersister:            persisters.Appeal,
 		TokenTransferPersister:     persisters.TokenTransfer,
 		ParameterProposalPersister: persisters.ParameterProposal,
+		UserChallengeDataPersister: persisters.UserChallengeData,
 		GooglePubSub:               eventsPs,
 		GooglePubSubTopicName:      config.PubSubEventsTopicName,
 	})
