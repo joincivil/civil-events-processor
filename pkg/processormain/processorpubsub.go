@@ -211,7 +211,7 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		TokenTransferPersister:     persisters.TokenTransfer,
 		ParameterProposalPersister: persisters.ParameterProposal,
 		GooglePubSub:               eventsPs,
-		GooglePubSubTopicName:      config.PubSubEventsTopicName,
+		PubSubEventsTopicName:      config.PubSubEventsTopicName,
 		ErrRep:                     errRep,
 	})
 

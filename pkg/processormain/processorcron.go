@@ -89,7 +89,7 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 			TokenTransferPersister:     persisters.TokenTransfer,
 			ParameterProposalPersister: persisters.ParameterProposal,
 			GooglePubSub:               pubsub,
-			GooglePubSubTopicName:      config.PubSubEventsTopicName,
+			PubSubEventsTopicName:      config.PubSubEventsTopicName,
 			ErrRep:                     errRep,
 		})
 
