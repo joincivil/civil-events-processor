@@ -229,7 +229,7 @@ func (p *PostgresPersister) ChallengesByListingAddress(addr common.Address) ([]*
 
 // PollByPollID gets a poll by pollID
 func (p *PostgresPersister) PollByPollID(pollID int) (*model.Poll, error) {
-	return p.pollByPollIDFromTable(pollID)
+	return p.pollByPollIDFromTable(pollID, pollTableName)
 }
 
 // PollsByPollIDs returns a slice of polls in order based on poll IDs
@@ -249,7 +249,7 @@ func (p *PostgresPersister) UpdatePoll(poll *model.Poll, updatedFields []string)
 
 // AppealByChallengeID gets an appeal by challengeID
 func (p *PostgresPersister) AppealByChallengeID(challengeID int) (*model.Appeal, error) {
-	return p.appealByChallengeIDFromTable(challengeID)
+	return p.appealByChallengeIDFromTable(challengeID, appealTableName)
 }
 
 // AppealsByChallengeIDs returns a slice of appeals in order based on challenge IDs
@@ -985,7 +985,7 @@ func (p *PostgresPersister) updateChallengeQuery(updatedFields []string, tableNa
 }
 
 func (p *PostgresPersister) challengeByChallengeIDFromTable(challengeID int, tableName string) (*model.Challenge, error) {
-	challenges, err := p.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTableName)
+	challenges, err := p.challengesByChallengeIDsInTableInOrder([]int{challengeID}, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -1010,7 +1010,9 @@ func (p *PostgresPersister) challengesByChallengeIDsInTableInOrder(challengeIDs 
 	}
 
 	query = p.db.Rebind(query)
+
 	rows, err := p.db.Queryx(query, args...)
+
 	defer p.closeRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving challenges from table: %v", err)
@@ -1186,8 +1188,8 @@ func (p *PostgresPersister) updatePollQuery(updatedFields []string, tableName st
 	return queryString.String(), nil
 }
 
-func (p *PostgresPersister) pollByPollIDFromTable(pollID int) (*model.Poll, error) {
-	polls, err := p.pollsByPollIDsInTableInOrder([]int{pollID}, pollTableName)
+func (p *PostgresPersister) pollByPollIDFromTable(pollID int, tableName string) (*model.Poll, error) {
+	polls, err := p.pollsByPollIDsInTableInOrder([]int{pollID}, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -1284,8 +1286,8 @@ func (p *PostgresPersister) updateAppealQuery(updatedFields []string, tableName 
 	return queryString.String(), nil
 }
 
-func (p *PostgresPersister) appealByChallengeIDFromTable(challengeID int) (*model.Appeal, error) {
-	appeals, err := p.appealsByChallengeIDsInTableInOrder([]int{challengeID}, appealTableName)
+func (p *PostgresPersister) appealByChallengeIDFromTable(challengeID int, tableName string) (*model.Appeal, error) {
+	appeals, err := p.appealsByChallengeIDsInTableInOrder([]int{challengeID}, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -1599,6 +1601,7 @@ func (p *PostgresPersister) userChallengeDataByCriteriaFromTable(criteria *model
 	tableName string, joinTableName string) ([]*model.UserChallengeData, error) {
 	dbUserChalls := []postgres.UserChallengeData{}
 	queryString, err := p.userChallengeDataByCriteriaQuery(criteria, tableName, joinTableName)
+
 	if err != nil {
 		return nil, fmt.Errorf("Error writing query: %v", err)
 	}
@@ -1623,12 +1626,7 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 	queryBuf := bytes.NewBufferString("SELECT ") // nolint: gosec
 
 	var fieldNames string
-	fieldNames, _ = cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "u")
-	// if criteria.CanUserCollect {
-
-	// } else {
-	// 	fieldNames, _ = cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
-	// }
+	fieldNames, _ = cpostgres.StructFieldsForQuery(postgres.UserChallengeData{}, false, "u")
 
 	queryBuf.WriteString(fieldNames) // nolint: gosec
 	queryBuf.WriteString(" FROM ")   // nolint: gosec
@@ -1640,9 +1638,9 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 			return "", errors.New("Expecting joinTable Name, cannot construct query string")
 		}
 
-		joinQuery := fmt.Sprintf(` LEFT JOIN %v p ON u.poll_id=p.poll_id WHERE
+		joinQuery := fmt.Sprintf(` JOIN %v p ON u.poll_id=p.poll_id WHERE
 			((p.is_passed = true AND u.choice = 1) OR (p.is_passed = false AND u.choice = 0))
-			AND (p.did_user_collect = false)`, joinTableName) // nolint: gosec
+			AND (u.did_user_collect = false)`, joinTableName) // nolint: gosec
 		queryBuf.WriteString(joinQuery) // nolint: gosec
 
 		if criteria.UserAddress != "" {
@@ -1665,11 +1663,11 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 		}
 		if criteria.CanUserReveal {
 			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(fmt.Sprintf(" u.reveal_date > %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
+			queryBuf.WriteString(fmt.Sprintf(" u.poll_reveal_end_date > %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
 
 		} else if criteria.CanUserRescue {
 			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString("u.did_user_reveal=false AND u.did_user_rescue=false AND ")                  // nolint: gosec
+			queryBuf.WriteString(" u.user_did_reveal=false AND u.did_user_rescue=false AND ")                 // nolint: gosec
 			queryBuf.WriteString(fmt.Sprintf("u.poll_reveal_end_date < %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
 		}
 	}

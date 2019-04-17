@@ -37,6 +37,7 @@ const (
 	appealTestTableName            = "appeal_test"
 	tokenTransferTestTableName     = "token_transfer_test"
 	parameterProposalTestTableName = "parameter_proposal_test"
+	userChallengeDataTestTableName = "user_challenge_data_test"
 	testAddress                    = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 )
 
@@ -77,6 +78,8 @@ func setupTestTable(tableName string) (*PostgresPersister, error) {
 		queryString = postgres.CreateTokenTransferTableQueryString(tableName)
 	case "parameter_proposal_test":
 		queryString = postgres.CreateParameterProposalTableQueryString(tableName)
+	case "user_challenge_data_test":
+		queryString = postgres.CreateUserChallengeDataQueryString(tableName)
 	}
 
 	_, err = persister.db.Query(queryString)
@@ -107,6 +110,8 @@ func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName strin
 		_, err = persister.db.Query("DROP TABLE token_transfer_test;")
 	case "parameter_proposal_test":
 		_, err = persister.db.Query("DROP TABLE parameter_proposal_test;")
+	case "user_challenge_data_test":
+		_, err = persister.db.Query("DROP TABLE user_challenge_data_test;")
 	}
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
@@ -1487,10 +1492,12 @@ func setupChallengeByChallengeID(challengeIDInt int, resolved bool) *model.Chall
 	rewardPool := new(big.Int)
 	rewardPool.SetString("50000000000000000000", 10)
 	totalTokens := big.NewInt(232323223232)
+	challengeType := model.ChallengePollType
 
 	requestAppealExpiry := big.NewInt(1231312)
 	testChallenge := model.NewChallenge(challengeID, listingAddr, statement, rewardPool,
-		challenger, resolved, stake, totalTokens, requestAppealExpiry, int64(1212141313))
+		challenger, resolved, stake, totalTokens, requestAppealExpiry, challengeType,
+		int64(1212141313))
 	return testChallenge
 }
 
@@ -1514,10 +1521,12 @@ func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 	rewardPool := new(big.Int)
 	rewardPool.SetString("50000000000000000000", 10)
 	totalTokens := big.NewInt(232323223232)
+	challengeType := model.ChallengePollType
 
 	requestAppealExpiry := big.NewInt(1231312)
 	testChallenge := model.NewChallenge(challengeID, listingAddr, statement, rewardPool,
-		challenger, false, stake, totalTokens, requestAppealExpiry, int64(1212141313))
+		challenger, false, stake, totalTokens, requestAppealExpiry, challengeType,
+		int64(1212141313))
 	return testChallenge, challengeIDInt
 }
 
@@ -1730,6 +1739,7 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 		common.HexToAddress(testAddress),
 		challengeTestTableName,
 	)
+
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -1880,7 +1890,7 @@ func TestNilResultsPoll(t *testing.T) {
 	defer deleteTestTable(t, persister, pollTestTableName)
 
 	pollID := 0
-	poll, err := persister.pollByPollIDFromTable(pollID)
+	poll, err := persister.pollByPollIDFromTable(pollID, pollTestTableName)
 	if poll != nil {
 		t.Errorf("Poll should be nil but is %v", poll)
 	}
@@ -2025,7 +2035,7 @@ func TestNilResultsAppeal(t *testing.T) {
 	defer deleteTestTable(t, persister, appealTestTableName)
 
 	challengeID := 0
-	appeal, err := persister.appealByChallengeIDFromTable(challengeID)
+	appeal, err := persister.appealByChallengeIDFromTable(challengeID, appealTestTableName)
 	if appeal != nil {
 		t.Errorf("Appeal should be nil but is %v", appeal)
 	}
@@ -2405,5 +2415,169 @@ func TestUpdateParamProposal(t *testing.T) {
 
 	if !dbParamProposal.Expired() {
 		t.Error("Wrong value for expired field after update")
+	}
+}
+
+/*
+ * All tests for user_challenge_data table:
+ */
+
+func setupSampleUserChallengeData(userAddress common.Address, pollID *big.Int,
+	pollRevealEndDate *big.Int) *model.UserChallengeData {
+	numTokens := big.NewInt(1000)
+	userDidCommit := true
+	pollType := model.ChallengePollType
+	lastUpdatedDateTs := ctime.CurrentEpochSecsInInt64()
+	return model.NewUserChallengeData(
+		userAddress, pollID, numTokens, userDidCommit, pollRevealEndDate, pollType, lastUpdatedDateTs,
+	)
+}
+
+func createAndSaveSamplePollDataForUserTest(t *testing.T, pollID *big.Int, pollRevealEndDate *big.Int,
+	is_passed bool, persister *PostgresPersister) {
+	commitEndDate := big.NewInt(pollRevealEndDate.Int64() - int64(60*60*24))
+	poll := model.NewPoll(pollID, commitEndDate, pollRevealEndDate, big.NewInt(100), big.NewInt(100),
+		big.NewInt(100), ctime.CurrentEpochSecsInInt64())
+	poll.SetIsPassed(is_passed)
+	err := persister.createPollInTable(poll, pollTestTableName)
+	if err != nil {
+		t.Errorf("Error saving poll to table, %v", err)
+	}
+}
+
+func setupUserChallengeDataTable(t *testing.T) *PostgresPersister {
+	persister, err := setupTestTable(userChallengeDataTestTableName)
+	if err != nil {
+		t.Errorf("Error connecting to DB: %v", err)
+	}
+	return persister
+}
+
+func createAndSaveTestUserChallengeData(t *testing.T, persister *PostgresPersister,
+	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int) *model.UserChallengeData {
+	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate)
+	err := persister.createUserChallengeDataInTable(userChallengeData, userChallengeDataTestTableName)
+	if err != nil {
+		t.Errorf("error saving user challenge data: %v", err)
+	}
+	return userChallengeData
+}
+
+func createAndSaveTestUserChallengeDataForCollect(t *testing.T, persister *PostgresPersister,
+	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int) *model.UserChallengeData {
+	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate)
+	userChallengeData.SetChoice(big.NewInt(1))
+	userChallengeData.SetDidUserCollect(false)
+	err := persister.createUserChallengeDataInTable(userChallengeData, userChallengeDataTestTableName)
+	if err != nil {
+		t.Errorf("error saving user challenge data: %v", err)
+	}
+	return userChallengeData
+}
+
+func TestCreateUserChallengeData(t *testing.T) {
+	persister := setupUserChallengeDataTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, userChallengeDataTestTableName)
+	pollID := big.NewInt(1)
+	userAddress := common.HexToAddress(testAddress)
+	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID, pollRevealEndDate)
+}
+
+func TestUserChallengeByCriteria(t *testing.T) {
+	persister := setupUserChallengeDataTable(t)
+	_ = setupPollTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, userChallengeDataTestTableName)
+	defer deleteTestTable(t, persister, pollTestTableName)
+	pollID1 := big.NewInt(1)
+	userAddress := common.HexToAddress(testAddress)
+	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
+	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1, pollRevealEndDate)
+
+	userChallengeDataDB, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress: userAddress.Hex(),
+		PollID:      pollID1.Uint64(),
+	}, userChallengeDataTestTableName, "")
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if userChallengeData.PollID().Cmp(userChallengeDataDB[0].PollID()) != 0 {
+		t.Errorf("Field mismatch %v, %v", userChallengeData.PollID(), userChallengeDataDB[0].PollID())
+	}
+	if userChallengeData.UserAddress() != userChallengeDataDB[0].UserAddress() {
+		t.Errorf("Field mismatch %v, %v", userChallengeData.UserAddress(), userChallengeDataDB[0].UserAddress())
+	}
+
+	// hexAddress := cstrings.RandomHexStr(32)
+	// userAddress2 := common.HexToAddress(hexAddress)
+	pollID2 := big.NewInt(2)
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID2, pollRevealEndDate)
+
+	userChallengeDataDB2, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress: userAddress.Hex(),
+	}, userChallengeDataTestTableName, "")
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if len(userChallengeDataDB2) != 2 {
+		t.Errorf("Should have gotten 2 objects, but only got %v", len(userChallengeDataDB2))
+	}
+
+	if userChallengeDataDB2[0].PollID().Cmp(pollID1) != 0 && userChallengeDataDB2[1].PollID().Cmp(pollID2) != 0 {
+		t.Errorf("PollIDs are not correct")
+	}
+
+	userChallengeDataDB3, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress:   userAddress.Hex(),
+		CanUserReveal: true,
+	}, userChallengeDataTestTableName, "")
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if len(userChallengeDataDB3) != 2 {
+		t.Errorf("Should have 2 userchallengedata objects but only have %v", userChallengeDataDB3)
+	}
+
+	pollID3 := big.NewInt(3)
+	earlierRevealDate := big.NewInt(ctime.CurrentEpochSecsInInt64() - int64(2))
+
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID3,
+		earlierRevealDate)
+
+	userChallengeDataDB4, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress:   userAddress.Hex(),
+		CanUserRescue: true,
+	}, userChallengeDataTestTableName, "")
+
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if len(userChallengeDataDB4) > 1 {
+		t.Errorf("Should only have 1 result but have %v", len(userChallengeDataDB4))
+	}
+
+	pollID4 := big.NewInt(4)
+	userChallengeData4 := createAndSaveTestUserChallengeDataForCollect(t, persister,
+		userAddress, pollID4, earlierRevealDate)
+
+	createAndSaveSamplePollDataForUserTest(t, pollID4, userChallengeData4.PollRevealEndDate(),
+		true, persister)
+
+	userChallengeDataDB5, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		CanUserCollect: true,
+	}, userChallengeDataTestTableName, pollTestTableName)
+
+	if err != nil {
+		t.Errorf("Error getting data from table %v", err)
+	}
+
+	if len(userChallengeDataDB5) != 1 {
+		t.Errorf("Should have 1 result but have %v", len(userChallengeDataDB5))
 	}
 }
