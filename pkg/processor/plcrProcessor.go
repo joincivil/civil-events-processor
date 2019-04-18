@@ -152,19 +152,27 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 	userDidCommit := true
 
 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
-	if err != nil && err != cpersist.ErrPersisterNoResults {
+	if err != nil {
 		// TOODO: We should do contract call and save to DB bc it should exist in DB
 		return err
 	}
+
 	pollType := poll.PollType()
 
-	// NOTE: get poll type from challenge and set it in poll
+	// NOTE: get poll type from challenge and set it in poll.
 	if pollType == "" {
 		challenge, err := p.challengePersister.ChallengeByChallengeID(int(pollID.Int64()))
-		if err != nil {
+		if err != nil && err != cpersist.ErrPersisterNoResults {
 			return err
 		}
-		pollType = challenge.ChallengeType()
+		// NOTE(IS): this will return errpersisternoresults upon gov param challenges
+		// Once processing gov contract, this will be fixed, for now manually add this
+		if err == cpersist.ErrPersisterNoResults {
+			pollType = model.GovProposalPollType
+		} else {
+			pollType = challenge.ChallengeType()
+		}
+
 		poll.SetPollType(pollType)
 		err = p.pollPersister.UpdatePoll(poll, []string{pollTypeFieldName})
 		if err != nil {
@@ -239,6 +247,7 @@ func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
 			PollID:      pollID.Uint64(),
 		},
 	)
+
 	if err != nil || len(userChallengeData) > 1 {
 		return fmt.Errorf("Error getting userChallengedata to update, err: %v", err)
 	}
