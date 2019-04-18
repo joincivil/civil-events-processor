@@ -284,8 +284,7 @@ func (t *TcrEventProcessor) processTCRChallenge(event *crawlermodel.Event,
 	if err != nil {
 		return err
 	}
-	// TODO(IS): Check if a Challenge already exists. if it does, update data. This might happen
-	// if events are out of order
+
 	err = t.challengePersister.CreateChallenge(challenge)
 	if err != nil {
 		return errors.WithMessage(err, "error persisting new challenge")
@@ -375,7 +374,7 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 
 	err = t.setPollIsPassed(challengeID, true)
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "Error setting poll isPassed")
 	}
 
 	existingListing, err := t.getExistingListing(tcrAddress, listingAddress)
@@ -394,10 +393,12 @@ func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
 	updatedFields := []string{unstakedDepositFieldName,
 		lastGovStateFieldName,
 		challengeIDFieldName}
+
 	err = t.listingPersister.UpdateListing(existingListing, updatedFields)
 	if err != nil {
 		return errors.WithMessage(err, "error updating listing")
 	}
+
 	return t.processChallengeResolution(event, tcrAddress, listingAddress)
 }
 
@@ -486,6 +487,7 @@ func (t *TcrEventProcessor) setPollIsPassed(pollID *big.Int, isPassed bool) erro
 	if err != nil {
 		return err
 	}
+	// NOTE(IS): Shouldn't happen if all events are processed and in order, but create new poll if DNE
 	poll.SetIsPassed(isPassed)
 	updatedFields := []string{isPassedFieldName}
 

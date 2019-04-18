@@ -17,9 +17,9 @@ import (
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
-// var (
-//     testAddress = "0xDFe273082089bB7f70Ee36Eebcde64832FE97E55"
-// )
+var (
+	testAddress = "0xDFe273082089bB7f70Ee36Eebcde64832FE97E55"
+)
 
 func setupParameterizerProcessor(t *testing.T) (*contractutils.AllTestContracts,
 	*testutils.TestPersister, *processor.ParameterizerEventProcessor) {
