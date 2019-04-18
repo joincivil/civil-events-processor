@@ -1,11 +1,11 @@
 package processor
 
 import (
-	"fmt"
 	"math/big"
 	"strings"
 
 	log "github.com/golang/glog"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -67,15 +67,15 @@ func (c *CvlTokenEventProcessor) processCvlTokenTransfer(event *crawlermodel.Eve
 
 	toAddress, ok := payload["To"]
 	if !ok {
-		return fmt.Errorf("No purchaser address found")
+		return errors.New("No purchaser address found")
 	}
 	fromAddress, ok := payload["From"]
 	if !ok {
-		return fmt.Errorf("No source address found")
+		return errors.New("No source address found")
 	}
 	amount, ok := payload["Value"]
 	if !ok {
-		return fmt.Errorf("No amount found")
+		return errors.New("No amount found")
 	}
 	transferDate := event.Timestamp()
 
@@ -98,13 +98,13 @@ func (c *CvlTokenEventProcessor) processCvlTokenTransfer(event *crawlermodel.Eve
 	purchases, err := c.transferPersister.TokenTransfersByToAddress(paddr)
 	if err != nil {
 		if err != cpersist.ErrPersisterNoResults {
-			return fmt.Errorf("Error retrieving token transfer: err: %v", err)
+			return errors.WithMessage(err, "error retrieving token transfer")
 		}
 	}
 	if len(purchases) > 0 {
 		for _, purchase := range purchases {
 			if purchase.Equals(newPurchase) {
-				return fmt.Errorf(
+				return errors.Errorf(
 					"Token transfer already exists: %v, %v, %v, %v",
 					purchase.ToAddress().Hex(),
 					purchase.FromAddress().Hex(),

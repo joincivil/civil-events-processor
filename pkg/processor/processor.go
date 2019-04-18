@@ -3,6 +3,8 @@ package processor
 import (
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/golang/glog"
+	"github.com/lib/pq"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
@@ -10,7 +12,13 @@ import (
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
+	cerrors "github.com/joincivil/go-common/pkg/errors"
 	"github.com/joincivil/go-common/pkg/pubsub"
+)
+
+const (
+	// Postgresql code indicating a unique_violation
+	pqUniqueViolationCode = "23505"
 )
 
 func isStringInSlice(slice []string, target string) bool {
@@ -53,6 +61,9 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.ChallengePersister,
 		params.ParameterProposalPersister,
 	)
+	if params.ErrRep == nil {
+		params.ErrRep = &cerrors.NullErrorReporter{}
+	}
 	return &EventProcessor{
 		tcrEventProcessor:      tcrEventProcessor,
 		plcrEventProcessor:     plcrEventProcessor,
@@ -61,6 +72,7 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		parameterizerProcessor: parameterizerProcessor,
 		googlePubSub:           params.GooglePubSub,
 		googlePubSubTopicName:  params.GooglePubSubTopicName,
+		errRep:                 params.ErrRep,
 	}
 }
 
@@ -78,6 +90,7 @@ type NewEventProcessorParams struct {
 	UserChallengeDataPersister model.UserChallengeDataPersister
 	GooglePubSub               *pubsub.GooglePubSub
 	GooglePubSubTopicName      string
+	ErrRep                     cerrors.ErrorReporter
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
@@ -90,6 +103,7 @@ type EventProcessor struct {
 	parameterizerProcessor *ParameterizerEventProcessor
 	googlePubSub           *pubsub.GooglePubSub
 	googlePubSubTopicName  string
+	errRep                 cerrors.ErrorReporter
 }
 
 // Process runs the processor with the given set of raw CivilEvents
@@ -108,12 +122,16 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 
 		if event == nil {
 			log.Errorf("Nil event found, should not be nil")
+			e.errRep.Error(errors.New("nil event found"), nil)
 			continue
 		}
 
 		ran, err = e.newsroomEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing newsroom event: err: %v\n", err)
+			if !e.isAllowedErrProcess(err) {
+				e.errRep.Error(err, nil)
+			}
 		}
 		if ran {
 			continue
@@ -122,11 +140,15 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		ran, err = e.tcrEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing civil tcr event: err: %v\n", err)
+			if !e.isAllowedErrProcess(err) {
+				e.errRep.Error(err, nil)
+			}
 		}
 		if ran {
 			err = e.sendEventToPubsub(event)
 			if err != nil {
 				log.Errorf("Error publishing to pubsub: err %v\n", err)
+				e.errRep.Error(err, nil)
 			}
 			continue
 		}
@@ -134,6 +156,9 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		ran, err = e.plcrEventProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing plcr event: err: %v\n", err)
+			if !e.isAllowedErrProcess(err) {
+				e.errRep.Error(err, nil)
+			}
 		}
 		if ran {
 			continue
@@ -142,6 +167,9 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		_, err = e.cvlTokenProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing token transfer event: err: %v\n", err)
+			if !e.isAllowedErrProcess(err) {
+				e.errRep.Error(err, nil)
+			}
 		}
 
 		_, err = e.parameterizerProcessor.Process(event)
@@ -159,4 +187,29 @@ func (e *EventProcessor) sendEventToPubsub(event *crawlermodel.Event) error {
 	}
 
 	return e.pubSub(event)
+}
+
+// isAllowedErrProcess returns if an error should be ignored or not in the
+// processing. This is used in the ensure we only report on
+// particular errors and recover on others.
+func (e *EventProcessor) isAllowedErrProcess(err error) bool {
+	switch causeErr := errors.Cause(err).(type) {
+	case *pq.Error:
+		// Allow unique_violation errors
+		if causeErr.Code == pqUniqueViolationCode {
+			log.Infof("allowed *pq error code %v: %v, constraint: %v, msg: %v", causeErr.Code,
+				causeErr.Code.Name(), causeErr.Constraint, causeErr.Message)
+			return true
+		}
+
+	case pq.Error:
+		// Allow unique_violation errors
+		if causeErr.Code == pqUniqueViolationCode {
+			log.Infof("allowed pq error code %v: %v, constraint: %v, msg: %v", causeErr.Code,
+				causeErr.Code.Name(), causeErr.Constraint, causeErr.Message)
+			return true
+		}
+	}
+
+	return false
 }

@@ -1,14 +1,14 @@
 package processor
 
 import (
-	"errors"
 	"fmt"
+	log "github.com/golang/glog"
+	"github.com/pkg/errors"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	log "github.com/golang/glog"
 
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
