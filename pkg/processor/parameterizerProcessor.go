@@ -30,11 +30,13 @@ const (
 // NewParameterizerEventProcessor is a convenience function to init a parameterizer processor
 func NewParameterizerEventProcessor(client bind.ContractBackend,
 	challengePersister model.ChallengePersister,
-	paramProposalPersister model.ParamProposalPersister) *ParameterizerEventProcessor {
+	paramProposalPersister model.ParamProposalPersister,
+	pollPersister model.PollPersister) *ParameterizerEventProcessor {
 	return &ParameterizerEventProcessor{
 		client:                 client,
 		challengePersister:     challengePersister,
 		paramProposalPersister: paramProposalPersister,
+		pollPersister:          pollPersister,
 	}
 }
 
@@ -43,6 +45,7 @@ type ParameterizerEventProcessor struct {
 	client                 bind.ContractBackend
 	challengePersister     model.ChallengePersister
 	paramProposalPersister model.ParamProposalPersister
+	pollPersister          model.PollPersister
 }
 
 func (p *ParameterizerEventProcessor) isValidParameterizerContractEventName(name string) bool {
@@ -154,11 +157,19 @@ func (p *ParameterizerEventProcessor) processParameterizerChallenge(event *crawl
 
 func (p *ParameterizerEventProcessor) processChallengeFailed(event *crawlermodel.Event,
 	challengeID *big.Int) error {
+	err := p.setPollIsPassed(challengeID, true)
+	if err != nil {
+		return fmt.Errorf("Error setting isPassed field in poll, err: %v", err)
+	}
 	return p.processChallengeResolution(event, challengeID)
 }
 
 func (p *ParameterizerEventProcessor) processChallengeSucceeded(event *crawlermodel.Event,
 	challengeID *big.Int) error {
+	err := p.setPollIsPassed(challengeID, false)
+	if err != nil {
+		return fmt.Errorf("Error setting isPassed field in poll, err: %v", err)
+	}
 	return p.processChallengeResolution(event, challengeID)
 }
 
@@ -358,4 +369,16 @@ func (p *ParameterizerEventProcessor) newChallenge(pAddress common.Address,
 
 	err = p.challengePersister.CreateChallenge(challenge)
 	return challenge, err
+}
+
+func (p *ParameterizerEventProcessor) setPollIsPassed(pollID *big.Int, isPassed bool) error {
+	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
+	if err != nil {
+		return err
+	}
+	// NOTE(IS): Shouldn't happen if all events are processed and in order, but create new poll if DNE
+	poll.SetIsPassed(isPassed)
+	updatedFields := []string{isPassedFieldName}
+
+	return p.pollPersister.UpdatePoll(poll, updatedFields)
 }

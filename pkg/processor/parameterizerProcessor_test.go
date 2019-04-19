@@ -10,6 +10,7 @@ import (
 	"github.com/joincivil/civil-events-crawler/pkg/contractutils"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
+	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
@@ -33,12 +34,24 @@ func setupParameterizerProcessor(t *testing.T) (*contractutils.AllTestContracts,
 		contracts.Client,
 		persister,
 		persister,
+		persister,
 	)
 	return contracts, persister, paramProc
 }
 
+func createNewPollInPersistence(challengeID *big.Int, persister *testutils.TestPersister,
+	commitEndDate *big.Int, revealEndDate *big.Int) {
+	poll := model.NewPoll(challengeID, commitEndDate, revealEndDate, big.NewInt(1000),
+		big.NewInt(100), big.NewInt(100), ctime.CurrentEpochSecsInInt64())
+	_ = persister.CreatePoll(poll)
+}
+
 func createAndProcNewChallengeEvent(t *testing.T, contracts *contractutils.AllTestContracts,
-	paramProc *processor.ParameterizerEventProcessor) *crawlermodel.Event {
+	paramProc *processor.ParameterizerEventProcessor, persister *testutils.TestPersister) *crawlermodel.Event {
+
+	challengeID := big.NewInt(3)
+	commitEndDate := big.NewInt(1653860896)
+	revealEndDate := big.NewInt(1663860896)
 	challenge := &contract.ParameterizerContractNewChallenge{
 		PropID:        [32]byte{0x00, 0x01},
 		ChallengeID:   big.NewInt(3),
@@ -64,6 +77,9 @@ func createAndProcNewChallengeEvent(t *testing.T, contracts *contractutils.AllTe
 		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
+
+	createNewPollInPersistence(challengeID, persister, commitEndDate, revealEndDate)
+
 	_, err := paramProc.Process(event)
 	if err != nil {
 		t.Errorf("Should not have failed processing events, err: %v", err)
@@ -237,7 +253,7 @@ func createAndProcNewProposalExpired(t *testing.T, contracts *contractutils.AllT
 func TestParameterizerEventProcessor(t *testing.T) {
 	contracts, persister, paramProc := setupParameterizerProcessor(t)
 	_ = createAndProcNewReparameterizationProp(t, contracts, paramProc)
-	_ = createAndProcNewChallengeEvent(t, contracts, paramProc)
+	_ = createAndProcNewChallengeEvent(t, contracts, paramProc, persister)
 	_ = createAndProcNewProposalExpired(t, contracts, paramProc)
 	if len(persister.Challenges) != 1 {
 		t.Error("Should have only 1 challenge in persistence")
@@ -283,7 +299,7 @@ func TestProcessProposalExpired(t *testing.T) {
 func TestProcessNewChallenge(t *testing.T) {
 	contracts, persister, paramProc := setupParameterizerProcessor(t)
 	_ = createAndProcNewReparameterizationProp(t, contracts, paramProc)
-	challengeEvent := createAndProcNewChallengeEvent(t, contracts, paramProc)
+	challengeEvent := createAndProcNewChallengeEvent(t, contracts, paramProc, persister)
 	if len(persister.Challenges) != 1 {
 		t.Error("Should have only 1 challenge in persister")
 	}
@@ -299,7 +315,7 @@ func TestProcessNewChallenge(t *testing.T) {
 func TestProcessChallengeFailed(t *testing.T) {
 	contracts, persister, paramProc := setupParameterizerProcessor(t)
 	_ = createAndProcNewReparameterizationProp(t, contracts, paramProc)
-	challengeEvent := createAndProcNewChallengeEvent(t, contracts, paramProc)
+	challengeEvent := createAndProcNewChallengeEvent(t, contracts, paramProc, persister)
 	_ = createAndProcNewChallengeFailedEvent(t, contracts, paramProc)
 	if len(persister.Challenges) != 1 {
 		t.Error("Should have only 1 challenge in persister")
@@ -316,7 +332,7 @@ func TestProcessChallengeFailed(t *testing.T) {
 func TestProcessChallengeSucceeded(t *testing.T) {
 	contracts, persister, paramProc := setupParameterizerProcessor(t)
 	_ = createAndProcNewReparameterizationProp(t, contracts, paramProc)
-	challengeEvent := createAndProcNewChallengeEvent(t, contracts, paramProc)
+	challengeEvent := createAndProcNewChallengeEvent(t, contracts, paramProc, persister)
 	_ = createAndProcNewChallengeSucceededEvent(t, contracts, paramProc)
 	if len(persister.Challenges) != 1 {
 		t.Error("Should have only 1 challenge in persister")
