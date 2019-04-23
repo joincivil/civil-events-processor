@@ -200,5 +200,5 @@ func TestProcessor(t *testing.T) {
 	if len(persister.Appeals) != 1 {
 		t.Errorf("Should have seen 1 appeal but saw %v", len(persister.Appeals))
 	}
-
+	memoryCheck(contracts)
 }

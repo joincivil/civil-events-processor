@@ -28,22 +28,22 @@ import (
 )
 
 const (
-	postgresPort                 = 5432
-	postgresDBName               = "civil_crawler"
-	postgresUser                 = "docker"
-	postgresPswd                 = "docker"
-	postgresHost                 = "localhost"
-	listingTestTableName         = "listing_test"
-	contentRevisionTestTableName = "content_revision_test"
-	govTestTableName             = "governance_event_test"
-	cronTestTableName            = "cron_test"
-	challengeTestTableName       = "challenge_test"
-	pollTestTableName            = "poll_test"
-	appealTestTableName          = "appeal_test"
-	tokenTransferTestTableName   = "token_transfer_test"
-	versionTestTableName         = "version_test"
-
-	testAddress = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
+	postgresPort                   = 5432
+	postgresDBName                 = "civil_crawler"
+	postgresUser                   = "docker"
+	postgresPswd                   = "docker"
+	postgresHost                   = "localhost"
+	listingTestTableName           = "listing_test"
+	contentRevisionTestTableName   = "content_revision_test"
+	govTestTableName               = "governance_event_test"
+	cronTestTableName              = "cron_test"
+	challengeTestTableName         = "challenge_test"
+	pollTestTableName              = "poll_test"
+	appealTestTableName            = "appeal_test"
+	tokenTransferTestTableName     = "token_transfer_test"
+	versionTestTableName           = "version_test"
+	parameterProposalTestTableName = "parameter_proposal_test"
+	testAddress                    = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 )
 
 func setupDBConnection(t *testing.T) *PostgresPersister {
@@ -77,6 +77,8 @@ func setupTestTable(t *testing.T, tableName string) *PostgresPersister {
 		queryString = postgres.CreateAppealTableQuery(persister.GetTableName(tableName))
 	case "token_transfer_test":
 		queryString = postgres.CreateTokenTransferTableQuery(persister.GetTableName(tableName))
+	case "parameter_proposal_test":
+		queryString = postgres.CreateParameterProposalTableQuery(persister.GetTableName(tableName))
 	}
 
 	_, err := persister.db.Query(queryString)
@@ -135,6 +137,11 @@ func setupAllTestTables(t *testing.T, persister *PostgresPersister) {
 		t.Errorf("Couldn't create test table %s: %v", tokenTransferTestTableName, err)
 	}
 
+	queryString = postgres.CreateParameterProposalTableQuery(persister.GetTableName(parameterProposalTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", tokenTransferTestTableName, err)
+	}
 }
 
 func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
@@ -170,14 +177,18 @@ func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tokenTransferTestTableName, err)
 	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterProposalTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", tokenTransferTestTableName, err)
+	}
 }
 
 func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName string) {
+	defer deleteTestVersionTable(t, persister)
 	_, err := persister.db.Query(fmt.Sprintf("DROP TABLE %v;", tableName))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
 	}
-	deleteTestVersionTable(t, persister)
 }
 
 func createTestVersionTable(t *testing.T, persister *PostgresPersister) {
@@ -218,6 +229,7 @@ General DB tests
 // TestDBConnection tests that we can connect to DB
 func TestDBConnection(t *testing.T) {
 	persister := setupDBConnection(t)
+	defer persister.Close()
 	var result int
 	err := persister.db.QueryRow("SELECT 1;").Scan(&result)
 	if err != nil {
@@ -231,6 +243,7 @@ func TestDBConnection(t *testing.T) {
 func TestTableSetup(t *testing.T) {
 	// run function to create tables, and test table exists
 	persister := setupDBConnection(t)
+	defer persister.Close()
 	versionNo := "123456"
 	err := persister.saveVersionToTable(versionTestTableName, &versionNo)
 	if err != nil {
@@ -800,37 +813,227 @@ func TestDeleteListing(t *testing.T) {
 	}
 }
 
-func TestListingsByCriteria(t *testing.T) {
-	joinTableName := "challenge_test"
-	persister := setupTestTable(t, listingTestTableName)
+func TestListingByCriteriaSorts(t *testing.T) {
+	tableBaseName := "listing_test"
+	joinTableBaseName := "challenge_test"
+	persister := setupTestTable(t, tableBaseName)
 	defer persister.Close()
-	tableName := persister.GetTableName(listingTestTableName)
-	_ = setupTestTable(t, joinTableName)
-	joinTableName = persister.GetTableName(joinTableName)
+	tableName := persister.GetTableName(tableBaseName)
+	persister2 := setupTestTable(t, joinTableBaseName)
+	persister2.Close()
+	joinTableName := persister.GetTableName(joinTableBaseName)
 
 	defer deleteTestTable(t, persister, tableName)
 	defer deleteTestTable(t, persister, joinTableName)
 
+	now := ctime.CurrentEpochSecsInInt64()
+
+	listing1, _ := setupSampleListing()
+	listing1.SetName("Test Listing E")
+	listing1.SetApprovalDateTs(now + int64(3))
+	listing1.SetApplicationDateTs(now + int64(3))
+	listing1.SetWhitelisted(true)
+
+	listing2, _ := setupSampleListing()
+	listing2.SetName("Test Listing C")
+	listing2.SetApprovalDateTs(0)
+	listing2.SetApplicationDateTs(0)
+
+	listing3, _ := setupSampleListingUnchallenged()
+	listing3.SetName("Test Listing G")
+	listing3.SetApprovalDateTs(now + int64(10))
+	listing3.SetApplicationDateTs(now + int64(10))
+	listing3.SetWhitelisted(true)
+
+	listing4, _ := setupSampleListing()
+	listing4.SetName("Test Listing A")
+	listing4.SetApprovalDateTs(0)
+	listing4.SetApplicationDateTs(0)
+
+	listing5, _ := setupSampleListingUnchallenged()
+	listing5.SetName("Test Listing Z")
+	listing5.SetApprovalDateTs(now + int64(10))
+	listing5.SetApplicationDateTs(now + int64(10))
+	listing5.SetWhitelisted(true)
+
+	listing6, _ := setupSampleListingUnchallenged()
+	listing6.SetName("Test Listing D")
+	listing6.SetApprovalDateTs(now + int64(10))
+	listing6.SetApplicationDateTs(now + int64(10))
+	listing6.SetWhitelisted(true)
+
+	err := persister.createListingForTable(listing1, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing2, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing3, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing4, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing5, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(listing6, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	listingsFromDB, err := persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByName,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb := listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing A" {
+		t.Errorf("Should have returned Test Listing A as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing C" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy:   model.SortByName,
+		SortDesc: true,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing Z" {
+		t.Errorf("Should have returned Test Listing Z as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByName,
+		Offset: 3,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing E" {
+		t.Errorf("Should have returned Test Listing E as the first listing: %v", listingFromDb.Name())
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing: %v", listingFromDb.Name())
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByApplied,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	if len(listingsFromDB) != 4 {
+		t.Errorf("Should have only returned 2 valid applied listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing E" {
+		t.Errorf("Should have returned Test Listing E as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+	listingsFromDB, err = persister.listingsByCriteriaFromTable(&model.ListingCriteria{
+		SortBy: model.SortByWhitelisted,
+	}, tableName, joinTableName)
+	if err != nil {
+		t.Errorf("Error getting listing by criteria: %v", err)
+	}
+	if len(listingsFromDB) <= 0 {
+		t.Errorf("Should have returned some listings")
+	}
+	if len(listingsFromDB) != 4 {
+		t.Errorf("Should have only returned 2 valid whitelisted listings")
+	}
+	listingFromDb = listingsFromDB[0]
+	if listingFromDb.Name() != "Test Listing E" {
+		t.Errorf("Should have returned Test Listing E as the first listing")
+	}
+	listingFromDb = listingsFromDB[1]
+	if listingFromDb.Name() != "Test Listing G" {
+		t.Errorf("Should have returned Test Listing G as the second listing")
+	}
+
+}
+
+func TestListingsByCriteria(t *testing.T) {
+	tableBaseName := "listing_test"
+	joinTableBaseName := "challenge_test"
+	persister := setupTestTable(t, tableBaseName)
+	defer persister.Close()
+	tableName := persister.GetTableName(tableBaseName)
+	persister2 := setupTestTable(t, joinTableBaseName)
+	persister2.Close()
+	joinTableName := persister.GetTableName(joinTableBaseName)
+
+	defer deleteTestTable(t, persister, tableName)
+	defer deleteTestTable(t, persister, joinTableName)
+
+	now := ctime.CurrentEpochSecsInInt64()
+
 	// whitelisted modellisting with active challenge
 	modelListingWhitelistedActiveChallenge, _ := setupSampleListing()
+	modelListingWhitelistedActiveChallenge.SetName("Test Listing E")
+	modelListingWhitelistedActiveChallenge.SetApprovalDateTs(now + int64(3))
 	challenge := setupChallengeByChallengeID(10, false)
 	// Create another modelListing that was rejected after challenge succeeded
 	modelListingRejected, _ := setupSampleListing()
+	modelListingRejected.SetName("Test Listing D")
+	modelListingRejected.SetApprovalDateTs(now + int64(2))
 	modelListingRejected.SetWhitelisted(false)
 	modelListingRejected.SetChallengeID(big.NewInt(0))
 	modelListingRejected.SetAppExpiry(big.NewInt(0))
 	// modelListing that is still in application phase, not whitelisted
 	modelListingApplicationPhase, _ := setupSampleListingUnchallenged()
+	modelListingApplicationPhase.SetName("Test Listing C")
+	modelListingApplicationPhase.SetApprovalDateTs(now)
 	appExpiry := big.NewInt(ctime.CurrentEpochSecsInInt64() + 100)
 	modelListingApplicationPhase.SetAppExpiry(appExpiry)
 	// modellisting that is whitelisted, never had a challenge
 	modelListingWhitelisted, _ := setupSampleListingUnchallenged()
+	modelListingWhitelisted.SetName("Test Listing G")
+	modelListingWhitelisted.SetApprovalDateTs(now + int64(10))
 	modelListingWhitelisted.SetWhitelisted(true)
 	// Create another modelListing where challenge failed
 	modelListingNoChallenge, _ := setupSampleListing()
+	modelListingNoChallenge.SetName("Test Listing A")
+	modelListingNoChallenge.SetApprovalDateTs(now + int64(5))
 	modelListingNoChallenge.SetChallengeID(big.NewInt(0))
 	// modelListing that passed application phase but not challenged so ready to be whitelisted
 	modelListingPastApplicationPhase, _ := setupSampleListingUnchallenged()
+	modelListingPastApplicationPhase.SetName("Test Listing Z")
+	modelListingPastApplicationPhase.SetApprovalDateTs(now + int64(8))
 	appExpiry = big.NewInt(ctime.CurrentEpochSecsInInt64() - 100)
 	modelListingPastApplicationPhase.SetAppExpiry(appExpiry)
 
@@ -2168,6 +2371,7 @@ func TestLastEventHashesFromTable(t *testing.T) {
 	if strings.Join(eventHashes, ",") != "" {
 		t.Errorf("Event Hashes should be empty but are %v", eventHashes)
 	}
+
 }
 
 func TestUpdateEventHashes(t *testing.T) {
@@ -2271,5 +2475,153 @@ func TestGetTokenTransfersForToAddress(t *testing.T) {
 	}
 	if purchase.TransferDate() != transfer.TransferDate() {
 		t.Errorf("Should have gotten the transfer date")
+	}
+}
+
+/*
+ * All tests for parameter_proposal table:
+ */
+
+func setupSampleParamProposal() *model.ParameterProposal {
+	return model.NewParameterProposal(
+		&model.ParameterProposalParams{
+			Name:              "commitStageLen",
+			Value:             big.NewInt(1800),
+			PropID:            [32]byte{0, 1},
+			Deposit:           big.NewInt(10000),
+			AppExpiry:         big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(1000)),
+			ChallengeID:       big.NewInt(3),
+			Proposer:          common.HexToAddress(testAddress),
+			Accepted:          true,
+			Expired:           false,
+			LastUpdatedDateTs: int64(12345678),
+		},
+	)
+}
+
+func setupSampleParamProposal2() *model.ParameterProposal {
+	return model.NewParameterProposal(
+		&model.ParameterProposalParams{
+			Name:              "commitStageLen",
+			Value:             big.NewInt(1200),
+			PropID:            [32]byte{0, 3},
+			Deposit:           big.NewInt(10000),
+			AppExpiry:         big.NewInt(124500),
+			ChallengeID:       big.NewInt(3),
+			Proposer:          common.HexToAddress(testAddress),
+			Accepted:          true,
+			Expired:           true,
+			LastUpdatedDateTs: int64(12345678),
+		},
+	)
+}
+func setupParamProposalTable(t *testing.T) *PostgresPersister {
+	return setupTestTable(t, parameterProposalTestTableName)
+}
+
+func createAndSaveTestParamProposal(t *testing.T, persister *PostgresPersister) *model.ParameterProposal {
+	paramProposal := setupSampleParamProposal()
+	err := persister.createParameterProposalInTable(paramProposal, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("error saving param proposal: %v", err)
+	}
+	return paramProposal
+}
+
+func createAndSaveTestParamProposal2(t *testing.T, persister *PostgresPersister) *model.ParameterProposal {
+	paramProposal := setupSampleParamProposal2()
+	err := persister.createParameterProposalInTable(paramProposal, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("error saving param proposal: %v", err)
+	}
+	return paramProposal
+}
+
+func TestCreateParameterProposal(t *testing.T) {
+	persister := setupParamProposalTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+	_ = createAndSaveTestParamProposal(t, persister)
+}
+
+func TestParamProposalByPropID(t *testing.T) {
+	persister := setupParamProposalTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+
+	paramProposal := createAndSaveTestParamProposal(t, persister)
+
+	propID := paramProposal.PropID()
+
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error saving parameter proposal to db: %v", err)
+	}
+
+	if dbParamProposal.Proposer().Hex() != paramProposal.Proposer().Hex() {
+		t.Error("ParameterProposal propser addresses don't match")
+	}
+}
+
+func TestParamProposalByName(t *testing.T) {
+	persister := setupParamProposalTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+
+	_ = createAndSaveTestParamProposal(t, persister)
+	_ = createAndSaveTestParamProposal2(t, persister)
+
+	name := "commitStageLen"
+	active := true
+	getAll := false
+
+	dbParamProposalsActive, err := persister.paramProposalByNameFromTable(name, active, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error getting parameter proposal from db %v", err)
+	}
+
+	if len(dbParamProposalsActive) != 1 {
+		t.Errorf("Number of active proposals should be 1 but is %v", len(dbParamProposalsActive))
+	}
+
+	dbAllParamProposals, err := persister.paramProposalByNameFromTable(name, getAll, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error getting parameter proposal from db %v", err)
+	}
+
+	if len(dbAllParamProposals) != 2 {
+		t.Errorf("Number of proposals should be 2 but is %v", len(dbAllParamProposals))
+	}
+}
+
+func TestUpdateParamProposal(t *testing.T) {
+	persister := setupParamProposalTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+
+	paramProposal := createAndSaveTestParamProposal(t, persister)
+	paramProposal.SetAccepted(false)
+	paramProposal.SetExpired(true)
+
+	propID := paramProposal.PropID()
+
+	updatedFields := []string{"Accepted", "Expired"}
+
+	err := persister.updateParamProposalInTable(paramProposal, updatedFields, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error updating parameter proposal, %v", err)
+	}
+
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, parameterProposalTestTableName)
+	if err != nil {
+		t.Errorf("Error getting param proposal from db, err %v", err)
+	}
+
+	if dbParamProposal.Accepted() {
+		t.Error("Wrong value for accepted field after update")
+	}
+
+	if !dbParamProposal.Expired() {
+		t.Error("Wrong value for expired field after update")
 	}
 }

@@ -9,6 +9,8 @@ pids
 # generated/
 *.abi
 *.bin
+*.prof
+*.out
 
 build/
 

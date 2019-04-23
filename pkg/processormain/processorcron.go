@@ -12,6 +12,7 @@ import (
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/utils"
+	cerrors "github.com/joincivil/go-common/pkg/errors"
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
 )
 
@@ -41,9 +42,11 @@ func initPubSubForCron(config *utils.ProcessorConfig) (*cpubsub.GooglePubSub, er
 }
 
 // RunProcessor runs the processor
-func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPersisters) {
+func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPersisters,
+	errRep cerrors.ErrorReporter) {
 	lastTs, lastHashes, err := GetLastEventInformation(persisters)
 	if err != nil {
+		errRep.Error(err, nil)
 		return
 	}
 
@@ -55,6 +58,7 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 	)
 	if err != nil {
 		log.Errorf("Error retrieving events: err: %v", err)
+		errRep.Error(err, nil)
 		return
 	}
 
@@ -62,6 +66,7 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 		client, err := ethclient.Dial(config.EthAPIURL)
 		if err != nil {
 			log.Errorf("Error connecting to eth API: err: %v", err)
+			errRep.Error(err, nil)
 			return
 		}
 		defer client.Close()
@@ -69,23 +74,26 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 		pubsub, err := initPubSubForCron(config)
 		if err != nil {
 			log.Errorf("Error initializing pubsub: err: %v", err)
+			errRep.Error(err, nil)
 			return
 		}
 
 		proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-			Client:                 client,
-			ListingPersister:       persisters.Listing,
-			RevisionPersister:      persisters.ContentRevision,
-			GovEventPersister:      persisters.GovernanceEvent,
-			ChallengePersister:     persisters.Challenge,
-			PollPersister:          persisters.Poll,
-			AppealPersister:        persisters.Appeal,
-			TokenTransferPersister: persisters.TokenTransfer,
-			GooglePubSub:           pubsub,
-			GooglePubSubTopicName:  config.PubSubEventsTopicName,
+			Client:                     client,
+			ListingPersister:           persisters.Listing,
+			RevisionPersister:          persisters.ContentRevision,
+			GovEventPersister:          persisters.GovernanceEvent,
+			ChallengePersister:         persisters.Challenge,
+			PollPersister:              persisters.Poll,
+			AppealPersister:            persisters.Appeal,
+			TokenTransferPersister:     persisters.TokenTransfer,
+			ParameterProposalPersister: persisters.ParameterProposal,
+			GooglePubSub:               pubsub,
+			GooglePubSubTopicName:      config.PubSubEventsTopicName,
+			ErrRep:                     errRep,
 		})
 
-		RunProcessor(proc, persisters, events, lastTs)
+		RunProcessor(proc, persisters, events, lastTs, errRep)
 	}
 
 	log.Infof("Done running processor: %v", runtime.NumGoroutine())
@@ -93,10 +101,17 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 
 // ProcessorCronMain contains the logic to run the processor using a cronjob
 func ProcessorCronMain(config *utils.ProcessorConfig, persisters *InitializedPersisters) {
+	errRep, err := InitErrorReporter(config)
+	if err != nil {
+		log.Errorf("Error init error reporting: err: %+v\n", err)
+		os.Exit(2)
+	}
+
 	cr := cron.New()
-	err := cr.AddFunc(config.CronConfig, func() { runProcessorCron(config, persisters) })
+	err = cr.AddFunc(config.CronConfig, func() { runProcessorCron(config, persisters, errRep) })
 	if err != nil {
 		log.Errorf("Error starting: err: %v", err)
+		errRep.Error(err, nil)
 		os.Exit(1)
 	}
 	cr.Start()

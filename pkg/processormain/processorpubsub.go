@@ -2,12 +2,12 @@ package processormain
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"os/signal"
 	"syscall"
 
 	log "github.com/golang/glog"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -15,6 +15,7 @@ import (
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 	crawlerps "github.com/joincivil/civil-events-crawler/pkg/pubsub"
 
+	cerrors "github.com/joincivil/go-common/pkg/errors"
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
 
 	"github.com/joincivil/civil-events-processor/pkg/processor"
@@ -65,7 +66,7 @@ func isNewsroomException(crawlerMsg *crawlerps.CrawlerPubSubMessage) bool {
 
 // RunProcessorPubSub runs processor upon receiving messages from pubsub
 func RunProcessorPubSub(persisters *InitializedPersisters, ps *cpubsub.GooglePubSub,
-	proc *processor.EventProcessor, quit <-chan bool) {
+	proc *processor.EventProcessor, quit <-chan bool, errRep cerrors.ErrorReporter) {
 	log.Info("Start listening for messages")
 Loop:
 	for {
@@ -78,10 +79,12 @@ Loop:
 			messData, err := processMessageGetEvents(msg)
 			if err != nil {
 				log.Errorf("Error processing message: err: %v", err)
+				errRep.Error(err, nil)
 			}
 			lastTs, err := persisters.Cron.TimestampOfLastEventForCron()
 			if err != nil {
 				log.Errorf("Error getting last event timestamp: %v", err)
+				errRep.Error(err, nil)
 				return
 			}
 			var retrieveCriteria *crawlermodel.RetrieveEventsCriteria
@@ -96,6 +99,7 @@ Loop:
 				lastHashes, cronTableErr := persisters.Cron.EventHashesOfLastTimestampForCron()
 				if cronTableErr != nil {
 					log.Errorf("Error getting event hashes for last timestamp seen in cron: %v", cronTableErr)
+					errRep.Error(cronTableErr, nil)
 					return
 				}
 				retrieveCriteria = &crawlermodel.RetrieveEventsCriteria{
@@ -106,11 +110,13 @@ Loop:
 			events, err := persisters.Event.RetrieveEvents(retrieveCriteria)
 			if err != nil {
 				log.Errorf("Error retrieving events: err: %v", err)
+				errRep.Error(err, nil)
 				return
 			}
 			err = proc.Process(events)
 			if err != nil {
 				log.Errorf("Error processing events: err: %v", err)
+				errRep.Error(err, nil)
 				return
 			}
 			// Manually acknowledge message receipt after processing is successful
@@ -120,6 +126,7 @@ Loop:
 				err := SaveLastEventInformation(persisters.Cron, events, lastTs)
 				if err != nil {
 					log.Errorf("Error saving last seen event info %v: err: %v", lastTs, err)
+					errRep.Error(err, nil)
 					return
 				}
 			}
@@ -152,9 +159,16 @@ func setupKillNotify(ps *cpubsub.GooglePubSub, quitChan chan<- bool) {
 
 // ProcessorPubSubMain runs the processor using pubsub
 func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedPersisters) {
+	errRep, err := InitErrorReporter(config)
+	if err != nil {
+		log.Errorf("Error init error reporting: err: %+v\n", err)
+		os.Exit(2)
+	}
+
 	ps, err := initPubSub(config)
 	if err != nil {
 		log.Errorf("Error initializing pubsub: err: %v", err)
+		errRep.Error(err, nil)
 		return
 	}
 	quitChan := make(chan bool)
@@ -167,38 +181,44 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 	err = initPubSubSubscribers(config, ps)
 	if err != nil {
 		log.Errorf("Error starting subscribers for pubsub: err: %v", err)
+		errRep.Error(err, nil)
 	}
 
 	// Setup pubsub for events. This can be nil
 	eventsPs, err := initPubSubEvents(config, ps)
 	if err != nil {
 		log.Errorf("Error starting publishers for events: err: %v", err)
+		errRep.Error(err, nil)
 		return
 	}
 
 	client, err := ethclient.Dial(config.EthAPIURL)
 	if err != nil {
 		log.Errorf("Error connecting to eth API: err: %v", err)
+		errRep.Error(err, nil)
 		return
 	}
 	defer client.Close()
 
 	proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-		Client:                 client,
-		ListingPersister:       persisters.Listing,
-		RevisionPersister:      persisters.ContentRevision,
-		GovEventPersister:      persisters.GovernanceEvent,
-		ChallengePersister:     persisters.Challenge,
-		PollPersister:          persisters.Poll,
-		AppealPersister:        persisters.Appeal,
-		TokenTransferPersister: persisters.TokenTransfer,
-		GooglePubSub:           eventsPs,
-		GooglePubSubTopicName:  config.PubSubEventsTopicName,
+		Client:                     client,
+		ListingPersister:           persisters.Listing,
+		RevisionPersister:          persisters.ContentRevision,
+		GovEventPersister:          persisters.GovernanceEvent,
+		ChallengePersister:         persisters.Challenge,
+		PollPersister:              persisters.Poll,
+		AppealPersister:            persisters.Appeal,
+		TokenTransferPersister:     persisters.TokenTransfer,
+		ParameterProposalPersister: persisters.ParameterProposal,
+		GooglePubSub:               eventsPs,
+		GooglePubSubTopicName:      config.PubSubEventsTopicName,
+		ErrRep:                     errRep,
 	})
 
 	// First run processor without pubsub:
 	lastTs, lastHashes, err := GetLastEventInformation(persisters)
 	if err != nil {
+		errRep.Error(err, nil)
 		return
 	}
 	events, err := persisters.Event.RetrieveEvents(
@@ -209,10 +229,11 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 	)
 	if err != nil {
 		log.Errorf("Error retrieving events: err: %v", err)
+		errRep.Error(err, nil)
 		return
 	}
 	if len(events) > 0 {
-		RunProcessor(proc, persisters, events, lastTs)
+		RunProcessor(proc, persisters, events, lastTs, errRep)
 	}
-	RunProcessorPubSub(persisters, ps, proc, quitChan)
+	RunProcessorPubSub(persisters, ps, proc, quitChan, errRep)
 }
