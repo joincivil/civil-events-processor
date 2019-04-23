@@ -31,21 +31,24 @@ const (
 func NewParameterizerEventProcessor(client bind.ContractBackend,
 	challengePersister model.ChallengePersister,
 	paramProposalPersister model.ParamProposalPersister,
-	pollPersister model.PollPersister) *ParameterizerEventProcessor {
+	pollPersister model.PollPersister,
+	userChallengeDataPersister model.UserChallengeDataPersister) *ParameterizerEventProcessor {
 	return &ParameterizerEventProcessor{
-		client:                 client,
-		challengePersister:     challengePersister,
-		paramProposalPersister: paramProposalPersister,
-		pollPersister:          pollPersister,
+		client:                     client,
+		challengePersister:         challengePersister,
+		paramProposalPersister:     paramProposalPersister,
+		pollPersister:              pollPersister,
+		userChallengeDataPersister: userChallengeDataPersister,
 	}
 }
 
 // ParameterizerEventProcessor handles the processing of raw events into aggregated data
 type ParameterizerEventProcessor struct {
-	client                 bind.ContractBackend
-	challengePersister     model.ChallengePersister
-	paramProposalPersister model.ParamProposalPersister
-	pollPersister          model.PollPersister
+	client                     bind.ContractBackend
+	challengePersister         model.ChallengePersister
+	paramProposalPersister     model.ParamProposalPersister
+	pollPersister              model.PollPersister
+	userChallengeDataPersister model.UserChallengeDataPersister
 }
 
 func (p *ParameterizerEventProcessor) isValidParameterizerContractEventName(name string) bool {
@@ -374,11 +377,19 @@ func (p *ParameterizerEventProcessor) newChallenge(pAddress common.Address,
 func (p *ParameterizerEventProcessor) setPollIsPassed(pollID *big.Int, isPassed bool) error {
 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting poll from persistence: %v", err)
 	}
-	// NOTE(IS): Shouldn't happen if all events are processed and in order, but create new poll if DNE
+	// TODO(IS): Shouldn't happen if all events are processed and in order, but create new poll if DNE
 	poll.SetIsPassed(isPassed)
 	updatedFields := []string{isPassedFieldName}
 
-	return p.pollPersister.UpdatePoll(poll, updatedFields)
+	err = p.pollPersister.UpdatePoll(poll, updatedFields)
+	if err != nil {
+		return fmt.Errorf("Error updating poll in persistence: %v", err)
+	}
+
+	// Batch update of isPassed values of userchallengedata in DB
+
+	return nil
+
 }

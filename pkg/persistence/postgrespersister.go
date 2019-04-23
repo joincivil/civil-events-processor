@@ -1636,6 +1636,9 @@ func (p *PostgresPersister) userChallengeDataByCriteriaFromTable(criteria *model
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving listings from table: %v", err)
 	}
+	if len(dbUserChalls) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
 	userChalls := make([]*model.UserChallengeData, len(dbUserChalls))
 	for index, dbUserChall := range dbUserChalls {
 		modelUserChall := dbUserChall.DbToUserChallengeData()

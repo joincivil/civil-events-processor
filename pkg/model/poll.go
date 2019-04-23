@@ -46,6 +46,7 @@ func (p *Poll) PollID() *big.Int {
 }
 
 // PollType returns the polltype of this poll
+// NOTE(IS): This isn't set until we start receiving voteCommitted events from the poll
 func (p *Poll) PollType() string {
 	return p.pollType
 }
