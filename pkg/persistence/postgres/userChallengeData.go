@@ -15,6 +15,7 @@ const (
 	// UserChallengeDataTableName is the name of this table
 	UserChallengeDataTableName = "user_challenge_data"
 	defaultNilNum              = 0
+	defaultNilString           = ""
 	// Set nil for choice to -1 so that it isn't confused with 0 or 1 for choice
 	choiceNilNum = -1
 )
@@ -37,6 +38,7 @@ func CreateUserChallengeDataQueryString(tableName string) string {
             did_user_rescue BOOL,
             did_collect_amount NUMERIC,
             is_voter_winner BOOL,
+            poll_is_passed BOOL,
             salt NUMERIC,
             choice NUMERIC,
             num_tokens NUMERIC,
@@ -75,6 +77,7 @@ type UserChallengeData struct {
 	DidUserRescue     bool    `db:"did_user_rescue"`
 	DidCollectAmount  float64 `db:"did_collect_amount"`
 	IsVoterWinner     bool    `db:"is_voter_winner"`
+	PollIsPassed      bool    `db:"poll_is_passed"`
 	Salt              uint64  `db:"salt"`
 	Choice            int64   `db:"choice"`
 	NumTokens         float64 `db:"num_tokens"`
@@ -87,14 +90,22 @@ type UserChallengeData struct {
 func NewUserChallengeData(userChallengeData *model.UserChallengeData) *UserChallengeData {
 	userChallengePgData := &UserChallengeData{}
 	userChallengePgData.PollID = userChallengeData.PollID().Uint64()
-	userChallengePgData.PollRevealEndDate = userChallengeData.PollRevealEndDate().Int64()
+	if userChallengeData.PollRevealEndDate() != nil {
+		userChallengePgData.PollRevealEndDate = userChallengeData.PollRevealEndDate().Int64()
+	} else {
+		userChallengePgData.PollRevealEndDate = defaultNilNum
+	}
+
 	userChallengePgData.PollType = userChallengeData.PollType()
+
 	userChallengePgData.UserAddress = userChallengeData.UserAddress().Hex()
+
 	userChallengePgData.UserDidCommit = userChallengeData.UserDidCommit()
 	userChallengePgData.UserDidReveal = userChallengeData.UserDidReveal()
 	userChallengePgData.DidUserCollect = userChallengeData.DidUserCollect()
 	userChallengePgData.DidUserRescue = userChallengeData.DidUserRescue()
 	userChallengePgData.IsVoterWinner = userChallengeData.IsVoterWinner()
+	userChallengePgData.PollIsPassed = userChallengeData.PollIsPassed()
 
 	if userChallengeData.DidCollectAmount() != nil {
 		userChallengePgData.DidCollectAmount = numbers.BigIntToFloat64(userChallengeData.DidCollectAmount())
@@ -154,5 +165,6 @@ func (u *UserChallengeData) DbToUserChallengeData() *model.UserChallengeData {
 	userChallengeData.SetNumTokens(numbers.Float64ToBigInt(u.NumTokens))
 	userChallengeData.SetVoterReward(numbers.Float64ToBigInt(u.VoterReward))
 	userChallengeData.SetParentChallengeID(new(big.Int).SetUint64(u.ParentChallengeID))
+	userChallengeData.SetPollIsPassed(u.PollIsPassed)
 	return userChallengeData
 }

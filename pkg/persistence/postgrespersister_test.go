@@ -2749,7 +2749,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 		t.Errorf("Error saving data to table %v", err)
 	}
 
-	if len(userChallengeDataDB4) > 1 {
+	if len(userChallengeDataDB4) != 1 {
 		t.Errorf("Should only have 1 result but have %v", len(userChallengeDataDB4))
 	}
 
@@ -2770,5 +2770,47 @@ func TestUserChallengeByCriteria(t *testing.T) {
 
 	if len(userChallengeDataDB5) != 1 {
 		t.Errorf("Should have 1 result but have %v", len(userChallengeDataDB5))
+	}
+}
+
+func TestUpdateUserChallengeData(t *testing.T) {
+	persister := setupUserChallengeDataTable(t)
+	_ = setupPollTable(t)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, userChallengeDataTestTableName)
+
+	pollID1 := big.NewInt(1)
+	userAddress := common.HexToAddress(testAddress)
+	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
+	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1, pollRevealEndDate)
+
+	// NOTE: don't need L2788
+	userChallengeData.SetPollIsPassed(true)
+
+	updateInUserChallengeData := &model.UserChallengeData{}
+	updateInUserChallengeData.SetPollIsPassed(true)
+	updateInUserChallengeData.SetPollID(pollID1)
+	updatedFields := []string{"PollIsPassed"}
+	updateWithUserAddress := false
+
+	err := persister.updateUserChallengeDataInTable(updateInUserChallengeData, updatedFields,
+		updateWithUserAddress, userChallengeDataTestTableName)
+	if err != nil {
+		t.Errorf("Error updating userchallengedata: %v", err)
+	}
+
+	// check to see if all userchallengedata objects with this pollID have pollID is passed updated
+	userChallengeDataDB, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		PollID: pollID1.Uint64(),
+	}, userChallengeDataTestTableName, "")
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if !userChallengeDataDB[0].PollIsPassed() {
+		t.Error("pollIsPassed field should have been updated")
+	}
+	if userChallengeDataDB[0].PollRevealEndDate().Cmp(pollRevealEndDate) != 0 {
+		t.Error("pollRevealEndDate value is wrong")
 	}
 }

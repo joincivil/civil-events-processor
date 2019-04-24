@@ -317,9 +317,10 @@ func (p *PostgresPersister) UserChallengeDataByCriteria(
 }
 
 // UpdateUserChallengeData updates UserChallengeData in table
+// user=true updates for user + pollID, user=false updates for pollID
 func (p *PostgresPersister) UpdateUserChallengeData(userChallengeData *model.UserChallengeData,
-	updatedFields []string) error {
-	return p.updateUserChallengeDataInTable(userChallengeData, updatedFields,
+	updatedFields []string, updateWithUserAddress bool) error {
+	return p.updateUserChallengeDataInTable(userChallengeData, updatedFields, updateWithUserAddress,
 		postgres.UserChallengeDataTableName)
 }
 
@@ -1671,21 +1672,21 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 
 		if criteria.UserAddress != "" {
 			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.user_address=:user_address ") // nolint: gosec
+			queryBuf.WriteString(" u.user_address=:user_address") // nolint: gosec
 		}
 		if criteria.PollID > 0 {
 			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.poll_id=:poll_id ") // nolint: gosec
+			queryBuf.WriteString(" u.poll_id=:poll_id") // nolint: gosec
 		}
 
 	} else {
 		if criteria.UserAddress != "" {
 			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.user_address=:user_address ") // nolint: gosec
+			queryBuf.WriteString(" u.user_address=:user_address") // nolint: gosec
 		}
 		if criteria.PollID > 0 {
 			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.poll_id=:poll_id ") // nolint: gosec
+			queryBuf.WriteString(" u.poll_id=:poll_id") // nolint: gosec
 		}
 		if criteria.CanUserReveal {
 			p.addWhereAnd(queryBuf)
@@ -1693,8 +1694,8 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 
 		} else if criteria.CanUserRescue {
 			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.user_did_reveal=false AND u.did_user_rescue=false AND ")                 // nolint: gosec
-			queryBuf.WriteString(fmt.Sprintf("u.poll_reveal_end_date < %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
+			queryBuf.WriteString(" u.user_did_reveal=false AND u.did_user_rescue=false AND")                   // nolint: gosec
+			queryBuf.WriteString(fmt.Sprintf(" u.poll_reveal_end_date < %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
 		}
 	}
 
@@ -1709,11 +1710,10 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 }
 
 func (p *PostgresPersister) updateUserChallengeDataInTable(userChallengeData *model.UserChallengeData,
-	updatedFields []string, tableName string) error {
+	updatedFields []string, updateWithUserAddress bool, tableName string) error {
 	userChallengeData.SetLastUpdatedDateTs(ctime.CurrentEpochSecsInInt64())
 	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
-
-	queryString, err := p.updateUserChallengeDataQuery(updatedFields, tableName)
+	queryString, err := p.updateUserChallengeDataQuery(updatedFields, tableName, updateWithUserAddress)
 	if err != nil {
 		return fmt.Errorf("Error creating query string for update: %v ", err)
 	}
@@ -1726,12 +1726,17 @@ func (p *PostgresPersister) updateUserChallengeDataInTable(userChallengeData *mo
 }
 
 func (p *PostgresPersister) updateUserChallengeDataQuery(updatedFields []string,
-	tableName string) (string, error) {
+	tableName string, updateWithUserAddress bool) (string, error) {
 	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.UserChallengeData{})
 	if err != nil {
 		return "", err
 	}
-	queryString.WriteString(" WHERE user_address=:user_address AND poll_id=:poll_id;") // nolint: gosec
+	if updateWithUserAddress {
+		queryString.WriteString(" WHERE user_address=:user_address AND poll_id=:poll_id;") // nolint: gosec
+	} else {
+		queryString.WriteString(" WHERE poll_id=:poll_id;") // nolint: gosec
+	}
+
 	return queryString.String(), nil
 }
 
