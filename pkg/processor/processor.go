@@ -67,7 +67,8 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		cvlTokenProcessor:      cvlTokenProcessor,
 		parameterizerProcessor: parameterizerProcessor,
 		googlePubSub:           params.GooglePubSub,
-		googlePubSubTopicName:  params.GooglePubSubTopicName,
+		pubSubEventsTopicName:  params.PubSubEventsTopicName,
+		pubSubTokenTopicName:   params.PubSubTokenTopicName,
 		errRep:                 params.ErrRep,
 	}
 }
@@ -84,7 +85,8 @@ type NewEventProcessorParams struct {
 	TokenTransferPersister     model.TokenTransferPersister
 	ParameterProposalPersister model.ParamProposalPersister
 	GooglePubSub               *pubsub.GooglePubSub
-	GooglePubSubTopicName      string
+	PubSubEventsTopicName      string
+	PubSubTokenTopicName       string
 	ErrRep                     cerrors.ErrorReporter
 }
 
@@ -97,7 +99,8 @@ type EventProcessor struct {
 	cvlTokenProcessor      *CvlTokenEventProcessor
 	parameterizerProcessor *ParameterizerEventProcessor
 	googlePubSub           *pubsub.GooglePubSub
-	googlePubSubTopicName  string
+	pubSubEventsTopicName  string
+	pubSubTokenTopicName   string
 	errRep                 cerrors.ErrorReporter
 }
 
@@ -106,8 +109,11 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	var err error
 	var ran bool
 
-	if !e.pubsubEnabled() {
-		log.Info("Events pubsub is disabled, to enable set the project ID and topic in the config.")
+	if !e.pubsubEnabled(e.pubSubEventsTopicName) {
+		log.Info("Gov events pubsub is disabled, set the project ID and topic in the config.")
+	}
+	if !e.pubsubEnabled(e.pubSubTokenTopicName) {
+		log.Info("CvlToken events pubsub is disabled, set the project ID and topic in the config.")
 	}
 
 	for _, event := range events {
@@ -140,9 +146,9 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			}
 		}
 		if ran {
-			err = e.sendEventToPubsub(event)
+			err = e.sendEventToEventsPubsub(event)
 			if err != nil {
-				log.Errorf("Error publishing to pubsub: err %v\n", err)
+				log.Errorf("Error publishing to events pubsub: err %v\n", err)
 				e.errRep.Error(err, nil)
 			}
 			continue
@@ -159,12 +165,20 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			continue
 		}
 
-		_, err = e.cvlTokenProcessor.Process(event)
+		ran, err = e.cvlTokenProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing token transfer event: err: %v\n", err)
 			if !e.isAllowedErrProcess(err) {
 				e.errRep.Error(err, nil)
 			}
+		}
+		if ran {
+			err = e.sendEventToTokenPubsub(event)
+			if err != nil {
+				log.Errorf("Error publishing to cvltoken pubsub: err %v\n", err)
+				e.errRep.Error(err, nil)
+			}
+			continue
 		}
 
 		_, err = e.parameterizerProcessor.Process(event)
@@ -176,12 +190,22 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	return err
 }
 
-func (e *EventProcessor) sendEventToPubsub(event *crawlermodel.Event) error {
-	if !e.pubsubEnabled() {
+// Send to gov events pubsub
+func (e *EventProcessor) sendEventToEventsPubsub(event *crawlermodel.Event) error {
+	if !e.pubsubEnabled(e.pubSubEventsTopicName) {
 		return nil
 	}
 
-	return e.pubSub(event)
+	return e.pubSub(event, e.pubSubEventsTopicName)
+}
+
+// Send to cvltoken events pubsub
+func (e *EventProcessor) sendEventToTokenPubsub(event *crawlermodel.Event) error {
+	if !e.pubsubEnabled(e.pubSubTokenTopicName) {
+		return nil
+	}
+
+	return e.pubSub(event, e.pubSubTokenTopicName)
 }
 
 // isAllowedErrProcess returns if an error should be ignored or not in the
