@@ -18,9 +18,6 @@ func NewUserChallengeData(address common.Address, pollID *big.Int,
 		pollRevealEndDate: pollRevealEndDate,
 		pollType:          pollType,
 		lastUpdatedDateTs: lastUpdatedDateTs,
-		// userDidReveal: userDidReveal,
-		// canUserReveal: canUserReveal,
-		// didUserReveal: userDidReveal,
 	}
 }
 
@@ -32,13 +29,11 @@ type UserChallengeData struct {
 	userAddress       common.Address
 	userDidCommit     bool
 	userDidReveal     bool
-	// canUserReveal     bool
-	didUserCollect bool
-	// canUserCollect    bool
-	didUserRescue bool
-	// canUserRescue     bool
+	didUserCollect    bool
+	didUserRescue     bool
 	didCollectAmount  *big.Int
 	isVoterWinner     bool
+	pollIsPassed      bool
 	salt              *big.Int
 	choice            *big.Int
 	numTokens         *big.Int
@@ -52,12 +47,17 @@ func (u *UserChallengeData) PollID() *big.Int {
 	return u.pollID
 }
 
+// SetPollID sets the pollID of this vote
+func (u *UserChallengeData) SetPollID(pollID *big.Int) {
+	u.pollID = pollID
+}
+
 // PollRevealEndDate is the reveal end date of this poll
 func (u *UserChallengeData) PollRevealEndDate() *big.Int {
 	return u.pollRevealEndDate
 }
 
-// PollType is the type of poll, above
+// PollType is the type of poll
 func (u *UserChallengeData) PollType() string {
 	return u.pollType
 }
@@ -82,11 +82,6 @@ func (u *UserChallengeData) SetUserDidReveal(userDidReveal bool) {
 	u.userDidReveal = userDidReveal
 }
 
-// // CanUserReveal is whether this user can reveal a vote
-// func (u *UserChallengeData) CanUserReveal() bool {
-//     return u.canUserReveal
-// }
-
 // DidUserCollect is whether this user has reward available and has collected rewards
 func (u *UserChallengeData) DidUserCollect() bool {
 	return u.didUserCollect
@@ -97,11 +92,6 @@ func (u *UserChallengeData) SetDidUserCollect(didUserCollect bool) {
 	u.didUserCollect = didUserCollect
 }
 
-// // CanUserCollect is whether this user can collect rewards
-// func (u *UserChallengeData) CanUserCollect() bool {
-//     return u.canUserCollect
-// }
-
 // DidUserRescue is whether this user rescued: user committed but did not reveal or rescue
 func (u *UserChallengeData) DidUserRescue() bool {
 	return u.didUserRescue
@@ -111,11 +101,6 @@ func (u *UserChallengeData) DidUserRescue() bool {
 func (u *UserChallengeData) SetDidUserRescue(didUserRescue bool) {
 	u.didUserRescue = didUserRescue
 }
-
-// // CanUserRescue is whether this user can rescue tokens
-// func (u *UserChallengeData) CanUserRescue() bool {
-//     return u.canUserRescue
-// }
 
 // DidCollectAmount is the reward this user claimed
 func (u *UserChallengeData) DidCollectAmount() *big.Int {
@@ -135,6 +120,16 @@ func (u *UserChallengeData) IsVoterWinner() bool {
 // SetIsVoterWinner sets whether this vote won
 func (u *UserChallengeData) SetIsVoterWinner(isVoterWinner bool) {
 	u.isVoterWinner = isVoterWinner
+}
+
+// PollIsPassed is whether this poll is passed
+func (u *UserChallengeData) PollIsPassed() bool {
+	return u.pollIsPassed
+}
+
+// SetPollIsPassed sets whether this poll is passed
+func (u *UserChallengeData) SetPollIsPassed(pollIsPassed bool) {
+	u.pollIsPassed = pollIsPassed
 }
 
 // Salt is the user's salt

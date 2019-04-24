@@ -260,8 +260,9 @@ func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
 	userChallengeData[0].SetChoice(choice.(*big.Int))
 
 	updatedUserFields := []string{didUserRevealFieldName, saltFieldName, choiceFieldName}
-
-	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0], updatedUserFields)
+	updateWithUserAddress := true
+	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0],
+		updatedUserFields, updateWithUserAddress)
 	if err != nil {
 		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
 	}
@@ -290,8 +291,10 @@ func (p *PlcrEventProcessor) processTokensRescued(event *crawlermodel.Event,
 	}
 
 	updatedUserFields := []string{didUserRescueFieldName}
+	updateWithUserAddress := true
 	// NOTE: At this point, userChallengeData can only be length 1
-	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0], updatedUserFields)
+	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0],
+		updatedUserFields, updateWithUserAddress)
 	if err != nil {
 		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
 	}

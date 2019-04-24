@@ -23,8 +23,10 @@ import (
 var paramChallengeEventNames = []string{"ChallengeFailed", "ChallengeSucceeded", "NewChallenge"}
 
 const (
-	proposalAcceptedFieldName = "Accepted"
-	proposalExpiredFieldName  = "Expired"
+	proposalAcceptedFieldName      = "Accepted"
+	proposalExpiredFieldName       = "Expired"
+	userChallengeIsPassedFieldName = "PollIsPassed"
+	pollIDFieldName                = "PollID"
 )
 
 // NewParameterizerEventProcessor is a convenience function to init a parameterizer processor
@@ -388,7 +390,18 @@ func (p *ParameterizerEventProcessor) setPollIsPassed(pollID *big.Int, isPassed 
 		return fmt.Errorf("Error updating poll in persistence: %v", err)
 	}
 
-	// Batch update of isPassed values of userchallengedata in DB
+	// Batch update of pollIsPassed values of userchallengedata in DB
+	userChallengeData := &model.UserChallengeData{}
+	userChallengeData.SetPollIsPassed(true)
+	userChallengeData.SetPollID(pollID)
+	updatedFields = []string{userChallengeIsPassedFieldName, pollIDFieldName}
+	updateWithUserAddress := false
+
+	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,
+		updateWithUserAddress)
+	if err != nil {
+		return fmt.Errorf("Error updating poll in persistence: %v", err)
+	}
 
 	return nil
 

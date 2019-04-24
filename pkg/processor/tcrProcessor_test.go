@@ -233,7 +233,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	return event
 // }
 
-// func createNewPollInPersistence(challengeID *big.Int, persister *testutils.TestPersister,
+// func createNewPollInPersistenceForTCRTest(challengeID *big.Int, persister *testutils.TestPersister,
 // 	commitEndDate *big.Int, revealEndDate *big.Int) {
 // 	poll := model.NewPoll(challengeID, commitEndDate, revealEndDate, big.NewInt(1000),
 // 		big.NewInt(100), big.NewInt(100), ctime.CurrentEpochSecsInInt64())
@@ -273,7 +273,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 		ctime.CurrentEpochSecsInInt64(),
 // 		crawlermodel.Filterer,
 // 	)
-// 	createNewPollInPersistence(challengeID1, persister, commitEndDate, revealEndDate)
+// 	createNewPollInPersistenceForTCRTest(challengeID1, persister, commitEndDate, revealEndDate)
 // 	_, err := tcrProc.Process(event)
 // 	if err != nil {
 // 		t.Errorf("Should not have failed processing events: err: %v", err)

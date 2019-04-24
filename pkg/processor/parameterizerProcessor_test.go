@@ -1,6 +1,7 @@
 package processor_test
 
 import (
+	// "fmt"
 	"math/big"
 	"testing"
 
@@ -32,6 +33,7 @@ func setupParameterizerProcessor(t *testing.T) (*contractutils.AllTestContracts,
 	persister := &testutils.TestPersister{}
 	paramProc := processor.NewParameterizerEventProcessor(
 		contracts.Client,
+		persister,
 		persister,
 		persister,
 		persister,
@@ -343,5 +345,6 @@ func TestProcessChallengeSucceeded(t *testing.T) {
 	if !persistedChallenge.Resolved() {
 		t.Error("Persisted challenge should be resolved")
 	}
+
 	memoryCheck(contracts)
 }

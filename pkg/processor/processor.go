@@ -61,6 +61,7 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.ChallengePersister,
 		params.ParameterProposalPersister,
 		params.PollPersister,
+		params.UserChallengeDataPersister,
 	)
 	if params.ErrRep == nil {
 		params.ErrRep = &cerrors.NullErrorReporter{}

@@ -1660,43 +1660,26 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 	queryBuf.WriteString(tableName)  // nolint: gosec
 	queryBuf.WriteString(" u ")      // nolint: gosec
 
-	if criteria.CanUserCollect {
-		if joinTableName == "" {
-			return "", errors.New("Expecting joinTable Name, cannot construct query string")
-		}
+	if criteria.UserAddress != "" {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" u.user_address=:user_address") // nolint: gosec
+	}
+	if criteria.PollID > 0 {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" u.poll_id=:poll_id") // nolint: gosec
+	}
+	if criteria.CanUserReveal {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(fmt.Sprintf(" u.poll_reveal_end_date > %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
 
-		joinQuery := fmt.Sprintf(` JOIN %v p ON u.poll_id=p.poll_id WHERE
-			((p.is_passed = true AND u.choice = 1) OR (p.is_passed = false AND u.choice = 0))
-			AND (u.did_user_collect = false)`, joinTableName) // nolint: gosec
-		queryBuf.WriteString(joinQuery) // nolint: gosec
-
-		if criteria.UserAddress != "" {
-			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.user_address=:user_address") // nolint: gosec
-		}
-		if criteria.PollID > 0 {
-			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.poll_id=:poll_id") // nolint: gosec
-		}
-
-	} else {
-		if criteria.UserAddress != "" {
-			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.user_address=:user_address") // nolint: gosec
-		}
-		if criteria.PollID > 0 {
-			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.poll_id=:poll_id") // nolint: gosec
-		}
-		if criteria.CanUserReveal {
-			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(fmt.Sprintf(" u.poll_reveal_end_date > %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
-
-		} else if criteria.CanUserRescue {
-			p.addWhereAnd(queryBuf)
-			queryBuf.WriteString(" u.user_did_reveal=false AND u.did_user_rescue=false AND")                   // nolint: gosec
-			queryBuf.WriteString(fmt.Sprintf(" u.poll_reveal_end_date < %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
-		}
+	} else if criteria.CanUserRescue {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" u.user_did_reveal=false AND u.did_user_rescue=false AND")                   // nolint: gosec
+		queryBuf.WriteString(fmt.Sprintf(" u.poll_reveal_end_date < %v", ctime.CurrentEpochSecsInInt64())) // nolint: gosec
+	} else if criteria.CanUserCollect {
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(` ((u.poll_is_passed = true AND u.choice = 1) OR (u.poll_is_passed = false AND u.choice = 0))
+		AND (u.did_user_collect = false) `) // nolint: gosec
 	}
 
 	if criteria.Offset > 0 {

@@ -274,8 +274,9 @@ type UserChallengeDataPersister interface {
 	CreateUserChallengeData(userChallengeData *UserChallengeData) error
 	// UserChallengeDataByCriteria retrieves UserChallengeData based on criteria
 	UserChallengeDataByCriteria(criteria *UserChallengeDataCriteria) ([]*UserChallengeData, error)
-	// UpdateUserChallengeData updates UserChallengeData in table
-	UpdateUserChallengeData(userChallengeData *UserChallengeData, updatedFields []string) error
+	// UpdateUserChallengeData updates UserChallengeData in table.
+	// user=true updates for user + pollID, user=false updates for pollID
+	UpdateUserChallengeData(userChallengeData *UserChallengeData, updatedFields []string, updateWithUserAddress bool) error
 	// Close shuts down the persister
 	Close() error
 }

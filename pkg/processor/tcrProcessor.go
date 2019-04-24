@@ -474,8 +474,10 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	userChallengeData[0].SetDidUserCollect(true)
 	userChallengeData[0].SetDidCollectAmount(reward.(*big.Int))
 	updatedUserFields := []string{didUserCollectFieldName, didCollectFieldName}
+	updateWithUserAddress := true
 
-	err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0], updatedUserFields)
+	err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0],
+		updatedUserFields, updateWithUserAddress)
 	if err != nil {
 		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
 	}
@@ -491,7 +493,24 @@ func (t *TcrEventProcessor) setPollIsPassed(pollID *big.Int, isPassed bool) erro
 	poll.SetIsPassed(isPassed)
 	updatedFields := []string{isPassedFieldName}
 
-	return t.pollPersister.UpdatePoll(poll, updatedFields)
+	err = t.pollPersister.UpdatePoll(poll, updatedFields)
+	if err != nil {
+		return fmt.Errorf("Error updating poll in persistence: %v", err)
+	}
+
+	// Batch update of pollIsPassed values of userchallengedata in DB
+	userChallengeData := &model.UserChallengeData{}
+	userChallengeData.SetPollIsPassed(true)
+	userChallengeData.SetPollID(pollID)
+	updatedFields = []string{userChallengeIsPassedFieldName, pollIDFieldName}
+	updateWithUserAddress := false
+
+	err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,
+		updateWithUserAddress)
+	if err != nil {
+		return fmt.Errorf("Error updating poll in persistence: %v", err)
+	}
+	return nil
 }
 
 func (t *TcrEventProcessor) processChallengeResolution(event *crawlermodel.Event,

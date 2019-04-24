@@ -15,7 +15,6 @@ const (
 	// UserChallengeDataTableName is the name of this table
 	UserChallengeDataTableName = "user_challenge_data"
 	defaultNilNum              = 0
-	defaultNilString           = ""
 	// Set nil for choice to -1 so that it isn't confused with 0 or 1 for choice
 	choiceNilNum = -1
 )

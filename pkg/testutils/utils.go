@@ -25,7 +25,7 @@ type TestPersister struct {
 	Polls             map[int]*model.Poll
 	TokenTransfers    map[string][]*model.TokenTransfer
 	ParameterProposal map[[32]byte]*model.ParameterProposal
-	UserChallengeData map[string]map[int]*model.UserChallengeData
+	UserChallengeData map[int]map[string]*model.UserChallengeData
 	Timestamp         int64
 	EventHashes       []string
 }
@@ -531,45 +531,57 @@ func (t *TestPersister) UpdateParamProposal(paramProposal *model.ParameterPropos
 	propID := paramProposal.PropID()
 	t.ParameterProposal[propID] = paramProposal
 	return nil
-
 }
 
 // CreateUserChallengeData creates a new UserChallengeData
 func (t *TestPersister) CreateUserChallengeData(userChallengeData *model.UserChallengeData) error {
-	pollID := userChallengeData.PollID()
+	pollID := int(userChallengeData.PollID().Int64())
 	address := userChallengeData.UserAddress().Hex()
 	if t.UserChallengeData == nil {
-		t.UserChallengeData = map[string]map[int]*model.UserChallengeData{}
+		t.UserChallengeData = map[int]map[string]*model.UserChallengeData{}
 	}
-	if t.UserChallengeData[address] == nil {
-		t.UserChallengeData[address] = map[int]*model.UserChallengeData{}
+	if t.UserChallengeData[pollID] == nil {
+		t.UserChallengeData[pollID] = map[string]*model.UserChallengeData{}
 	}
-	t.UserChallengeData[address][int(pollID.Int64())] = userChallengeData
+	t.UserChallengeData[pollID][address] = userChallengeData
 	return nil
 }
 
 // UserChallengeDataByCriteria retrieves UserChallengeData based on criteria
 func (t *TestPersister) UserChallengeDataByCriteria(criteria *model.UserChallengeDataCriteria) ([]*model.UserChallengeData, error) {
 	address := criteria.UserAddress
-	pollID := criteria.PollID
-	if address != "" && t.UserChallengeData[address] == nil {
+	pollID := int(criteria.PollID)
+	if pollID != 0 && t.UserChallengeData[pollID] == nil {
 		return []*model.UserChallengeData{}, nil
 	}
-	if pollID != 0 && t.UserChallengeData[address][int(pollID)] == nil {
+	if address != "" && t.UserChallengeData[pollID][address] == nil {
 		return []*model.UserChallengeData{}, nil
 	}
-	return []*model.UserChallengeData{t.UserChallengeData[address][int(pollID)]}, nil
+
+	return []*model.UserChallengeData{t.UserChallengeData[pollID][address]}, nil
 }
 
 // UpdateUserChallengeData updates UserChallengeData in table
 func (t *TestPersister) UpdateUserChallengeData(userChallengeData *model.UserChallengeData,
-	updatedFields []string) error {
-	address := userChallengeData.UserAddress().Hex()
+	updatedFields []string, updateWithUserAddress bool) error {
 	pollID := int(userChallengeData.PollID().Int64())
-	if t.UserChallengeData[address] == nil {
-		t.UserChallengeData[address] = map[int]*model.UserChallengeData{}
+	if updateWithUserAddress {
+		address := userChallengeData.UserAddress().Hex()
+		if t.UserChallengeData[pollID] == nil {
+			t.UserChallengeData[pollID] = map[string]*model.UserChallengeData{}
+		}
+		t.UserChallengeData[pollID][address] = userChallengeData
+	} else {
+		// NOTE(IS): should go through update fields in updatedfields,
+		// but assuming the only usecase is to update pollispassed
+		allUSD := t.UserChallengeData[pollID]
+		for pollID, user := range allUSD {
+			user.SetPollIsPassed(userChallengeData.PollIsPassed())
+			allUSD[pollID] = user
+
+		}
 	}
-	t.UserChallengeData[address][pollID] = userChallengeData
+
 	return nil
 }
 

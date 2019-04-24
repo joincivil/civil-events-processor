@@ -2655,10 +2655,11 @@ func createAndSaveTestUserChallengeData(t *testing.T, persister *PostgresPersist
 }
 
 func createAndSaveTestUserChallengeDataForCollect(t *testing.T, persister *PostgresPersister,
-	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int) *model.UserChallengeData {
+	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int, isPassed bool) *model.UserChallengeData {
 	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate)
 	userChallengeData.SetChoice(big.NewInt(1))
 	userChallengeData.SetDidUserCollect(false)
+	userChallengeData.SetPollIsPassed(isPassed)
 	err := persister.createUserChallengeDataInTable(userChallengeData, userChallengeDataTestTableName)
 	if err != nil {
 		t.Errorf("error saving user challenge data: %v", err)
@@ -2755,7 +2756,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 
 	pollID4 := big.NewInt(4)
 	userChallengeData4 := createAndSaveTestUserChallengeDataForCollect(t, persister,
-		userAddress, pollID4, earlierRevealDate)
+		userAddress, pollID4, earlierRevealDate, true)
 
 	createAndSaveSamplePollDataForUserTest(t, pollID4, userChallengeData4.PollRevealEndDate(),
 		true, persister)
