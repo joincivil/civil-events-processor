@@ -158,6 +158,31 @@ func setupEventList(t *testing.T, contracts *contractutils.AllTestContracts) []*
 		crawlermodel.Filterer,
 	)
 	events = append(events, event)
+	tokenTransfer := &contract.CVLTokenContractTransfer{
+		From:  common.HexToAddress(testAddress),
+		To:    common.HexToAddress(testAddress),
+		Value: big.NewInt(100000000),
+		Raw: types.Log{
+			Address:     common.HexToAddress(testAddress),
+			Topics:      []common.Hash{},
+			Data:        []byte{},
+			BlockNumber: 8888888,
+			TxHash:      common.Hash{},
+			TxIndex:     2,
+			BlockHash:   common.Hash{},
+			Index:       2,
+			Removed:     false,
+		},
+	}
+	event, _ = crawlermodel.NewEventFromContractEvent(
+		"Transfer",
+		"CVLTokenContract",
+		contracts.TokenAddr,
+		tokenTransfer,
+		ctime.CurrentEpochSecsInInt64(),
+		crawlermodel.Filterer,
+	)
+	events = append(events, event)
 	return events
 }
 
@@ -168,13 +193,14 @@ func TestProcessor(t *testing.T) {
 	}
 	persister := &testutils.TestPersister{}
 	processorParams := &processor.NewEventProcessorParams{
-		Client:             contracts.Client,
-		ListingPersister:   persister,
-		RevisionPersister:  persister,
-		GovEventPersister:  persister,
-		ChallengePersister: persister,
-		PollPersister:      persister,
-		AppealPersister:    persister,
+		Client:                 contracts.Client,
+		ListingPersister:       persister,
+		RevisionPersister:      persister,
+		GovEventPersister:      persister,
+		ChallengePersister:     persister,
+		PollPersister:          persister,
+		AppealPersister:        persister,
+		TokenTransferPersister: persister,
 	}
 	proc := processor.NewEventProcessor(processorParams)
 	events := setupEventList(t, contracts)
@@ -199,6 +225,9 @@ func TestProcessor(t *testing.T) {
 	}
 	if len(persister.Appeals) != 1 {
 		t.Errorf("Should have seen 1 appeal but saw %v", len(persister.Appeals))
+	}
+	if len(persister.TokenTransfers) != 1 {
+		t.Errorf("Should have seen 1 token transfer but saw %v", len(persister.TokenTransfers))
 	}
 	memoryCheck(contracts)
 }

@@ -27,7 +27,8 @@ type ProcessorConfig struct {
 	EthAPIURL  string `envconfig:"eth_api_url" required:"true" desc:"Ethereum API address"`
 
 	PubSubProjectID       string `split_words:"true" desc:"Sets GPubSub project ID. If not set, will not push or pull events."`
-	PubSubEventsTopicName string `split_words:"true" desc:"Sets GPubSub topic name for events. If not set, will not push events."`
+	PubSubEventsTopicName string `split_words:"true" desc:"Sets GPubSub topic name for governance events. If not set, will not push events."`
+	PubSubTokenTopicName  string `split_words:"true" desc:"Sets GPubSub topic name for cvltoken events. If not set, will not push events."`
 	PubSubCrawlTopicName  string `split_words:"true" desc:"Sets GPubSub topic name for crawler. Set if using pubsub to run the processor."`
 	PubSubCrawlSubName    string `split_words:"true" desc:"Sets GPubSub subscription name. Needs to be set to run processor using pubsub updates."`
 

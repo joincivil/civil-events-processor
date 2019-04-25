@@ -17,17 +17,18 @@ const (
 
 //TestPersister is a test persister
 type TestPersister struct {
-	Listings          map[string]*model.Listing
-	Revisions         map[string][]*model.ContentRevision
-	GovEvents         map[string][]*model.GovernanceEvent
-	Challenges        map[int]*model.Challenge
-	Appeals           map[int]*model.Appeal
-	Polls             map[int]*model.Poll
-	TokenTransfers    map[string][]*model.TokenTransfer
-	ParameterProposal map[[32]byte]*model.ParameterProposal
-	UserChallengeData map[int]map[string]*model.UserChallengeData
-	Timestamp         int64
-	EventHashes       []string
+	Listings             map[string]*model.Listing
+	Revisions            map[string][]*model.ContentRevision
+	GovEvents            map[string][]*model.GovernanceEvent
+	Challenges           map[int]*model.Challenge
+	Appeals              map[int]*model.Appeal
+	Polls                map[int]*model.Poll
+	TokenTransfers       map[string][]*model.TokenTransfer
+	TokenTransfersTxHash map[string][]*model.TokenTransfer
+	ParameterProposal    map[[32]byte]*model.ParameterProposal
+	UserChallengeData    map[int]map[string]*model.UserChallengeData
+	Timestamp            int64
+	EventHashes          []string
 }
 
 func indexAddressInSlice(slice []common.Address, target common.Address) int {
@@ -465,6 +466,16 @@ func (t *TestPersister) UpdateEventHashesForCron(eventHashes []string) error {
 	return nil
 }
 
+// TokenTransfersByTxHash gets a list of token transfers by TxHash
+func (t *TestPersister) TokenTransfersByTxHash(txHash common.Hash) (
+	[]*model.TokenTransfer, error) {
+	purchases, ok := t.TokenTransfersTxHash[txHash.Hex()]
+	if !ok {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	return purchases, nil
+}
+
 // TokenTransfersByToAddress gets a list of token transfers by purchaser address
 func (t *TestPersister) TokenTransfersByToAddress(addr common.Address) (
 	[]*model.TokenTransfer, error) {
@@ -478,6 +489,9 @@ func (t *TestPersister) TokenTransfersByToAddress(addr common.Address) (
 // CreateTokenTransfer creates a new token transfer
 func (t *TestPersister) CreateTokenTransfer(purchase *model.TokenTransfer) error {
 	addr := purchase.ToAddress().Hex()
+	blockData := purchase.BlockData()
+	txHash := blockData.TxHash()
+
 	if t.TokenTransfers == nil {
 		t.TokenTransfers = map[string][]*model.TokenTransfer{}
 	}
@@ -485,7 +499,19 @@ func (t *TestPersister) CreateTokenTransfer(purchase *model.TokenTransfer) error
 	if !ok {
 		t.TokenTransfers[addr] = []*model.TokenTransfer{purchase}
 	} else {
-		t.TokenTransfers[addr] = append(purchases, purchase)
+		appendedSlice := append(purchases, purchase)
+		t.TokenTransfers[addr] = appendedSlice
+	}
+
+	if t.TokenTransfersTxHash == nil {
+		t.TokenTransfersTxHash = map[string][]*model.TokenTransfer{}
+	}
+	purchases, ok = t.TokenTransfersTxHash[txHash]
+	if !ok {
+		t.TokenTransfersTxHash[txHash] = []*model.TokenTransfer{purchase}
+	} else {
+		appendedSlice := append(purchases, purchase)
+		t.TokenTransfersTxHash[txHash] = appendedSlice
 	}
 	return nil
 }
