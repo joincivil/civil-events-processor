@@ -56,6 +56,7 @@ func main() {
 		postgres.ListingTableBaseName,
 		postgres.PollTableBaseName,
 		postgres.TokenTransferTableBaseName,
+		postgres.ParameterProposalTableBaseName,
 	}
 	for _, version := range versions {
 		for _, tableName := range tableNames {
