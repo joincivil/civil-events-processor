@@ -8,8 +8,8 @@ import (
 	"github.com/joincivil/go-common/pkg/pubsub"
 )
 
-func (e *EventProcessor) pubSub(event *crawlermodel.Event) error {
-	if !e.pubsubEnabled() {
+func (e *EventProcessor) pubSub(event *crawlermodel.Event, topicName string) error {
+	if !e.pubsubEnabled(topicName) {
 		return nil
 	}
 
@@ -18,7 +18,7 @@ func (e *EventProcessor) pubSub(event *crawlermodel.Event) error {
 		return nil
 	}
 
-	payload, err := e.pubSubBuildPayload(event)
+	payload, err := e.pubSubBuildPayload(event, topicName)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,8 @@ type PubSubMessage struct {
 	TxHash string `json:"txHash"`
 }
 
-func (e *EventProcessor) pubSubBuildPayload(event *crawlermodel.Event) (*pubsub.GooglePubSubMsg, error) {
+func (e *EventProcessor) pubSubBuildPayload(event *crawlermodel.Event,
+	topicName string) (*pubsub.GooglePubSubMsg, error) {
 	msg := &PubSubMessage{TxHash: event.TxHash().Hex()}
 
 	msgBytes, err := json.Marshal(msg)
@@ -40,18 +41,18 @@ func (e *EventProcessor) pubSubBuildPayload(event *crawlermodel.Event) (*pubsub.
 	}
 
 	googlePubSubMsg := &pubsub.GooglePubSubMsg{
-		Topic:   e.googlePubSubTopicName,
+		Topic:   topicName,
 		Payload: string(msgBytes),
 	}
 
 	return googlePubSubMsg, nil
 }
 
-func (e *EventProcessor) pubsubEnabled() bool {
+func (e *EventProcessor) pubsubEnabled(topicName string) bool {
 	if e.googlePubSub == nil {
 		return false
 	}
-	if e.googlePubSubTopicName == "" {
+	if topicName == "" {
 		return false
 	}
 	return true
