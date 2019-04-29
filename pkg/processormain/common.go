@@ -118,7 +118,7 @@ type InitializedPersisters struct {
 
 // InitPersisters inits the persisters from the config file
 func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, error) {
-	cronPersister, err := helpers.CronPersister(config)
+	cronPersister, err := helpers.CronPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error getting the cron persister: %v", err)
 		return nil, err
@@ -128,42 +128,42 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		log.Errorf("Error getting the event persister: %v", err)
 		return nil, err
 	}
-	listingPersister, err := helpers.ListingPersister(config)
+	listingPersister, err := helpers.ListingPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w listingPersister: err: %v", err)
 		return nil, err
 	}
-	contentRevisionPersister, err := helpers.ContentRevisionPersister(config)
+	contentRevisionPersister, err := helpers.ContentRevisionPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w contentRevisionPersister: err: %v", err)
 		return nil, err
 	}
-	governanceEventPersister, err := helpers.GovernanceEventPersister(config)
+	governanceEventPersister, err := helpers.GovernanceEventPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w governanceEventPersister: err: %v", err)
 		return nil, err
 	}
-	challengePersister, err := helpers.ChallengePersister(config)
+	challengePersister, err := helpers.ChallengePersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w ChallengePersister: err: %v", err)
 		return nil, err
 	}
-	pollPersister, err := helpers.PollPersister(config)
+	pollPersister, err := helpers.PollPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w PollPersister: err: %v", err)
 		return nil, err
 	}
-	appealPersister, err := helpers.AppealPersister(config)
+	appealPersister, err := helpers.AppealPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w AppealPersister: err: %v", err)
 		return nil, err
 	}
-	transferPersister, err := helpers.TokenTransferPersister(config)
+	transferPersister, err := helpers.TokenTransferPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w transferPersister: err: %v", err)
 		return nil, err
 	}
-	paramProposalPersister, err := helpers.ParameterizerPersister(config)
+	paramProposalPersister, err := helpers.ParameterizerPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w paramProposalPersister %v", err)
 		return nil, err
