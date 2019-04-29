@@ -2478,6 +2478,40 @@ func TestGetTokenTransfersForToAddress(t *testing.T) {
 	}
 }
 
+func TestGetTokenTransfersForTxHash(t *testing.T) {
+	persister := setupTokenTransferTable(t)
+	defer persister.Close()
+	tableName := persister.GetTableName(tokenTransferTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+	transfer := createAndSaveTestTokenTransfer(t, persister)
+
+	blockData := transfer.BlockData()
+	purchases, err := persister.tokenTransfersByTxHashFromTable(
+		common.HexToHash(blockData.TxHash()),
+		tableName,
+	)
+	if err != nil {
+		t.Errorf("Should have not gotten error from transfer query: err: %v", err)
+	}
+	if len(purchases) != 1 {
+		t.Errorf("Should have gotten 1 result for transfers")
+	}
+	purchase := purchases[0]
+
+	if purchase.ToAddress().Hex() != transfer.ToAddress().Hex() {
+		t.Errorf("Should have gotten the same to address")
+	}
+	if purchase.FromAddress().Hex() != transfer.FromAddress().Hex() {
+		t.Errorf("Should have gotten the same from address")
+	}
+	if purchase.Amount().Int64() != transfer.Amount().Int64() {
+		t.Errorf("Should have gotten the same amount")
+	}
+	if purchase.TransferDate() != transfer.TransferDate() {
+		t.Errorf("Should have gotten the transfer date")
+	}
+}
+
 /*
  * All tests for parameter_proposal table:
  */
