@@ -267,6 +267,7 @@ func (p *PostgresPersister) PollByPollID(pollID int) (*model.Poll, error) {
 }
 
 // PollsByPollIDs returns a slice of polls in order based on poll IDs
+// NOTE: This returns nills for polls that DNE in db.
 func (p *PostgresPersister) PollsByPollIDs(pollIDs []int) ([]*model.Poll, error) {
 	pollTableName := p.GetTableName(postgres.PollTableBaseName)
 	return p.pollsByPollIDsInTableInOrder(pollIDs, pollTableName)
@@ -402,8 +403,7 @@ func (p *PostgresPersister) CreateUserChallengeData(userChallengeData *model.Use
 func (p *PostgresPersister) UserChallengeDataByCriteria(
 	criteria *model.UserChallengeDataCriteria) ([]*model.UserChallengeData, error) {
 	userChallengeDataTableName := p.GetTableName(postgres.UserChallengeDataTableBaseName)
-	return p.userChallengeDataByCriteriaFromTable(criteria,
-		postgres.UserChallengeDataTableName, userChallengeDataTableName)
+	return p.userChallengeDataByCriteriaFromTable(criteria, userChallengeDataTableName)
 }
 
 // UpdateUserChallengeData updates UserChallengeData in table
@@ -512,7 +512,7 @@ func (p *PostgresPersister) CreateIndices() error {
 	indexQuery = postgres.CreateTokenTransferTableIndicesQuery(p.GetTableName(postgres.TokenTransferTableBaseName))
 	_, err = p.db.Exec(indexQuery)
 	if err != nil {
-		return errors.Wrap(err, "Error creating token_transfer table indices in postgres:", err)
+		return errors.Wrap(err, "error creating token_transfer table indices")
 	}
 	return err
 }
@@ -1809,9 +1809,9 @@ func (p *PostgresPersister) createUserChallengeDataInTable(userChallengeData *mo
 }
 
 func (p *PostgresPersister) userChallengeDataByCriteriaFromTable(criteria *model.UserChallengeDataCriteria,
-	tableName string, joinTableName string) ([]*model.UserChallengeData, error) {
+	tableName string) ([]*model.UserChallengeData, error) {
 	dbUserChalls := []postgres.UserChallengeData{}
-	queryString, err := p.userChallengeDataByCriteriaQuery(criteria, tableName, joinTableName)
+	queryString, err := p.userChallengeDataByCriteriaQuery(criteria, tableName)
 
 	if err != nil {
 		return nil, fmt.Errorf("Error writing query: %v", err)
@@ -1836,7 +1836,7 @@ func (p *PostgresPersister) userChallengeDataByCriteriaFromTable(criteria *model
 }
 
 func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.UserChallengeDataCriteria,
-	tableName string, joinTableName string) (string, error) {
+	tableName string) (string, error) {
 	queryBuf := bytes.NewBufferString("SELECT ") // nolint: gosec
 
 	var fieldNames string

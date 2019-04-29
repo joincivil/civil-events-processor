@@ -11,7 +11,7 @@ import (
 	"math/big"
 	mathrand "math/rand"
 	"reflect"
-	"strings"
+	// "strings"
 	"testing"
 	"time"
 
@@ -81,8 +81,7 @@ func setupTestTable(t *testing.T, tableName string) *PostgresPersister {
 	case "parameter_proposal_test":
 		queryString = postgres.CreateParameterProposalTableQuery(persister.GetTableName(tableName))
 	case "user_challenge_data_test":
-		queryString = postgres.CreateUserChallengeDataQuery(persister.GetTableName(tableName))
-
+		queryString = postgres.CreateUserChallengeDataTableQuery(persister.GetTableName(tableName))
 	}
 
 	_, err := persister.db.Query(queryString)
@@ -2141,17 +2140,9 @@ func TestNilResultsPoll(t *testing.T) {
 	tableName := persister.GetTableName(pollTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
-	pollIDs := []int{0}
-	poll, err := persister.pollsByPollIDsInTableInOrder(pollIDs, tableName)
-	if err != nil {
-		t.Errorf("Error getting poll id results, err: %v", err)
-	}
-
-	defer deleteTestTable(t, persister, pollTestTableName)
-
 	pollID := 0
-	poll, err := persister.pollByPollIDFromTable(pollID, pollTestTableName)
-	if err != nil {
+	poll, err := persister.pollByPollIDFromTable(pollID, tableName)
+	if err != cpersist.ErrPersisterNoResults {
 		t.Errorf("Error getting poll from table: %v", err)
 	}
 	if poll != nil {
@@ -2715,11 +2706,7 @@ func createAndSaveSamplePollDataForUserTest(t *testing.T, pollID *big.Int, pollR
 }
 
 func setupUserChallengeDataTable(t *testing.T) *PostgresPersister {
-	persister, err := setupTestTable(userChallengeDataTestTableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	return persister
+	return setupTestTable(t, userChallengeDataTestTableName)
 }
 
 func createAndSaveTestUserChallengeData(t *testing.T, persister *PostgresPersister,
@@ -2757,7 +2744,6 @@ func TestCreateUserChallengeData(t *testing.T) {
 
 func TestUserChallengeByCriteria(t *testing.T) {
 	persister := setupUserChallengeDataTable(t)
-	_ = setupPollTable(t)
 	defer persister.Close()
 	defer deleteTestTable(t, persister, userChallengeDataTestTableName)
 	defer deleteTestTable(t, persister, pollTestTableName)
@@ -2769,7 +2755,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 	userChallengeDataDB, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		UserAddress: userAddress.Hex(),
 		PollID:      pollID1.Uint64(),
-	}, userChallengeDataTestTableName, "")
+	}, userChallengeDataTestTableName)
 	if err != nil {
 		t.Errorf("Error saving data to table %v", err)
 	}
@@ -2788,7 +2774,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 
 	userChallengeDataDB2, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		UserAddress: userAddress.Hex(),
-	}, userChallengeDataTestTableName, "")
+	}, userChallengeDataTestTableName)
 	if err != nil {
 		t.Errorf("Error saving data to table %v", err)
 	}
@@ -2804,7 +2790,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 	userChallengeDataDB3, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		UserAddress:   userAddress.Hex(),
 		CanUserReveal: true,
-	}, userChallengeDataTestTableName, "")
+	}, userChallengeDataTestTableName)
 	if err != nil {
 		t.Errorf("Error saving data to table %v", err)
 	}
@@ -2822,7 +2808,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 	userChallengeDataDB4, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		UserAddress:   userAddress.Hex(),
 		CanUserRescue: true,
-	}, userChallengeDataTestTableName, "")
+	}, userChallengeDataTestTableName)
 
 	if err != nil {
 		t.Errorf("Error saving data to table %v", err)
@@ -2841,7 +2827,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 
 	userChallengeDataDB5, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		CanUserCollect: true,
-	}, userChallengeDataTestTableName, pollTestTableName)
+	}, userChallengeDataTestTableName)
 
 	if err != nil {
 		t.Errorf("Error getting data from table %v", err)
@@ -2854,7 +2840,6 @@ func TestUserChallengeByCriteria(t *testing.T) {
 
 func TestUpdateUserChallengeData(t *testing.T) {
 	persister := setupUserChallengeDataTable(t)
-	_ = setupPollTable(t)
 	defer persister.Close()
 	defer deleteTestTable(t, persister, userChallengeDataTestTableName)
 
@@ -2881,7 +2866,7 @@ func TestUpdateUserChallengeData(t *testing.T) {
 	// check to see if all userchallengedata objects with this pollID have pollID is passed updated
 	userChallengeDataDB, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		PollID: pollID1.Uint64(),
-	}, userChallengeDataTestTableName, "")
+	}, userChallengeDataTestTableName)
 	if err != nil {
 		t.Errorf("Error saving data to table %v", err)
 	}

@@ -168,7 +168,7 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		log.Errorf("Error w paramProposalPersister %v", err)
 		return nil, err
 	}
-	userChallengeDataPersister, err := helpers.UserChallengeDataPersister(config)
+	userChallengeDataPersister, err := helpers.UserChallengeDataPersister(config, config.VersionNumber)
 	if err != nil {
 		log.Errorf("Error w userChallengeDataPersister %v", err)
 		return nil, err

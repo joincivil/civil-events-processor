@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	// UserChallengeDataTableName is the name of this table
+	// UserChallengeDataTableBaseName is the name of this table
 	UserChallengeDataTableBaseName = "user_challenge_data"
 	defaultNilNum                  = 0
 	// Set nil for choice to -1 so that it isn't confused with 0 or 1 for choice
@@ -45,7 +45,7 @@ func CreateUserChallengeDataTableQuery(tableName string) string {
 	return queryString
 }
 
-// UserChallengeDataTableIndices returns the query to create indices for this table
+// UserChallengeDataTableIndicesQuery returns the query to create indices for this table
 func UserChallengeDataTableIndicesQuery(tableName string) string {
 	queryString := fmt.Sprintf(`
         CREATE INDEX IF NOT EXISTS poll_id_idx ON %s (poll_id);
