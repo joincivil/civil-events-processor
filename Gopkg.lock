@@ -279,7 +279,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e90bd9690dc7dd2ea515900b9c37c4459436387bdb51a2bf6c4e9f7e152eeb2f"
+  digest = "1:e78836f21194969ae9809e58bc03e514ab4d89694dc27d3a5d82943f16bbf522"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
     "pkg/contractutils",
@@ -291,7 +291,7 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "0cb1d5e068b3f0a1eea1fd77ebb82279c01e0036"
+  revision = "2a38a8f261f571af0c36cd95c3af48e5b5989428"
 
 [[projects]]
   branch = "master"
@@ -766,7 +766,9 @@
     "github.com/joincivil/civil-events-crawler/pkg/generated/common",
     "github.com/joincivil/civil-events-crawler/pkg/model",
     "github.com/joincivil/civil-events-crawler/pkg/persistence",
+    "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres",
     "github.com/joincivil/civil-events-crawler/pkg/pubsub",
+    "github.com/joincivil/civil-events-crawler/pkg/utils",
     "github.com/joincivil/go-common/pkg/bytes",
     "github.com/joincivil/go-common/pkg/config",
     "github.com/joincivil/go-common/pkg/errors",
