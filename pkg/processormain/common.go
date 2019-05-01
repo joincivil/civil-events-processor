@@ -113,6 +113,7 @@ type InitializedPersisters struct {
 	Appeal            model.AppealPersister
 	TokenTransfer     model.TokenTransferPersister
 	ParameterProposal model.ParamProposalPersister
+	UserChallengeData model.UserChallengeDataPersister
 }
 
 // InitPersisters inits the persisters from the config file
@@ -167,6 +168,11 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		log.Errorf("Error w paramProposalPersister %v", err)
 		return nil, err
 	}
+	userChallengeDataPersister, err := helpers.UserChallengeDataPersister(config, config.VersionNumber)
+	if err != nil {
+		log.Errorf("Error w userChallengeDataPersister %v", err)
+		return nil, err
+	}
 	return &InitializedPersisters{
 		Cron:              cronPersister,
 		Event:             eventPersister,
@@ -178,6 +184,7 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		Appeal:            appealPersister,
 		TokenTransfer:     transferPersister,
 		ParameterProposal: paramProposalPersister,
+		UserChallengeData: userChallengeDataPersister,
 	}, nil
 }
 
@@ -220,6 +227,10 @@ func ClosePersisters(persisters *InitializedPersisters) {
 		log.Errorf("Error closing persister: err: %v", err)
 	}
 	err = persisters.ParameterProposal.Close()
+	if err != nil {
+		log.Errorf("Error closing persister: err: %v", err)
+	}
+	err = persisters.UserChallengeData.Close()
 	if err != nil {
 		log.Errorf("Error closing persister: err: %v", err)
 	}
