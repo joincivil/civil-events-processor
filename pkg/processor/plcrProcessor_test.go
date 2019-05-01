@@ -223,6 +223,7 @@ func setupPlcrProcessor(t *testing.T) (*contractutils.AllTestContracts, *testuti
 		persister,
 		persister,
 		persister,
+		persister,
 	)
 	return contracts, persister, plcrProc
 }
