@@ -297,8 +297,8 @@ func (p *PostgresPersister) AppealsByChallengeIDs(challengeIDs []int) ([]*model.
 	return p.appealsByChallengeIDsInTableInOrder(challengeIDs, appealTableName)
 }
 
-// AppealsByAppealChallengeIDs returns an appeal based on appealchallengeID
-func (p *PostgresPersister) AppealsByAppealChallengeIDs(appealChallengeID int) (*model.Appeal, error) {
+// AppealByAppealChallengeID returns an appeal based on appealchallengeID
+func (p *PostgresPersister) AppealByAppealChallengeID(appealChallengeID int) (*model.Appeal, error) {
 	appealTableName := p.GetTableName(postgres.AppealTableBaseName)
 	return p.appealByAppealChallengeIDInTable(appealChallengeID, appealTableName)
 }
