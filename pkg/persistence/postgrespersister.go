@@ -1875,6 +1875,9 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 	if criteria.Count > 0 {
 		queryBuf.WriteString(" LIMIT :count") // nolint: gosec
 	}
+
+	// NOTE(IS): default ordering by pollID
+	queryBuf.WriteString(" ORDER BY poll_id") // nolint: gosec
 	return queryBuf.String(), nil
 }
 
