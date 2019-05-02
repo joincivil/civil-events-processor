@@ -154,6 +154,8 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 	voterAddress := payload["Voter"]
 	userDidCommit := true
 
+	voteCommittedTimestamp := event.Timestamp()
+
 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
 	if err != nil {
 		// TOODO: We should do contract call and save to DB bc it should exist in DB
@@ -200,6 +202,7 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 		userDidCommit,
 		poll.RevealEndDate(),
 		pollType,
+		voteCommittedTimestamp,
 		ctime.CurrentEpochSecsInInt64(),
 	)
 	if parentChallengeID != nil {

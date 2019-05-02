@@ -33,6 +33,7 @@ func CreateUserChallengeDataTableQuery(tableName string) string {
             did_collect_amount NUMERIC,
             is_voter_winner BOOL,
             poll_is_passed BOOL,
+            vote_committed_timestamp INT,
             salt NUMERIC,
             choice NUMERIC,
             num_tokens NUMERIC,
@@ -61,6 +62,7 @@ type UserChallengeData struct {
 	PollType          string  `db:"poll_type"`
 	UserAddress       string  `db:"user_address"`
 	UserDidCommit     bool    `db:"user_did_commit"`
+	VoteCommittedTs   int64   `db:"vote_committed_timestamp"`
 	UserDidReveal     bool    `db:"user_did_reveal"`
 	DidUserCollect    bool    `db:"did_user_collect"`
 	DidUserRescue     bool    `db:"did_user_rescue"`
@@ -88,6 +90,8 @@ func NewUserChallengeData(userChallengeData *model.UserChallengeData) *UserChall
 	userChallengePgData.PollType = userChallengeData.PollType()
 
 	userChallengePgData.UserAddress = userChallengeData.UserAddress().Hex()
+
+	userChallengePgData.VoteCommittedTs = userChallengeData.VoteCommittedTs()
 
 	userChallengePgData.UserDidCommit = userChallengeData.UserDidCommit()
 	userChallengePgData.UserDidReveal = userChallengeData.UserDidReveal()
@@ -144,7 +148,7 @@ func (u *UserChallengeData) DbToUserChallengeData() *model.UserChallengeData {
 	userDidCommit := u.UserDidCommit
 	numTokens := numbers.Float64ToBigInt(u.NumTokens)
 	userChallengeData := model.NewUserChallengeData(userAddress, pollID, numTokens,
-		userDidCommit, pollRevealEndDate, u.PollType, u.LastUpdatedDateTs)
+		userDidCommit, pollRevealEndDate, u.PollType, u.VoteCommittedTs, u.LastUpdatedDateTs)
 	userChallengeData.SetDidUserCollect(u.DidUserCollect)
 	userChallengeData.SetUserDidReveal(u.UserDidReveal)
 	userChallengeData.SetDidCollectAmount(numbers.Float64ToBigInt(u.DidCollectAmount))

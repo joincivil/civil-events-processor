@@ -9,7 +9,7 @@ import (
 // NewUserChallengeData creates a new userChallengeData
 func NewUserChallengeData(address common.Address, pollID *big.Int,
 	numTokens *big.Int, userDidCommit bool, pollRevealEndDate *big.Int,
-	pollType string, lastUpdatedDateTs int64) *UserChallengeData {
+	pollType string, voteCommittedTs int64, lastUpdatedDateTs int64) *UserChallengeData {
 	return &UserChallengeData{
 		pollID:            pollID,
 		userAddress:       address,
@@ -17,6 +17,7 @@ func NewUserChallengeData(address common.Address, pollID *big.Int,
 		userDidCommit:     userDidCommit,
 		pollRevealEndDate: pollRevealEndDate,
 		pollType:          pollType,
+		voteCommittedTs:   voteCommittedTs,
 		lastUpdatedDateTs: lastUpdatedDateTs,
 	}
 }
@@ -28,6 +29,7 @@ type UserChallengeData struct {
 	pollType          string
 	userAddress       common.Address
 	userDidCommit     bool
+	voteCommittedTs   int64
 	userDidReveal     bool
 	didUserCollect    bool
 	didUserRescue     bool
@@ -75,6 +77,11 @@ func (u *UserChallengeData) UserAddress() common.Address {
 // UserDidCommit is whether this user committed a vote
 func (u *UserChallengeData) UserDidCommit() bool {
 	return u.userDidCommit
+}
+
+// VoteCommittedTs is the timestamp the user committed a vote
+func (u *UserChallengeData) VoteCommittedTs() int64 {
+	return u.voteCommittedTs
 }
 
 // UserDidReveal is whether this user revealed a vote
