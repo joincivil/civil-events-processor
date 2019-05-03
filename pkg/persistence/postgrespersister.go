@@ -1868,6 +1868,10 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 		AND (u.did_user_collect = false) `) // nolint: gosec
 	}
 
+	// NOTE(IS): We always only return latest votes
+	p.addWhereAnd(queryBuf)
+	queryBuf.WriteString(` u.latest_vote = true`)
+
 	if criteria.Offset > 0 {
 		queryBuf.WriteString(" OFFSET :offset") // nolint: gosec
 	}
@@ -1877,7 +1881,7 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 	}
 
 	// NOTE(IS): default ordering by pollID
-	queryBuf.WriteString(" ORDER BY poll_id") // nolint: gosec
+	queryBuf.WriteString(" ORDER BY u.poll_id") // nolint: gosec
 	return queryBuf.String(), nil
 }
 

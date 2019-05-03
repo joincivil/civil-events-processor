@@ -40,6 +40,7 @@ func CreateUserChallengeDataTableQuery(tableName string) string {
             voter_reward NUMERIC,
             poll_type TEXT,
             parent_challenge_id NUMERIC,
+            latest_vote BOOL,
             last_updated_timestamp INT
         );    
     `, tableName)
@@ -74,6 +75,7 @@ type UserChallengeData struct {
 	NumTokens         float64 `db:"num_tokens"`
 	VoterReward       float64 `db:"voter_reward"`
 	ParentChallengeID uint64  `db:"parent_challenge_id"`
+	LatestVote        bool    `db:"latest_vote"`
 	LastUpdatedDateTs int64   `db:"last_updated_timestamp"`
 }
 

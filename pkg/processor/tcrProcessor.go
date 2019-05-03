@@ -45,11 +45,10 @@ const (
 	appealGrantedFieldName               = "AppealGranted"
 	appealGrantedURIFieldName            = "AppealGrantedStatementURI"
 
-	didCollectFieldName     = "DidCollectAmount"
-	didUserCollectFieldName = "DidUserCollect"
-	voterRewardFieldName    = "VoterReward"
-
-	isPassedFieldName = "IsPassed"
+	didCollectAmountFieldName = "DidCollectAmount"
+	didUserCollectFieldName   = "DidUserCollect"
+	voterRewardFieldName      = "VoterReward"
+	isPassedFieldName         = "IsPassed"
 
 	challengeIDResetValue = 0
 )
@@ -477,7 +476,7 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 	// NOTE(IS): voterreward may have to be defined earlier?
 	userChallengeData[0].SetVoterReward(reward.(*big.Int))
 
-	updatedUserFields := []string{didUserCollectFieldName, didCollectFieldName, voterRewardFieldName}
+	updatedUserFields := []string{didUserCollectFieldName, didCollectAmountFieldName, voterRewardFieldName}
 	updateWithUserAddress := true
 
 	err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0],
@@ -506,7 +505,7 @@ func (t *TcrEventProcessor) setPollIsPassed(pollID *big.Int, isPassed bool) erro
 	userChallengeData := &model.UserChallengeData{}
 	userChallengeData.SetPollIsPassed(true)
 	userChallengeData.SetPollID(pollID)
-	updatedFields = []string{userChallengeIsPassedFieldName, pollIDFieldName}
+	updatedFields = []string{userChallengeIsPassedFieldName}
 	updateWithUserAddress := false
 
 	err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,

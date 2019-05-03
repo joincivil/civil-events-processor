@@ -394,7 +394,7 @@ func (p *ParameterizerEventProcessor) setPollIsPassed(pollID *big.Int, isPassed 
 	userChallengeData := &model.UserChallengeData{}
 	userChallengeData.SetPollIsPassed(true)
 	userChallengeData.SetPollID(pollID)
-	updatedFields = []string{userChallengeIsPassedFieldName, pollIDFieldName}
+	updatedFields = []string{userChallengeIsPassedFieldName}
 	updateWithUserAddress := false
 
 	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,

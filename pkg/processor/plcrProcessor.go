@@ -28,6 +28,7 @@ const (
 	choiceFieldName        = "Choice"
 	saltFieldName          = "Salt"
 	didUserRescueFieldName = "DidUserRescue"
+	latestVoteFieldName    = "LatestVote"
 )
 
 // NewPlcrEventProcessor is a convenience function to init an EventProcessor
@@ -195,6 +196,19 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 		parentChallengeID = appeal.OriginalChallengeID()
 	}
 
+	// NOTE(IS): update existed committed votes to false
+	existingUserChallengeData := &model.UserChallengeData{}
+	existingUserChallengeData.SetLatestVote(false)
+	existingUserChallengeData.SetPollID(pollID)
+	existingUserChallengeData.SetUserAddress(voterAddress.(common.Address))
+	updatedFields := []string{latestVoteFieldName}
+
+	err = p.userChallengeDataPersister.UpdateUserChallengeData(existingUserChallengeData,
+		updatedFields, true)
+	if err != nil {
+		return err
+	}
+
 	userChallengeData := model.NewUserChallengeData(
 		voterAddress.(common.Address),
 		pollID,
@@ -208,6 +222,7 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 	if parentChallengeID != nil {
 		userChallengeData.SetParentChallengeID(parentChallengeID)
 	}
+	userChallengeData.SetLatestVote(true)
 	return p.userChallengeDataPersister.CreateUserChallengeData(userChallengeData)
 }
 

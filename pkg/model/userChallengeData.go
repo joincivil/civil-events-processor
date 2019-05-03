@@ -41,6 +41,7 @@ type UserChallengeData struct {
 	numTokens         *big.Int
 	voterReward       *big.Int
 	parentChallengeID *big.Int
+	latestVote        bool
 	lastUpdatedDateTs int64
 }
 
@@ -72,6 +73,11 @@ func (u *UserChallengeData) SetPollType(pollType string) {
 // UserAddress is the address of this user
 func (u *UserChallengeData) UserAddress() common.Address {
 	return u.userAddress
+}
+
+// SetUserAddress sets the address of this user
+func (u *UserChallengeData) SetUserAddress(address common.Address) {
+	u.userAddress = address
 }
 
 // UserDidCommit is whether this user committed a vote
@@ -192,6 +198,16 @@ func (u *UserChallengeData) ParentChallengeID() *big.Int {
 // SetParentChallengeID sets the parent challenge ID if this is a vote for appeal challenge
 func (u *UserChallengeData) SetParentChallengeID(pChallengeID *big.Int) {
 	u.parentChallengeID = pChallengeID
+}
+
+// LatestVote returns true if this was the latest vote commit for user/poll, else false
+func (u *UserChallengeData) LatestVote() bool {
+	return u.latestVote
+}
+
+// SetLatestVote sets the latest vote flag
+func (u *UserChallengeData) SetLatestVote(latestVote bool) {
+	u.latestVote = latestVote
 }
 
 // LastUpdatedDateTs returns the ts of last update

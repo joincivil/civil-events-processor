@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -603,10 +604,37 @@ func (t *TestPersister) UpdateUserChallengeData(userChallengeData *model.UserCha
 	pollID := int(userChallengeData.PollID().Int64())
 	if updateWithUserAddress {
 		address := userChallengeData.UserAddress().Hex()
+		fmt.Println("a", t.UserChallengeData[pollID])
+		fmt.Println("b", t.UserChallengeData[pollID][address])
 		if t.UserChallengeData[pollID] == nil {
-			t.UserChallengeData[pollID] = map[string]*model.UserChallengeData{}
+			fmt.Println("userchallengedata", t.UserChallengeData)
+			fmt.Println("userchallengedata pollID", t.UserChallengeData[pollID])
+			fmt.Println("userchallengedata pollID", t.UserChallengeData[pollID][address])
+			var a = map[string]*model.UserChallengeData{}
+			t.UserChallengeData[pollID] = a
+			return nil
 		}
-		t.UserChallengeData[pollID][address] = userChallengeData
+
+		if t.UserChallengeData[pollID][address] == nil {
+			return nil
+		}
+		fmt.Println(t.UserChallengeData[pollID][address])
+		fmt.Println(t.UserChallengeData[pollID])
+		for _, field := range updatedFields {
+			switch field {
+			case "PollIsPassed":
+				t.UserChallengeData[pollID][address].SetPollIsPassed(userChallengeData.PollIsPassed())
+			case "LatestVote":
+				t.UserChallengeData[pollID][address].SetLatestVote(userChallengeData.LatestVote())
+			case "DidUserCollect":
+				t.UserChallengeData[pollID][address].SetDidUserCollect(userChallengeData.DidUserCollect())
+			case "DidCollectAmount":
+				t.UserChallengeData[pollID][address].SetDidCollectAmount(userChallengeData.DidCollectAmount())
+			case "VoterReward":
+				t.UserChallengeData[pollID][address].SetVoterReward(userChallengeData.VoterReward())
+			}
+
+		}
 	} else {
 		// NOTE(IS): should go through update fields in updatedfields,
 		// but assuming the only usecase is to update pollispassed
