@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -604,12 +603,10 @@ func (t *TestPersister) UpdateUserChallengeData(userChallengeData *model.UserCha
 	pollID := int(userChallengeData.PollID().Int64())
 	if updateWithUserAddress {
 		address := userChallengeData.UserAddress().Hex()
-		fmt.Println("a", t.UserChallengeData[pollID])
-		fmt.Println("b", t.UserChallengeData[pollID][address])
+		if t.UserChallengeData == nil {
+			t.UserChallengeData = map[int]map[string]*model.UserChallengeData{}
+		}
 		if t.UserChallengeData[pollID] == nil {
-			fmt.Println("userchallengedata", t.UserChallengeData)
-			fmt.Println("userchallengedata pollID", t.UserChallengeData[pollID])
-			fmt.Println("userchallengedata pollID", t.UserChallengeData[pollID][address])
 			var a = map[string]*model.UserChallengeData{}
 			t.UserChallengeData[pollID] = a
 			return nil
@@ -618,8 +615,6 @@ func (t *TestPersister) UpdateUserChallengeData(userChallengeData *model.UserCha
 		if t.UserChallengeData[pollID][address] == nil {
 			return nil
 		}
-		fmt.Println(t.UserChallengeData[pollID][address])
-		fmt.Println(t.UserChallengeData[pollID])
 		for _, field := range updatedFields {
 			switch field {
 			case "PollIsPassed":

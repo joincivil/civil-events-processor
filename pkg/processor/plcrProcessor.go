@@ -167,13 +167,13 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 
 	// NOTE: get poll type from challenge and set it in poll.
 	if pollType == "" {
-		challenge, err := p.challengePersister.ChallengeByChallengeID(int(pollID.Int64()))
-		if err != nil && err != cpersist.ErrPersisterNoResults {
-			return err
+		challenge, cErr := p.challengePersister.ChallengeByChallengeID(int(pollID.Int64()))
+		if cErr != nil && cErr != cpersist.ErrPersisterNoResults {
+			return cErr
 		}
 		// NOTE(IS): this will return errpersisternoresults upon gov param challenges
 		// Once processing gov contract, this will be fixed, for now manually add this
-		if err == cpersist.ErrPersisterNoResults {
+		if cErr == cpersist.ErrPersisterNoResults {
 			pollType = model.GovProposalPollType
 		} else {
 			pollType = challenge.ChallengeType()
@@ -189,8 +189,8 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 	if pollType == model.AppealChallengePollType {
 		// NOTE(IS): set parentchallengeid here from appeal table, but could add an additional field
 		// for parentchallengeID in challenge model
-		appeal, err := p.appealPersister.AppealByAppealChallengeID(int(pollID.Int64()))
-		if err != nil {
+		appeal, aErr := p.appealPersister.AppealByAppealChallengeID(int(pollID.Int64()))
+		if aErr != nil {
 			return err
 		}
 		parentChallengeID = appeal.OriginalChallengeID()

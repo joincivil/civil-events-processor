@@ -26,7 +26,6 @@ const (
 	proposalAcceptedFieldName      = "Accepted"
 	proposalExpiredFieldName       = "Expired"
 	userChallengeIsPassedFieldName = "PollIsPassed"
-	pollIDFieldName                = "PollID"
 )
 
 // NewParameterizerEventProcessor is a convenience function to init a parameterizer processor

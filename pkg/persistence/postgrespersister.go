@@ -1870,7 +1870,7 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 
 	// NOTE(IS): We always only return latest votes
 	p.addWhereAnd(queryBuf)
-	queryBuf.WriteString(` u.latest_vote = true`)
+	queryBuf.WriteString(` u.latest_vote = true`) //nolint: gosec
 
 	if criteria.Offset > 0 {
 		queryBuf.WriteString(" OFFSET :offset") // nolint: gosec
