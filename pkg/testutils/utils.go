@@ -599,7 +599,7 @@ func (t *TestPersister) UserChallengeDataByCriteria(criteria *model.UserChalleng
 
 // UpdateUserChallengeData updates UserChallengeData in table
 func (t *TestPersister) UpdateUserChallengeData(userChallengeData *model.UserChallengeData,
-	updatedFields []string, updateWithUserAddress bool) error {
+	updatedFields []string, updateWithUserAddress bool, latestVote bool) error {
 	pollID := int(userChallengeData.PollID().Int64())
 	if updateWithUserAddress {
 		address := userChallengeData.UserAddress().Hex()
@@ -607,11 +607,9 @@ func (t *TestPersister) UpdateUserChallengeData(userChallengeData *model.UserCha
 			t.UserChallengeData = map[int]map[string]*model.UserChallengeData{}
 		}
 		if t.UserChallengeData[pollID] == nil {
-			var a = map[string]*model.UserChallengeData{}
-			t.UserChallengeData[pollID] = a
+			t.UserChallengeData[pollID] = map[string]*model.UserChallengeData{}
 			return nil
 		}
-
 		if t.UserChallengeData[pollID][address] == nil {
 			return nil
 		}

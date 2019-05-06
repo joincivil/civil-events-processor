@@ -471,16 +471,20 @@ func (t *TcrEventProcessor) processTCRRewardClaimed(event *crawlermodel.Event) e
 		return fmt.Errorf("Error getting userChallengedata to update, err: %v", err)
 	}
 
-	userChallengeData[0].SetDidUserCollect(true)
-	userChallengeData[0].SetDidCollectAmount(reward.(*big.Int))
+	// NOTE(IS): At this point, we should only have 1 userChallengeData object
+	existingUserChallengeData := userChallengeData[0]
+
+	existingUserChallengeData.SetDidUserCollect(true)
+	existingUserChallengeData.SetDidCollectAmount(reward.(*big.Int))
 	// NOTE(IS): voterreward may have to be defined earlier?
-	userChallengeData[0].SetVoterReward(reward.(*big.Int))
+	existingUserChallengeData.SetVoterReward(reward.(*big.Int))
 
 	updatedUserFields := []string{didUserCollectFieldName, didCollectAmountFieldName, voterRewardFieldName}
 	updateWithUserAddress := true
+	latestVote := true
 
-	err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0],
-		updatedUserFields, updateWithUserAddress)
+	err = t.userChallengeDataPersister.UpdateUserChallengeData(existingUserChallengeData,
+		updatedUserFields, updateWithUserAddress, latestVote)
 	if err != nil {
 		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
 	}
@@ -507,9 +511,10 @@ func (t *TcrEventProcessor) setPollIsPassed(pollID *big.Int, isPassed bool) erro
 	userChallengeData.SetPollID(pollID)
 	updatedFields = []string{userChallengeIsPassedFieldName}
 	updateWithUserAddress := false
+	latestVote := true
 
 	err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,
-		updateWithUserAddress)
+		updateWithUserAddress, latestVote)
 	if err != nil {
 		return fmt.Errorf("Error updating poll in persistence: %v", err)
 	}

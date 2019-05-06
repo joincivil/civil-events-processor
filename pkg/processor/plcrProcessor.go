@@ -202,9 +202,12 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 	existingUserChallengeData.SetPollID(pollID)
 	existingUserChallengeData.SetUserAddress(voterAddress.(common.Address))
 	updatedFields := []string{latestVoteFieldName}
+	// NOTE(IS): This is false because we want to update all existing fields.
+	latestVote := false
+	updateWithUserAddress := true
 
 	err = p.userChallengeDataPersister.UpdateUserChallengeData(existingUserChallengeData,
-		updatedFields, true)
+		updatedFields, updateWithUserAddress, latestVote)
 	if err != nil {
 		return err
 	}
@@ -289,14 +292,16 @@ func (p *PlcrEventProcessor) processVoteRevealed(event *crawlermodel.Event,
 	didReveal := true
 
 	// NOTE: At this point, userChallengeData can only be length 1
-	userChallengeData[0].SetUserDidReveal(didReveal)
-	userChallengeData[0].SetSalt(salt.(*big.Int))
-	userChallengeData[0].SetChoice(choice.(*big.Int))
+	existingUserChallengeData := userChallengeData[0]
+	existingUserChallengeData.SetUserDidReveal(didReveal)
+	existingUserChallengeData.SetSalt(salt.(*big.Int))
+	existingUserChallengeData.SetChoice(choice.(*big.Int))
 
 	updatedUserFields := []string{didUserRevealFieldName, saltFieldName, choiceFieldName}
 	updateWithUserAddress := true
-	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0],
-		updatedUserFields, updateWithUserAddress)
+	latestVote := true
+	err = p.userChallengeDataPersister.UpdateUserChallengeData(existingUserChallengeData,
+		updatedUserFields, updateWithUserAddress, latestVote)
 	if err != nil {
 		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
 	}
@@ -324,11 +329,14 @@ func (p *PlcrEventProcessor) processTokensRescued(event *crawlermodel.Event,
 		return fmt.Errorf("Error getting userChallengedata to update, err: %v", err)
 	}
 
+	// NOTE: At this point, userChallengeData can only be length 1
+	existingUserChallengeData := userChallengeData[0]
 	updatedUserFields := []string{didUserRescueFieldName}
 	updateWithUserAddress := true
-	// NOTE: At this point, userChallengeData can only be length 1
-	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData[0],
-		updatedUserFields, updateWithUserAddress)
+	latestVote := true
+
+	err = p.userChallengeDataPersister.UpdateUserChallengeData(existingUserChallengeData,
+		updatedUserFields, updateWithUserAddress, latestVote)
 	if err != nil {
 		return fmt.Errorf("Error updating UserChallengeData, err: %v", err)
 	}

@@ -410,10 +410,10 @@ func (p *PostgresPersister) UserChallengeDataByCriteria(
 // UpdateUserChallengeData updates UserChallengeData in table
 // user=true updates for user + pollID, user=false updates for pollID
 func (p *PostgresPersister) UpdateUserChallengeData(userChallengeData *model.UserChallengeData,
-	updatedFields []string, updateWithUserAddress bool) error {
+	updatedFields []string, updateWithUserAddress bool, latestVote bool) error {
 	userChallengeDataTableName := p.GetTableName(postgres.UserChallengeDataTableBaseName)
 	return p.updateUserChallengeDataInTable(userChallengeData, updatedFields, updateWithUserAddress,
-		userChallengeDataTableName)
+		latestVote, userChallengeDataTableName)
 }
 
 // CreateTables creates the tables for processor if they don't exist
@@ -1886,10 +1886,11 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 }
 
 func (p *PostgresPersister) updateUserChallengeDataInTable(userChallengeData *model.UserChallengeData,
-	updatedFields []string, updateWithUserAddress bool, tableName string) error {
+	updatedFields []string, updateWithUserAddress bool, latestVote bool, tableName string) error {
 	userChallengeData.SetLastUpdatedDateTs(ctime.CurrentEpochSecsInInt64())
 	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
-	queryString, err := p.updateUserChallengeDataQuery(updatedFields, tableName, updateWithUserAddress)
+	queryString, err := p.updateUserChallengeDataQuery(updatedFields, tableName,
+		updateWithUserAddress, latestVote)
 	if err != nil {
 		return fmt.Errorf("Error creating query string for update: %v ", err)
 	}
@@ -1902,17 +1903,19 @@ func (p *PostgresPersister) updateUserChallengeDataInTable(userChallengeData *mo
 }
 
 func (p *PostgresPersister) updateUserChallengeDataQuery(updatedFields []string,
-	tableName string, updateWithUserAddress bool) (string, error) {
+	tableName string, updateWithUserAddress bool, latestVote bool) (string, error) {
 	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.UserChallengeData{})
 	if err != nil {
 		return "", err
 	}
 	if updateWithUserAddress {
-		queryString.WriteString(" WHERE user_address=:user_address AND poll_id=:poll_id;") // nolint: gosec
+		queryString.WriteString(" WHERE user_address=:user_address AND poll_id=:poll_id") // nolint: gosec
 	} else {
-		queryString.WriteString(" WHERE poll_id=:poll_id;") // nolint: gosec
+		queryString.WriteString(" WHERE poll_id=:poll_id") // nolint: gosec
 	}
-
+	if latestVote {
+		queryString.WriteString(" AND latest_vote=:latest_vote;") //nolint: gosec
+	}
 	return queryString.String(), nil
 }
 

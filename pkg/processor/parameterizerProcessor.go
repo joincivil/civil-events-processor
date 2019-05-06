@@ -395,9 +395,10 @@ func (p *ParameterizerEventProcessor) setPollIsPassed(pollID *big.Int, isPassed 
 	userChallengeData.SetPollID(pollID)
 	updatedFields = []string{userChallengeIsPassedFieldName}
 	updateWithUserAddress := false
+	latestVote := true
 
 	err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,
-		updateWithUserAddress)
+		updateWithUserAddress, latestVote)
 	if err != nil {
 		return fmt.Errorf("Error updating poll in persistence: %v", err)
 	}
