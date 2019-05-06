@@ -1823,10 +1823,12 @@ func (p *PostgresPersister) userChallengeDataByCriteriaFromTable(criteria *model
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving listings from table: %v", err)
 	}
+
 	if len(dbUserChalls) == 0 {
 		return nil, cpersist.ErrPersisterNoResults
 	}
 	userChalls := make([]*model.UserChallengeData, len(dbUserChalls))
+
 	for index, dbUserChall := range dbUserChalls {
 		modelUserChall := dbUserChall.DbToUserChallengeData()
 		userChalls[index] = modelUserChall
@@ -1914,7 +1916,7 @@ func (p *PostgresPersister) updateUserChallengeDataQuery(updatedFields []string,
 		queryString.WriteString(" WHERE poll_id=:poll_id") // nolint: gosec
 	}
 	if latestVote {
-		queryString.WriteString(" AND latest_vote=:latest_vote;") //nolint: gosec
+		queryString.WriteString(" AND latest_vote=true;") //nolint: gosec
 	}
 	return queryString.String(), nil
 }

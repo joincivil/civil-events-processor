@@ -101,6 +101,7 @@ func NewUserChallengeData(userChallengeData *model.UserChallengeData) *UserChall
 	userChallengePgData.DidUserRescue = userChallengeData.DidUserRescue()
 	userChallengePgData.IsVoterWinner = userChallengeData.IsVoterWinner()
 	userChallengePgData.PollIsPassed = userChallengeData.PollIsPassed()
+	userChallengePgData.LatestVote = userChallengeData.LatestVote()
 
 	if userChallengeData.DidCollectAmount() != nil {
 		userChallengePgData.DidCollectAmount = numbers.BigIntToFloat64(userChallengeData.DidCollectAmount())
@@ -161,5 +162,6 @@ func (u *UserChallengeData) DbToUserChallengeData() *model.UserChallengeData {
 	userChallengeData.SetVoterReward(numbers.Float64ToBigInt(u.VoterReward))
 	userChallengeData.SetParentChallengeID(new(big.Int).SetUint64(u.ParentChallengeID))
 	userChallengeData.SetPollIsPassed(u.PollIsPassed)
+	userChallengeData.SetLatestVote(u.LatestVote)
 	return userChallengeData
 }
