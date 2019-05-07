@@ -2688,14 +2688,18 @@ func TestUpdateParamProposal(t *testing.T) {
  */
 
 func setupSampleUserChallengeData(userAddress common.Address, pollID *big.Int,
-	pollRevealEndDate *big.Int) *model.UserChallengeData {
+	pollRevealEndDate *big.Int, latestVote bool) *model.UserChallengeData {
 	numTokens := big.NewInt(1000)
 	userDidCommit := true
 	pollType := model.ChallengePollType
 	lastUpdatedDateTs := ctime.CurrentEpochSecsInInt64()
-	return model.NewUserChallengeData(
-		userAddress, pollID, numTokens, userDidCommit, pollRevealEndDate, pollType, lastUpdatedDateTs,
+	voteCommittedTs := lastUpdatedDateTs
+	ucd := model.NewUserChallengeData(
+		userAddress, pollID, numTokens, userDidCommit, pollRevealEndDate, pollType,
+		voteCommittedTs, lastUpdatedDateTs,
 	)
+	ucd.SetLatestVote(latestVote)
+	return ucd
 }
 
 func setupUserChallengeDataTable(t *testing.T) *PostgresPersister {
@@ -2703,8 +2707,10 @@ func setupUserChallengeDataTable(t *testing.T) *PostgresPersister {
 }
 
 func createAndSaveTestUserChallengeData(t *testing.T, persister *PostgresPersister,
-	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int) *model.UserChallengeData {
-	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate)
+	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int,
+	latestVote bool) *model.UserChallengeData {
+	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate,
+		latestVote)
 	tableName := persister.GetTableName(userChallengeDataTestTableName)
 	err := persister.createUserChallengeDataInTable(userChallengeData, tableName)
 	if err != nil {
@@ -2715,7 +2721,7 @@ func createAndSaveTestUserChallengeData(t *testing.T, persister *PostgresPersist
 
 func createAndSaveTestUserChallengeDataForCollect(t *testing.T, persister *PostgresPersister,
 	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int, isPassed bool) *model.UserChallengeData {
-	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate)
+	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate, true)
 	tableName := persister.GetTableName(userChallengeDataTestTableName)
 	userChallengeData.SetChoice(big.NewInt(1))
 	userChallengeData.SetDidUserCollect(false)
@@ -2735,7 +2741,8 @@ func TestCreateUserChallengeData(t *testing.T) {
 	pollID := big.NewInt(1)
 	userAddress := common.HexToAddress(testAddress)
 	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
-	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID, pollRevealEndDate)
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID, pollRevealEndDate,
+		true)
 }
 
 func TestUserChallengeByCriteria(t *testing.T) {
@@ -2746,7 +2753,8 @@ func TestUserChallengeByCriteria(t *testing.T) {
 	pollID1 := big.NewInt(1)
 	userAddress := common.HexToAddress(testAddress)
 	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
-	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1, pollRevealEndDate)
+	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1,
+		pollRevealEndDate, true)
 
 	userChallengeDataDB, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		UserAddress: userAddress.Hex(),
@@ -2766,7 +2774,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 	// hexAddress := cstrings.RandomHexStr(32)
 	// userAddress2 := common.HexToAddress(hexAddress)
 	pollID2 := big.NewInt(2)
-	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID2, pollRevealEndDate)
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID2, pollRevealEndDate, true)
 
 	userChallengeDataDB2, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		UserAddress: userAddress.Hex(),
@@ -2799,7 +2807,7 @@ func TestUserChallengeByCriteria(t *testing.T) {
 	earlierRevealDate := big.NewInt(ctime.CurrentEpochSecsInInt64() - int64(2))
 
 	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID3,
-		earlierRevealDate)
+		earlierRevealDate, true)
 
 	userChallengeDataDB4, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
 		UserAddress:   userAddress.Hex(),
@@ -2840,7 +2848,8 @@ func TestUpdateUserChallengeData(t *testing.T) {
 	pollID1 := big.NewInt(1)
 	userAddress := common.HexToAddress(testAddress)
 	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
-	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1, pollRevealEndDate)
+	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1,
+		pollRevealEndDate, true)
 
 	// NOTE: don't need L2788
 	userChallengeData.SetPollIsPassed(true)
@@ -2852,7 +2861,7 @@ func TestUpdateUserChallengeData(t *testing.T) {
 	updateWithUserAddress := false
 
 	err := persister.updateUserChallengeDataInTable(updateInUserChallengeData, updatedFields,
-		updateWithUserAddress, tableName)
+		updateWithUserAddress, true, tableName)
 	if err != nil {
 		t.Errorf("Error updating userchallengedata: %v", err)
 	}
@@ -2870,5 +2879,63 @@ func TestUpdateUserChallengeData(t *testing.T) {
 	}
 	if userChallengeDataDB[0].PollRevealEndDate().Cmp(pollRevealEndDate) != 0 {
 		t.Error("pollRevealEndDate value is wrong")
+	}
+}
+
+func TestMultipleVoteCommitted(t *testing.T) {
+	persister := setupUserChallengeDataTable(t)
+	tableName := persister.GetTableName(userChallengeDataTestTableName)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, tableName)
+
+	pollID1 := big.NewInt(1)
+	userAddress := common.HexToAddress(testAddress)
+	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1,
+		pollRevealEndDate, false)
+
+	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1,
+		pollRevealEndDate, true)
+
+	userChallengeDataDB4, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress: userAddress.Hex(),
+		PollID:      pollID1.Uint64(),
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting userchallengedata: err %v", err)
+	}
+
+	if len(userChallengeDataDB4) != 1 {
+		t.Error("Should have only 1 userChallengeData returned")
+	}
+
+	userChallengeData.SetPollIsPassed(true)
+	updateInUserChallengeData := &model.UserChallengeData{}
+	updateInUserChallengeData.SetPollIsPassed(true)
+	updateInUserChallengeData.SetPollID(pollID1)
+	updatedFields := []string{"PollIsPassed"}
+	updateWithUserAddress := false
+	err = persister.updateUserChallengeDataInTable(updateInUserChallengeData, updatedFields,
+		updateWithUserAddress, true, tableName)
+	if err != nil {
+		t.Errorf("Error updating userchallengedata: %v", err)
+	}
+
+	userChallengeDataDB5, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress: userAddress.Hex(),
+		PollID:      pollID1.Uint64(),
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting userchallengedata: err %v", err)
+	}
+
+	if len(userChallengeDataDB5) != 1 {
+		t.Error("Should have only 1 userChallengeData returned")
+	}
+	if userChallengeDataDB5[0].PollIsPassed() == false {
+		t.Error("PollIsPassed should be true")
+	}
+	if userChallengeDataDB5[0].LatestVote() == false {
+		t.Error("latestVote should be false")
 	}
 }
