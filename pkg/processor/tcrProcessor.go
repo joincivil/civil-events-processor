@@ -583,6 +583,10 @@ func (t *TcrEventProcessor) updateVoterRewards(pollID *big.Int, tcrAddress commo
 		},
 	)
 	if err != nil {
+		if err == cpersist.ErrPersisterNoResults {
+			log.Infof("No userChallengeData for %v", pollID)
+			return nil
+		}
 		return errors.WithMessage(err, "error getting userchallengedata")
 	}
 
