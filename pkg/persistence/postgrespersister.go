@@ -1867,7 +1867,7 @@ func (p *PostgresPersister) userChallengeDataByCriteriaQuery(criteria *model.Use
 	} else if criteria.CanUserCollect {
 		p.addWhereAnd(queryBuf)
 		queryBuf.WriteString(` ((u.poll_is_passed = true AND u.choice = 1) OR (u.poll_is_passed = false AND u.choice = 0))
-		AND (u.did_user_collect = false) `) // nolint: gosec
+		AND (u.did_user_collect = false)`) // nolint: gosec
 	}
 
 	// NOTE(IS): We always only return latest votes
