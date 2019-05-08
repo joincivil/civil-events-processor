@@ -8,6 +8,7 @@ package persistence
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/big"
 	mathrand "math/rand"
 	"reflect"
@@ -1357,6 +1358,145 @@ func TestContentRevisions(t *testing.T) {
 	}
 	reflect.DeepEqual(contractRevisionIDsFromDB, testContractRevisionIDs)
 
+}
+
+func TestContentRevisionsByCriteria(t *testing.T) {
+	persister := setupTestTable(t, contentRevisionTestTableName)
+	defer persister.Close()
+	tableName := persister.GetTableName(contentRevisionTestTableName)
+
+	defer deleteTestTable(t, persister, tableName)
+
+	// create multiple contentRevisions
+	numRevisions := 10
+	testContentRevisions, listingAddr, contractContentID, contractRevisionIDs :=
+		setupSampleContentRevisionsSameAddressContentID(numRevisions)
+
+	// save all to table
+	for _, contRev := range testContentRevisions {
+		err := persister.createContentRevisionForTable(contRev, tableName)
+		if err != nil {
+			t.Errorf("Couldn't save content revision to table: %v", err)
+		}
+	}
+
+	// Test listing address
+	criteria := &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+	}
+
+	// retrieve from table
+	dbContentRevisions, err := persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbContentRevisions), numRevisions)
+	}
+
+	// Test latest only
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		LatestOnly:     true,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbContentRevisions), numRevisions)
+	}
+
+	// Test addr and content id
+	contentID := contractContentID.Int64()
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		ContentID:      &contentID,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbContentRevisions), numRevisions)
+	}
+
+	// Test addr, content id, and revision id
+	contentID = contractContentID.Int64()
+	revisionID := contractRevisionIDs[0].Int64()
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		ContentID:      &contentID,
+		RevisionID:     &revisionID,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != 1 {
+		t.Errorf("Should have retrieved one revision: %v", len(dbContentRevisions))
+	}
+
+	// Test offset, limit
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		Offset:         1,
+		Count:          3,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != 3 {
+		t.Errorf("Should have retrieved 3 revisions: %v", len(dbContentRevisions))
+	}
+
+	// Test from and before
+	minTs := int64(math.MaxInt64)
+	maxTs := int64(0)
+	for _, rev := range testContentRevisions {
+		revTs := rev.RevisionDateTs()
+		if revTs < minTs {
+			minTs = revTs
+		}
+		if revTs > maxTs {
+			maxTs = revTs
+		}
+	}
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		FromTs:         minTs - 10,
+		BeforeTs:       maxTs + 10,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Should have retrieved %v revisions: %v", numRevisions, len(dbContentRevisions))
+	}
 }
 
 func TestNilResultsContentRevision(t *testing.T) {
