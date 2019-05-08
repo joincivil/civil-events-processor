@@ -900,7 +900,8 @@ func (p *PostgresPersister) contentRevisionsByCriteriaQuery(criteria *model.Cont
 	queryBuf.WriteString(" r1 ")     // nolint: gosec
 
 	if criteria.ListingAddress != "" {
-		queryBuf.WriteString(" WHERE r1.listing_address = :listing_address") // nolint: gosec
+		p.addWhereAnd(queryBuf)
+		queryBuf.WriteString(" r1.listing_address = :listing_address") // nolint: gosec
 	}
 	if criteria.LatestOnly {
 		p.addWhereAnd(queryBuf)
@@ -910,6 +911,16 @@ func (p *PostgresPersister) contentRevisionsByCriteriaQuery(criteria *model.Cont
 		queryBuf.WriteString(" r2 WHERE r1.listing_address = r2.listing_address AND") // nolint: gosec
 		queryBuf.WriteString(" r1.contract_content_id = r2.contract_content_id)")     // nolint: gosec
 	} else {
+		// If addr and contentID are passed, only retrieve revisions for that content ID
+		if criteria.ListingAddress != "" && criteria.ContentID != nil {
+			p.addWhereAnd(queryBuf)
+			queryBuf.WriteString(" r1.contract_content_id = :content_id") // nolint: gosec
+			// Retrieve a specific revision
+			if criteria.RevisionID != nil {
+				p.addWhereAnd(queryBuf)
+				queryBuf.WriteString(" r1.contract_revision_id = :revision_id") // nolint: gosec
+			}
+		}
 		if criteria.FromTs > 0 {
 			p.addWhereAnd(queryBuf)
 			queryBuf.WriteString(" r1.revision_timestamp > :fromts") // nolint: gosec
