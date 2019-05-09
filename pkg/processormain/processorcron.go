@@ -10,14 +10,24 @@ import (
 	"github.com/robfig/cron"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/utils"
+
 	cerrors "github.com/joincivil/go-common/pkg/errors"
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
+	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
 const (
 	checkRunSecs = 5
+	// If the process has been locked for longer than this time,
+	// should just unlock it.
+	processLockTimeoutSecs = 60 * 30 // 30 mins
+)
+
+var (
+	processLockTs = 0
 )
 
 func checkCron(cr *cron.Cron) {
@@ -25,6 +35,24 @@ func checkCron(cr *cron.Cron) {
 	for _, entry := range entries {
 		log.Infof("Proc run times: prev: %v, next: %v\n", entry.Prev, entry.Next)
 	}
+}
+
+func isProcessLocked() bool {
+	if processLockTs > 0 {
+		if (ctime.CurrentEpochSecsInInt() - processLockTs) <= processLockTimeoutSecs {
+			return true
+		}
+		resetProcessLock()
+	}
+	return false
+}
+
+func setProcessLock() {
+	processLockTs = ctime.CurrentEpochSecsInInt()
+}
+
+func resetProcessLock() {
+	processLockTs = 0
 }
 
 func initPubSubForCron(config *utils.ProcessorConfig) (*cpubsub.GooglePubSub, error) {
@@ -44,6 +72,15 @@ func initPubSubForCron(config *utils.ProcessorConfig) (*cpubsub.GooglePubSub, er
 // RunProcessor runs the processor
 func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPersisters,
 	errRep cerrors.ErrorReporter) {
+	// Check the process lock to ensure we run one of these at a time.
+	if isProcessLocked() {
+		log.Infof("Cron process already running, stopping run...")
+		return
+	}
+	// Set the lock and make sure lock is reset when done
+	setProcessLock()
+	defer resetProcessLock()
+
 	lastTs, lastHashes, err := GetLastEventInformation(persisters)
 	if err != nil {
 		errRep.Error(err, nil)
