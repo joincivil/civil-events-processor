@@ -235,7 +235,7 @@ func (p *ParameterizerEventProcessor) updateUserChallengeDataForChallengeRes(pol
 		salt := userChallengeData.Salt()
 		voterReward, err := paramContract.VoterReward(&bind.CallOpts{}, voter, pollID, salt)
 		if err != nil {
-			return fmt.Errorf("Error getting voter reward %v", err)
+			log.Errorf("Error getting voter reward %v", err)
 		}
 		var isVoterWinner bool
 		if (pollIsPassed && userChallengeData.Choice().Int64() == 1) ||
@@ -247,7 +247,6 @@ func (p *ParameterizerEventProcessor) updateUserChallengeDataForChallengeRes(pol
 		userChallengeData.SetVoterReward(voterReward)
 		userChallengeData.SetIsVoterWinner(isVoterWinner)
 		userChallengeData.SetPollIsPassed(pollIsPassed)
-		userChallengeData.SetPollID(pollID)
 		updatedFields := []string{voterRewardFieldName, userChallengeIsPassedFieldName,
 			isVoterWinnerFieldName}
 		updateWithUserAddress := false
@@ -256,7 +255,7 @@ func (p *ParameterizerEventProcessor) updateUserChallengeDataForChallengeRes(pol
 		err = p.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,
 			updateWithUserAddress, latestVote)
 		if err != nil {
-			return fmt.Errorf("Error updating poll in persistence: %v", err)
+			log.Errorf("Error updating poll in persistence: %v", err)
 		}
 	}
 	return nil

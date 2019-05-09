@@ -585,7 +585,7 @@ func (t *TcrEventProcessor) updateUserChallengeDataForChallengeRes(pollID *big.I
 		salt := userChallengeData.Salt()
 		voterReward, err := tcrContract.VoterReward(&bind.CallOpts{}, voter, pollID, salt)
 		if err != nil {
-			return errors.WithMessage(err, "error getting voter reward")
+			log.Errorf("Error getting voter reward %v", err)
 		}
 		var isVoterWinner bool
 		if (pollIsPassed && userChallengeData.Choice().Int64() == 1) ||
@@ -605,7 +605,7 @@ func (t *TcrEventProcessor) updateUserChallengeDataForChallengeRes(pollID *big.I
 		err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,
 			updateWithUserAddress, latestVote)
 		if err != nil {
-			return errors.WithMessage(err, "error updating userChallengeData in persistence")
+			log.Errorf("Error updating poll in persistence: %v", err)
 		}
 	}
 
