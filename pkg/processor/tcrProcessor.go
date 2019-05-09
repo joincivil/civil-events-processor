@@ -668,11 +668,13 @@ func (t *TcrEventProcessor) processTCRAppealGranted(event *crawlermodel.Event,
 
 func (t *TcrEventProcessor) processTCRFailedChallengeOverturned(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
+
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateFailedChallengeOverturned)
 	if err != nil {
 		return err
 	}
+
 	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress, false)
 }
 
@@ -683,6 +685,7 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 	if err != nil {
 		return err
 	}
+
 	existingListing, err := t.getExistingListing(tcrAddress, listingAddress)
 	if err != nil {
 		return err
@@ -715,22 +718,62 @@ func (t *TcrEventProcessor) processTCRGrantedAppealChallenged(event *crawlermode
 
 func (t *TcrEventProcessor) processTCRGrantedAppealOverturned(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
+	eventPayload := event.EventPayload()
+	aChallengeID, ok := eventPayload["AppealChallengeID"]
+	if !ok {
+		return errors.New("Error getting appealChallengeID from event payload")
+	}
+
 	// NOTE(IS): in sol files, Appeal: overturned = TRUE, we don't have an overturned field.
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateGrantedAppealOverturned)
 	if err != nil {
 		return err
 	}
+
+	// update pollispassedinpoll
+	pollIsPassed := true
+	err = t.setPollIsPassedInPoll(aChallengeID.(*big.Int), pollIsPassed)
+	if err != nil {
+		return err
+	}
+
+	// update userchallengedata here
+	err = t.updateUserChallengeDataForChallengeRes(aChallengeID.(*big.Int), tcrAddress, pollIsPassed)
+	if err != nil {
+		return err
+	}
+
 	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress, true)
 }
 
 func (t *TcrEventProcessor) processTCRGrantedAppealConfirmed(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
+	eventPayload := event.EventPayload()
+	aChallengeID, ok := eventPayload["AppealChallengeID"]
+	if !ok {
+		return errors.New("Error getting appealChallengeID from event payload")
+	}
+
 	err := t.updateListingWithLastGovState(listingAddress, tcrAddress,
 		model.GovernanceStateGrantedAppealConfirmed)
 	if err != nil {
 		return err
 	}
+
+	// update pollispassedinpoll
+	pollIsPassed := false
+	err = t.setPollIsPassedInPoll(aChallengeID.(*big.Int), pollIsPassed)
+	if err != nil {
+		return err
+	}
+
+	// update userchallengedata here
+	err = t.updateUserChallengeDataForChallengeRes(aChallengeID.(*big.Int), tcrAddress, pollIsPassed)
+	if err != nil {
+		return err
+	}
+
 	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress, true)
 }
 
