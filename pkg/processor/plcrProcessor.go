@@ -331,6 +331,7 @@ func (p *PlcrEventProcessor) processTokensRescued(event *crawlermodel.Event,
 
 	// NOTE: At this point, userChallengeData can only be length 1
 	existingUserChallengeData := userChallengeData[0]
+	existingUserChallengeData.SetDidUserRescue(true)
 	updatedUserFields := []string{didUserRescueFieldName}
 	updateWithUserAddress := true
 	latestVote := true
