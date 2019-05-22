@@ -686,6 +686,12 @@ func (t *TcrEventProcessor) processTCRFailedChallengeOverturned(event *crawlermo
 		return err
 	}
 
+	// update userchallengedata here
+	err = t.updateUserChallengeDataForChallengeRes(pollID, tcrAddress, pollIsPassed)
+	if err != nil {
+		return err
+	}
+
 	return t.updateChallengeWithOverturnedData(event, tcrAddress, listingAddress, false)
 }
 
@@ -704,6 +710,12 @@ func (t *TcrEventProcessor) processTCRSuccessfulChallengeOverturned(event *crawl
 
 	pollIsPassed := false
 	err = t.setPollIsPassedInPoll(pollID, pollIsPassed)
+	if err != nil {
+		return err
+	}
+
+	// update userchallengedata here
+	err = t.updateUserChallengeDataForChallengeRes(pollID, tcrAddress, pollIsPassed)
 	if err != nil {
 		return err
 	}
