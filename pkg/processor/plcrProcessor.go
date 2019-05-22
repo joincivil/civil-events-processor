@@ -202,7 +202,7 @@ func (p *PlcrEventProcessor) processVoteCommitted(event *crawlermodel.Event,
 	existingUserChallengeData.SetPollID(pollID)
 	existingUserChallengeData.SetUserAddress(voterAddress.(common.Address))
 	updatedFields := []string{latestVoteFieldName}
-	// NOTE(IS): This is false because we want to update all existing fields.
+	// NOTE(IS): This is false because we want to update all existing commits.
 	latestVote := false
 	updateWithUserAddress := true
 
