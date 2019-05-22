@@ -600,7 +600,7 @@ func (t *TcrEventProcessor) updateUserChallengeDataForChallengeRes(pollID *big.I
 		userChallengeData.SetIsVoterWinner(isVoterWinner)
 		updatedFields := []string{voterRewardFieldName, userChallengeIsPassedFieldName,
 			isVoterWinnerFieldName}
-		updateWithUserAddress := false
+		updateWithUserAddress := true
 		latestVote := true
 		err = t.userChallengeDataPersister.UpdateUserChallengeData(userChallengeData, updatedFields,
 			updateWithUserAddress, latestVote)
