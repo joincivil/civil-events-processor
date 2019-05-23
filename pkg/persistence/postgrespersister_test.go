@@ -8,6 +8,7 @@ package persistence
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/big"
 	mathrand "math/rand"
 	"reflect"
@@ -20,6 +21,8 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
 
+	crawlerPostgres "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres"
+
 	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	cstrings "github.com/joincivil/go-common/pkg/strings"
 	ctime "github.com/joincivil/go-common/pkg/time"
@@ -31,103 +34,206 @@ const (
 	postgresUser                   = "docker"
 	postgresPswd                   = "docker"
 	postgresHost                   = "localhost"
+	listingTestTableName           = "listing_test"
+	contentRevisionTestTableName   = "content_revision_test"
 	govTestTableName               = "governance_event_test"
+	cronTestTableName              = "cron_test"
 	challengeTestTableName         = "challenge_test"
 	pollTestTableName              = "poll_test"
 	appealTestTableName            = "appeal_test"
 	tokenTransferTestTableName     = "token_transfer_test"
+	versionTestTableName           = "version_test"
 	parameterProposalTestTableName = "parameter_proposal_test"
+	userChallengeDataTestTableName = "user_challenge_data_test"
 	testAddress                    = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 )
 
-func setupDBConnection() (*PostgresPersister, error) {
+func setupDBConnection(t *testing.T) *PostgresPersister {
 	postgresPersister, err := NewPostgresPersister(postgresHost, postgresPort, postgresUser, postgresPswd, postgresDBName)
 	if err != nil {
-		return nil, fmt.Errorf("Error setting up new persister: err: %v", err)
+		t.Errorf("Error setting up new persister: err: %v", err)
 	}
-	err = postgresPersister.CreateTables()
-	if err != nil {
-		return nil, fmt.Errorf("Error setting up tables in db: %v", err)
-	}
-	return postgresPersister, err
+	createTestVersionTable(t, postgresPersister)
+	return postgresPersister
 }
 
-func setupTestTable(tableName string) (*PostgresPersister, error) {
-	persister, err := setupDBConnection()
-	if err != nil {
-		return persister, fmt.Errorf("Error connecting to DB: %v", err)
-	}
+func setupTestTable(t *testing.T, tableName string) *PostgresPersister {
+	persister := setupDBConnection(t)
+	version := "f"
+	persister.version = &version
 	var queryString string
 	switch tableName {
 	case "listing_test":
-		queryString = postgres.CreateListingTableQueryString(tableName)
+		queryString = postgres.CreateListingTableQuery(persister.GetTableName(tableName))
 	case "content_revision_test":
-		queryString = postgres.CreateContentRevisionTableQueryString(tableName)
+		queryString = postgres.CreateContentRevisionTableQuery(persister.GetTableName(tableName))
 	case "governance_event_test":
-		queryString = postgres.CreateGovernanceEventTableQueryString(tableName)
+		queryString = postgres.CreateGovernanceEventTableQuery(persister.GetTableName(tableName))
 	case "cron_test":
-		queryString = postgres.CreateCronTableQueryString(tableName)
+		queryString = postgres.CreateCronTableQuery(persister.GetTableName(tableName))
 	case "challenge_test":
-		queryString = postgres.CreateChallengeTableQueryString(tableName)
+		queryString = postgres.CreateChallengeTableQuery(persister.GetTableName(tableName))
 	case "poll_test":
-		queryString = postgres.CreatePollTableQueryString(tableName)
+		queryString = postgres.CreatePollTableQuery(persister.GetTableName(tableName))
 	case "appeal_test":
-		queryString = postgres.CreateAppealTableQueryString(tableName)
+		queryString = postgres.CreateAppealTableQuery(persister.GetTableName(tableName))
 	case "token_transfer_test":
-		queryString = postgres.CreateTokenTransferTableQueryString(tableName)
+		queryString = postgres.CreateTokenTransferTableQuery(persister.GetTableName(tableName))
 	case "parameter_proposal_test":
-		queryString = postgres.CreateParameterProposalTableQueryString(tableName)
+		queryString = postgres.CreateParameterProposalTableQuery(persister.GetTableName(tableName))
+	case "user_challenge_data_test":
+		queryString = postgres.CreateUserChallengeDataTableQuery(persister.GetTableName(tableName))
 	}
 
+	_, err := persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", tableName, err)
+	}
+	return persister
+}
+
+func setupAllTestTables(t *testing.T, persister *PostgresPersister) {
+	queryString := postgres.CreateListingTableQuery(persister.GetTableName(listingTestTableName))
+	_, err := persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", listingTestTableName, err)
+	}
+
+	queryString = postgres.CreateContentRevisionTableQuery(persister.GetTableName(contentRevisionTestTableName))
 	_, err = persister.db.Query(queryString)
 	if err != nil {
-		return persister, fmt.Errorf("Couldn't create test table %s: %v", tableName, err)
+		t.Errorf("Couldn't create test table %s: %v", contentRevisionTestTableName, err)
 	}
-	return persister, nil
+
+	queryString = postgres.CreateGovernanceEventTableQuery(persister.GetTableName(govTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", govTestTableName, err)
+	}
+
+	queryString = postgres.CreateCronTableQuery(persister.GetTableName(cronTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", cronTestTableName, err)
+	}
+
+	queryString = postgres.CreateChallengeTableQuery(persister.GetTableName(challengeTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", challengeTestTableName, err)
+	}
+
+	queryString = postgres.CreatePollTableQuery(persister.GetTableName(pollTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", pollTestTableName, err)
+	}
+
+	queryString = postgres.CreateAppealTableQuery(persister.GetTableName(appealTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", appealTestTableName, err)
+	}
+
+	queryString = postgres.CreateTokenTransferTableQuery(persister.GetTableName(tokenTransferTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", tokenTransferTestTableName, err)
+	}
+
+	queryString = postgres.CreateParameterProposalTableQuery(persister.GetTableName(parameterProposalTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", parameterProposalTestTableName, err)
+	}
+
+	queryString = postgres.CreateUserChallengeDataTableQuery(persister.GetTableName(userChallengeDataTestTableName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", userChallengeDataTestTableName, err)
+	}
+}
+
+func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
+	_, err := persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(listingTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", listingTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(contentRevisionTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", contentRevisionTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(govTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", govTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(cronTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", cronTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(challengeTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", challengeTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(pollTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", pollTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(appealTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", appealTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(tokenTransferTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", tokenTransferTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterProposalTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", parameterProposalTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(userChallengeDataTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", userChallengeDataTestTableName, err)
+	}
 }
 
 func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName string) {
-	var err error
-	switch tableName {
-	case "listing_test":
-		_, err = persister.db.Query("DROP TABLE listing_test;")
-	case "content_revision_test":
-		_, err = persister.db.Query("DROP TABLE content_revision_test;")
-	case "governance_event_test":
-		_, err = persister.db.Query("DROP TABLE governance_event_test;")
-	case "cron_test":
-		_, err = persister.db.Query("DROP TABLE cron_test;")
-	case "challenge_test":
-		_, err = persister.db.Query("DROP TABLE challenge_test;")
-	case "poll_test":
-		_, err = persister.db.Query("DROP TABLE poll_test;")
-	case "appeal_test":
-		_, err = persister.db.Query("DROP TABLE appeal_test;")
-	case "token_transfer_test":
-		_, err = persister.db.Query("DROP TABLE token_transfer_test;")
-	case "parameter_proposal_test":
-		_, err = persister.db.Query("DROP TABLE parameter_proposal_test;")
-	}
+	defer deleteTestVersionTable(t, persister)
+	_, err := persister.db.Query(fmt.Sprintf("DROP TABLE %v;", tableName))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
 	}
 }
 
-func checkTableExists(tableName string, persister *PostgresPersister) error {
+func createTestVersionTable(t *testing.T, persister *PostgresPersister) {
+	versionTableQuery := crawlerPostgres.CreateVersionTableQuery(versionTestTableName)
+	_, err := persister.db.Exec(versionTableQuery)
+	if err != nil {
+		t.Errorf("error %v", err)
+	}
+}
+
+func deleteTestVersionTable(t *testing.T, persister *PostgresPersister) {
+	_, err := persister.db.Query(fmt.Sprintf("DROP TABLE IF EXISTS %v;", versionTestTableName))
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+}
+
+func checkTableExists(t *testing.T, tableType string, persister *PostgresPersister) {
 	var exists bool
 	queryString := fmt.Sprintf(`SELECT EXISTS ( SELECT 1
         FROM   information_schema.tables
         WHERE  table_schema = 'public'
         AND    table_name = '%s'
-        );`, tableName)
+        );`, persister.GetTableName(tableType))
 	err := persister.db.QueryRow(queryString).Scan(&exists)
 	if err != nil {
-		return fmt.Errorf("Couldn't get %s table", tableName)
+		t.Errorf("Couldn't get %s table", persister.GetTableName(tableType))
 	}
 	if !exists {
-		return fmt.Errorf("%s table does not exist", tableName)
+		t.Errorf("%s table does not exist", persister.GetTableName(tableType))
 	}
-	return nil
 }
 
 /*
@@ -136,12 +242,10 @@ General DB tests
 
 // TestDBConnection tests that we can connect to DB
 func TestDBConnection(t *testing.T) {
-	persister, err := setupDBConnection()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	persister := setupDBConnection(t)
+	defer persister.Close()
 	var result int
-	err = persister.db.QueryRow("SELECT 1;").Scan(&result)
+	err := persister.db.QueryRow("SELECT 1;").Scan(&result)
 	if err != nil {
 		t.Errorf("Error querying DB: %v", err)
 	}
@@ -152,30 +256,29 @@ func TestDBConnection(t *testing.T) {
 
 func TestTableSetup(t *testing.T) {
 	// run function to create tables, and test table exists
-	persister, err := setupDBConnection()
+	persister := setupDBConnection(t)
+	defer persister.Close()
+	versionNo := "123456"
+	err := persister.saveVersionToTable(versionTestTableName, &versionNo)
 	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
+		t.Errorf("Error saving  version: %v", err)
 	}
-	err = persister.CreateTables()
+	persister.version = &versionNo
 	if err != nil {
-		t.Errorf("Error creating tables: %v", err)
+		t.Errorf("Error creating/checking for tables: %v", err)
 	}
-	err = checkTableExists("listing", persister)
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkTableExists("content_revision", persister)
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkTableExists("governance_event", persister)
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkTableExists("cron", persister)
-	if err != nil {
-		t.Error(err)
-	}
+	setupAllTestTables(t, persister)
+	checkTableExists(t, listingTestTableName, persister)
+	checkTableExists(t, contentRevisionTestTableName, persister)
+	checkTableExists(t, govTestTableName, persister)
+	checkTableExists(t, cronTestTableName, persister)
+	checkTableExists(t, challengeTestTableName, persister)
+	checkTableExists(t, pollTestTableName, persister)
+	checkTableExists(t, appealTestTableName, persister)
+	checkTableExists(t, tokenTransferTestTableName, persister)
+
+	deleteAllTestTables(t, persister)
+	deleteTestVersionTable(t, persister)
 }
 
 /*
@@ -299,45 +402,44 @@ All tests for listing table:
 
 // TestCreateListing tests that a listing is created
 func TestCreateListing(t *testing.T) {
-	tableName := "listing_test"
 	// create fake listing in listing_test
-	persister, err := setupTestTable(tableName)
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	modelListing, _ := setupSampleListing()
 	// save to test table
-	err = persister.createListingForTable(modelListing, tableName)
+	err := persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
 	// check that listing is there
 	var numRowsb int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM listing_test`).Scan(&numRowsb)
+	err = persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v;", tableName)).Scan(&numRowsb)
 	if err != nil {
 		t.Errorf("Error querying row: err: %v", err)
 	}
 	if numRowsb != 1 {
-		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
+		t.Errorf("Number of rows in table should be 1 but is: %v", numRowsb)
 	}
 }
 
 // TestListingByAddress tests that the query we are using to get Listing works
 func TestListingByAddress(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	// create fake listing in listing_test
 	modelListing, modelListingAddress := setupSampleListing()
 
 	// save to test table
-	err = persister.createListingForTable(modelListing, tableName)
+	err := persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -353,18 +455,18 @@ func TestListingByAddress(t *testing.T) {
 
 // TestListingCharterByAddress tests that the query we are using to get Listing works
 func TestListingCharterByAddress(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	// create fake listing in listing_test
 	modelListing, modelListingAddress := setupSampleListing()
 
 	// save to test table
-	err = persister.createListingForTable(modelListing, tableName)
+	err := persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -406,18 +508,18 @@ func TestListingCharterByAddress(t *testing.T) {
 
 // TestListingByAddress tests that the query we are using to get Listing works
 func TestListingByAddressDoesNotExist(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	// create fake listing in listing_test
 	modelListing, _ := setupSampleListing()
 
 	// save to test table
-	err = persister.createListingForTable(modelListing, tableName)
+	err := persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -436,19 +538,18 @@ func TestListingByAddressDoesNotExist(t *testing.T) {
 
 // TestDBListingToModelListing tests that the db listing can be properly converted to model listing
 func TestDBListingToModelListing(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// create fake listing in listing_test
 	modelListing, modelListingAddress := setupSampleListing()
 
 	// save to test table
-	err = persister.createListingForTable(modelListing, tableName)
+	err := persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -467,12 +568,10 @@ func TestDBListingToModelListing(t *testing.T) {
 
 // Test retrieving multiple listings
 func TestListingsByAddresses(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// create fake listings in listing_test
@@ -508,12 +607,11 @@ func shuffleListingAddresses(slice []common.Address) []common.Address {
 
 // Test that orered function for IN query returns results in order:
 func TestListingByAddressesInOrder(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	numListings := 10
@@ -569,12 +667,11 @@ func TestListingByAddressesInOrder(t *testing.T) {
 
 // There are nil addresses that slip through
 func TestListingByAddressesInOrderAddressNotFound(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	numListings := 10
@@ -611,13 +708,13 @@ func TestListingByAddressesInOrderAddressNotFound(t *testing.T) {
 
 func TestNilResultsListing(t *testing.T) {
 	// Query for listings that don't exist and make sure expected behavior is returned
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
+
 	randHex, _ := cstrings.RandomHexStr(32)
 	randHex2, _ := cstrings.RandomHexStr(32)
 	testAddress1 := common.HexToAddress(randHex)
@@ -648,18 +745,17 @@ func TestNilResultsListing(t *testing.T) {
 
 // TestUpdateListing tests that updating the Listing works
 func TestUpdateListing(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	modelListing, modelListingAddress := setupSampleListing()
 
 	// save this to table
-	err = persister.createListingForTable(modelListing, tableName)
+	err := persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -691,24 +787,23 @@ func TestUpdateListing(t *testing.T) {
 
 // TestDeleteListing tests that the deleting the Listing works
 func TestDeleteListing(t *testing.T) {
-	tableName := "listing_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, listingTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(listingTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	modelListing, _ := setupSampleListing()
 
 	// save this to table
-	err = persister.createListingForTable(modelListing, tableName)
+	err := persister.createListingForTable(modelListing, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
 
 	var numRowsb int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM listing_test`).Scan(&numRowsb)
+	err = persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v", tableName)).Scan(&numRowsb)
 	if err != nil {
 		t.Errorf("Problem getting count from table: %v", err)
 	}
@@ -723,7 +818,7 @@ func TestDeleteListing(t *testing.T) {
 	}
 
 	var numRows int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM listing_test`).Scan(&numRows)
+	err = persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v", tableName)).Scan(&numRows)
 	if err != nil {
 		t.Errorf("Problem getting count from table: %v", err)
 	}
@@ -733,19 +828,16 @@ func TestDeleteListing(t *testing.T) {
 }
 
 func TestListingByCriteriaSorts(t *testing.T) {
-	tableName := "listing_test"
-	joinTableName := "challenge_test"
-	persister, err := setupTestTable(tableName)
+	tableBaseName := "listing_test"
+	joinTableBaseName := "challenge_test"
+	persister := setupTestTable(t, tableBaseName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tableName)
+	tableName := persister.GetTableName(tableBaseName)
+	persister2 := setupTestTable(t, joinTableBaseName)
+	persister2.Close()
+	joinTableName := persister.GetTableName(joinTableBaseName)
 
-	_, err = setupTestTable(joinTableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	defer deleteTestTable(t, persister, tableName)
 	defer deleteTestTable(t, persister, joinTableName)
 
 	now := ctime.CurrentEpochSecsInInt64()
@@ -784,7 +876,7 @@ func TestListingByCriteriaSorts(t *testing.T) {
 	listing6.SetApplicationDateTs(now + int64(10))
 	listing6.SetWhitelisted(true)
 
-	err = persister.createListingForTable(listing1, tableName)
+	err := persister.createListingForTable(listing1, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -910,19 +1002,16 @@ func TestListingByCriteriaSorts(t *testing.T) {
 }
 
 func TestListingsByCriteria(t *testing.T) {
-	tableName := "listing_test"
-	joinTableName := "challenge_test"
-	persister, err := setupTestTable(tableName)
+	tableBaseName := "listing_test"
+	joinTableBaseName := "challenge_test"
+	persister := setupTestTable(t, tableBaseName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tableName)
+	tableName := persister.GetTableName(tableBaseName)
+	persister2 := setupTestTable(t, joinTableBaseName)
+	persister2.Close()
+	joinTableName := persister.GetTableName(joinTableBaseName)
 
-	_, err = setupTestTable(joinTableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	defer deleteTestTable(t, persister, tableName)
 	defer deleteTestTable(t, persister, joinTableName)
 
 	now := ctime.CurrentEpochSecsInInt64()
@@ -963,7 +1052,7 @@ func TestListingsByCriteria(t *testing.T) {
 	modelListingPastApplicationPhase.SetAppExpiry(appExpiry)
 
 	// save to test table
-	err = persister.createListingForTable(modelListingWhitelistedActiveChallenge, tableName)
+	err := persister.createListingForTable(modelListingWhitelistedActiveChallenge, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -1147,48 +1236,46 @@ All tests for content_revision table:
 
 // TestCreateContentRevision tests that a ContentRevision is created
 func TestCreateContentRevision(t *testing.T) {
-	tableName := "content_revision_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, contentRevisionTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
 	modelContentRevision, _, _, _ := setupRandomSampleContentRevision()
 
 	// insert to table
-	err = persister.createContentRevisionForTable(modelContentRevision, tableName)
+	err := persister.createContentRevisionForTable(modelContentRevision, tableName)
 	if err != nil {
 		t.Errorf("error saving content revision: %v", err)
 	}
 	// check row is there
 	var numRowsb int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM content_revision_test`).Scan(&numRowsb)
+	err = persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v", tableName)).Scan(&numRowsb)
 	if err != nil {
 		t.Errorf("Error querying row: err: %v", err)
 	}
 	if numRowsb != 1 {
-		t.Errorf("Number of rows in table should be 0 but is: %v", numRowsb)
+		t.Errorf("Number of rows in table should be 1 but is: %v", numRowsb)
 	}
 }
 
 // TestContentRevision tests that a content revision can be retrieved
 func TestContentRevision(t *testing.T) {
-	tableName := "content_revision_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, contentRevisionTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
 	modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
 
 	// insert to table
-	err = persister.createContentRevisionForTable(modelContentRevision, tableName)
+	err := persister.createContentRevisionForTable(modelContentRevision, tableName)
 	if err != nil {
 		t.Errorf("error saving content revision: %v", err)
 	}
@@ -1203,19 +1290,18 @@ func TestContentRevision(t *testing.T) {
 
 // TestDBCRToModelCR tests that the db listing can be properly converted to model listing
 func TestDBCRToModelCR(t *testing.T) {
-	tableName := "content_revision_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, contentRevisionTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
 	modelContentRevision, listingAddr, contentID, revisionID := setupRandomSampleContentRevision()
 
 	// insert to table
-	err = persister.createContentRevisionForTable(modelContentRevision, tableName)
+	err := persister.createContentRevisionForTable(modelContentRevision, tableName)
 	if err != nil {
 		t.Errorf("error saving content revision: %v", err)
 	}
@@ -1235,12 +1321,11 @@ func TestDBCRToModelCR(t *testing.T) {
 
 // TestContentRevision tests that multiple content revisions can be retrieved
 func TestContentRevisions(t *testing.T) {
-	tableName := "content_revision_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, contentRevisionTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// create multiple contentRevisions
@@ -1249,7 +1334,7 @@ func TestContentRevisions(t *testing.T) {
 
 	// save all to table
 	for _, contRev := range testContentRevisions {
-		err = persister.createContentRevisionForTable(contRev, tableName)
+		err := persister.createContentRevisionForTable(contRev, tableName)
 		if err != nil {
 			t.Errorf("Couldn't save content revision to table: %v", err)
 		}
@@ -1275,19 +1360,156 @@ func TestContentRevisions(t *testing.T) {
 
 }
 
-func TestNilResultsContentRevision(t *testing.T) {
-	contRevTableName := "content_revision_test"
-	persister, err := setupTestTable(contRevTableName)
+func TestContentRevisionsByCriteria(t *testing.T) {
+	persister := setupTestTable(t, contentRevisionTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
+	tableName := persister.GetTableName(contentRevisionTestTableName)
+
+	defer deleteTestTable(t, persister, tableName)
+
+	// create multiple contentRevisions
+	numRevisions := 10
+	testContentRevisions, listingAddr, contractContentID, contractRevisionIDs :=
+		setupSampleContentRevisionsSameAddressContentID(numRevisions)
+
+	// save all to table
+	for _, contRev := range testContentRevisions {
+		err := persister.createContentRevisionForTable(contRev, tableName)
+		if err != nil {
+			t.Errorf("Couldn't save content revision to table: %v", err)
+		}
 	}
-	defer deleteTestTable(t, persister, contRevTableName)
+
+	// Test listing address
+	criteria := &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+	}
+
+	// retrieve from table
+	dbContentRevisions, err := persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbContentRevisions), numRevisions)
+	}
+
+	// Test latest only
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		LatestOnly:     true,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbContentRevisions), numRevisions)
+	}
+
+	// Test addr and content id
+	contentID := contractContentID.Int64()
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		ContentID:      &contentID,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Only retrieved %v listings but should have retrieved %v", len(dbContentRevisions), numRevisions)
+	}
+
+	// Test addr, content id, and revision id
+	contentID = contractContentID.Int64()
+	revisionID := contractRevisionIDs[0].Int64()
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		ContentID:      &contentID,
+		RevisionID:     &revisionID,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != 1 {
+		t.Errorf("Should have retrieved one revision: %v", len(dbContentRevisions))
+	}
+
+	// Test offset, limit
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		Offset:         1,
+		Count:          3,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != 3 {
+		t.Errorf("Should have retrieved 3 revisions: %v", len(dbContentRevisions))
+	}
+
+	// Test from and before
+	minTs := int64(math.MaxInt64)
+	maxTs := int64(0)
+	for _, rev := range testContentRevisions {
+		revTs := rev.RevisionDateTs()
+		if revTs < minTs {
+			minTs = revTs
+		}
+		if revTs > maxTs {
+			maxTs = revTs
+		}
+	}
+	criteria = &model.ContentRevisionCriteria{
+		ListingAddress: listingAddr.Hex(),
+		FromTs:         minTs - 10,
+		BeforeTs:       maxTs + 10,
+	}
+
+	// retrieve from table
+	dbContentRevisions, err = persister.contentRevisionsByCriteriaFromTable(criteria,
+		tableName)
+	if err != nil {
+		t.Errorf("Error with persister.contentRevisionsByCriteria: %v", err)
+	}
+
+	if len(dbContentRevisions) != numRevisions {
+		t.Errorf("Should have retrieved %v revisions: %v", numRevisions, len(dbContentRevisions))
+	}
+}
+
+func TestNilResultsContentRevision(t *testing.T) {
+	persister := setupTestTable(t, contentRevisionTestTableName)
+	defer persister.Close()
+	tableName := persister.GetTableName(contentRevisionTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	address1, _ := cstrings.RandomHexStr(32)
 	contractAddress := common.HexToAddress(address1)
 	contentID := big.NewInt(0)
 	revisionID := big.NewInt(0)
-	cr, err := persister.contentRevisionFromTable(contractAddress, contentID, revisionID, contRevTableName)
+	cr, err := persister.contentRevisionFromTable(contractAddress, contentID, revisionID, tableName)
 	if err != cpersist.ErrPersisterNoResults {
 		t.Errorf("Error message is not %v but %v", cpersist.ErrPersisterNoResults, err)
 	}
@@ -1302,25 +1524,24 @@ func TestUpdateContentRevision(t *testing.T) {
 
 // TestDeleteContentRevision tests that the deleting the ContentRevision works
 func TestDeleteContentRevision(t *testing.T) {
-	tableName := "content_revision_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, contentRevisionTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(contentRevisionTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample contentRevision
 	modelContentRevision, _, _, _ := setupRandomSampleContentRevision()
 
 	// insert to table
-	err = persister.createContentRevisionForTable(modelContentRevision, tableName)
+	err := persister.createContentRevisionForTable(modelContentRevision, tableName)
 	if err != nil {
 		t.Errorf("error saving content revision: %v", err)
 	}
 
 	var numRowsb int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM content_revision_test`).Scan(&numRowsb)
+	err = persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v;", tableName)).Scan(&numRowsb)
 	if err != nil {
 		t.Errorf("Problem getting count from table: %v", err)
 	}
@@ -1335,7 +1556,7 @@ func TestDeleteContentRevision(t *testing.T) {
 	}
 
 	var numRows int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM content_revision_test`).Scan(&numRows)
+	err = persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v;", tableName)).Scan(&numRows)
 	if err != nil {
 		t.Errorf("Problem getting count from table: %v", err)
 	}
@@ -1375,10 +1596,7 @@ func setupSampleGovernanceEvent(randListing bool) (*model.GovernanceEvent, commo
 }
 
 func setupGovEventTable(t *testing.T) *PostgresPersister {
-	persister, err := setupTestTable(govTestTableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	persister := setupTestTable(t, govTestTableName)
 	return persister
 }
 
@@ -1387,7 +1605,7 @@ func createAndSaveTestGovEvent(t *testing.T, persister *PostgresPersister, randL
 	modelGovernanceEvent, listingAddr, eventHash, txHash := setupSampleGovernanceEvent(false)
 
 	// insert to table
-	err := persister.createGovernanceEventInTable(modelGovernanceEvent, govTestTableName)
+	err := persister.createGovernanceEventInTable(modelGovernanceEvent, persister.GetTableName(govTestTableName))
 	if err != nil {
 		t.Errorf("error saving GovernanceEvent: %v", err)
 	}
@@ -1402,13 +1620,14 @@ All tests for governance_event table:
 func TestCreateGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, govTestTableName)
+	tableName := persister.GetTableName(govTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	_, _, _, _ = createAndSaveTestGovEvent(t, persister, false)
 
 	// check row is there
 	var numRowsb int
-	err := persister.db.QueryRow(`SELECT COUNT(*) FROM governance_event_test`).Scan(&numRowsb)
+	err := persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v;", tableName)).Scan(&numRowsb)
 	if err != nil {
 		t.Errorf("Problem getting count from table: %v", err)
 	}
@@ -1420,10 +1639,12 @@ func TestCreateGovernanceEvent(t *testing.T) {
 func TestNilResultsGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, govTestTableName)
+	tableName := persister.GetTableName(govTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	txHashSample, _ := cstrings.RandomHexStr(30)
 	txHash := common.HexToHash(txHashSample)
-	govEvent, err := persister.governanceEventsByTxHashFromTable(txHash, govTestTableName)
+	govEvent, err := persister.governanceEventsByTxHashFromTable(txHash, tableName)
 	if err != nil {
 		t.Errorf("Error should be nil but is %v", err)
 	}
@@ -1436,12 +1657,13 @@ func TestNilResultsGovernanceEvent(t *testing.T) {
 func TestGovernanceEventsByListingAddress(t *testing.T) {
 	persister := setupGovEventTable(t)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, govTestTableName)
+	tableName := persister.GetTableName(govTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	_, listingAddr, _, _ := createAndSaveTestGovEvent(t, persister, false)
 
 	// retrieve from table
-	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, govTestTableName)
+	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, tableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
 	}
@@ -1456,12 +1678,13 @@ func TestGovernanceEventsByListingAddress(t *testing.T) {
 func TestDBGovEventToModelGovEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, govTestTableName)
+	tableName := persister.GetTableName(govTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	modelGovernanceEvent, listingAddr, _, _ := createAndSaveTestGovEvent(t, persister, false)
 
 	// retrieve from table
-	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, govTestTableName)
+	dbGovEvents, err := persister.governanceEventsByListingAddressFromTable(listingAddr, tableName)
 	if err != nil {
 		t.Errorf("Wasn't able to get governance event from postgres table: %v", err)
 	}
@@ -1482,12 +1705,13 @@ func TestDBGovEventToModelGovEvent(t *testing.T) {
 func TestDeleteGovernanceEvent(t *testing.T) {
 	persister := setupGovEventTable(t)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, govTestTableName)
+	tableName := persister.GetTableName(govTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	modelGovernanceEvent, _, _, _ := createAndSaveTestGovEvent(t, persister, false)
 
 	var numRowsb int
-	err := persister.db.QueryRow(`SELECT COUNT(*) FROM governance_event_test`).Scan(&numRowsb)
+	err := persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v", tableName)).Scan(&numRowsb)
 	if err != nil {
 		t.Errorf("Problem getting count from table: %v", err)
 	}
@@ -1496,13 +1720,13 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 	}
 
 	//delete rows
-	err = persister.deleteGovernanceEventFromTable(modelGovernanceEvent, govTestTableName)
+	err = persister.deleteGovernanceEventFromTable(modelGovernanceEvent, tableName)
 	if err != nil {
 		t.Errorf("Error deleting governance event: %v", err)
 	}
 
 	var numRows int
-	err = persister.db.QueryRow(`SELECT COUNT(*) FROM governance_event_test`).Scan(&numRows)
+	err = persister.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %v", tableName)).Scan(&numRows)
 	if err != nil {
 		t.Errorf("Problem getting count from table: %v", err)
 	}
@@ -1515,7 +1739,9 @@ func TestDeleteGovernanceEvent(t *testing.T) {
 func TestGovEventsByCriteria(t *testing.T) {
 	persister := setupGovEventTable(t)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, govTestTableName)
+	tableName := persister.GetTableName(govTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	var listingAddr common.Address
 	var timeMiddle int64
 	var timeStart int64
@@ -1536,7 +1762,7 @@ func TestGovEventsByCriteria(t *testing.T) {
 	govEvents, err := persister.governanceEventsByCriteriaFromTable(&model.GovernanceEventCriteria{
 		ListingAddress: listingAddr.Hex(),
 		Count:          1,
-	}, govTestTableName)
+	}, tableName)
 
 	if err != nil {
 		t.Errorf("Wasn't able to get governance events from postgres table: %v", err)
@@ -1553,7 +1779,7 @@ func TestGovEventsByCriteria(t *testing.T) {
 	govEvents, err = persister.governanceEventsByCriteriaFromTable(&model.GovernanceEventCriteria{
 		ListingAddress: listingAddr.Hex(),
 		CreatedFromTs:  timeStart,
-	}, govTestTableName)
+	}, tableName)
 
 	if err != nil {
 		t.Errorf("Wasn't able to get governance events from postgres table: %v", err)
@@ -1566,7 +1792,7 @@ func TestGovEventsByCriteria(t *testing.T) {
 	govEvents, err = persister.governanceEventsByCriteriaFromTable(&model.GovernanceEventCriteria{
 		ListingAddress:  listingAddr.Hex(),
 		CreatedBeforeTs: timeMiddle,
-	}, govTestTableName)
+	}, tableName)
 
 	if err != nil {
 		t.Errorf("Wasn't able to get governance events from postgres table: %v", err)
@@ -1579,12 +1805,11 @@ func TestGovEventsByCriteria(t *testing.T) {
 
 // TestGovEventsByCriteria tests GovernanceEvent by txhash query
 func TestGovEventsByTxHash(t *testing.T) {
-	tableName := "governance_event_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupGovEventTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(govTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// sample governanceEvent
@@ -1593,7 +1818,7 @@ func TestGovEventsByTxHash(t *testing.T) {
 	modelGovernanceEvent2, _, _, _ := setupSampleGovernanceEvent(true)
 
 	// insert to table
-	err = persister.createGovernanceEventInTable(modelGovernanceEvent2, tableName)
+	err := persister.createGovernanceEventInTable(modelGovernanceEvent2, tableName)
 	if err != nil {
 		t.Errorf("error saving GovernanceEvent: %v", err)
 	}
@@ -1678,10 +1903,12 @@ func setupChallengeByChallengeID(challengeIDInt int, resolved bool) *model.Chall
 	rewardPool := new(big.Int)
 	rewardPool.SetString("50000000000000000000", 10)
 	totalTokens := big.NewInt(232323223232)
+	challengeType := model.ChallengePollType
 
 	requestAppealExpiry := big.NewInt(1231312)
 	testChallenge := model.NewChallenge(challengeID, listingAddr, statement, rewardPool,
-		challenger, resolved, stake, totalTokens, requestAppealExpiry, int64(1212141313))
+		challenger, resolved, stake, totalTokens, requestAppealExpiry, challengeType,
+		int64(1212141313))
 	return testChallenge
 }
 
@@ -1705,19 +1932,17 @@ func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 	rewardPool := new(big.Int)
 	rewardPool.SetString("50000000000000000000", 10)
 	totalTokens := big.NewInt(232323223232)
+	challengeType := model.ChallengePollType
 
 	requestAppealExpiry := big.NewInt(1231312)
 	testChallenge := model.NewChallenge(challengeID, listingAddr, statement, rewardPool,
-		challenger, false, stake, totalTokens, requestAppealExpiry, int64(1212141313))
+		challenger, false, stake, totalTokens, requestAppealExpiry, challengeType,
+		int64(1212141313))
 	return testChallenge, challengeIDInt
 }
 
-func setupChallengeTable(t *testing.T) *PostgresPersister {
-	persister, err := setupTestTable(challengeTestTableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	return persister
+func setupChallengeTestTable(t *testing.T) *PostgresPersister {
+	return setupTestTable(t, challengeTestTableName)
 }
 
 func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Challenge, int) {
@@ -1725,7 +1950,7 @@ func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, rand
 	modelChallenge, challengeID := setupSampleChallenge(randListing)
 
 	// insert to table
-	err := persister.createChallengeInTable(modelChallenge, challengeTestTableName)
+	err := persister.createChallengeInTable(modelChallenge, persister.GetTableName(challengeTestTableName))
 	if err != nil {
 		t.Errorf("error saving challenge: %v", err)
 	}
@@ -1733,27 +1958,25 @@ func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, rand
 }
 
 func TestCreateChallenge(t *testing.T) {
-	persister, err := setupTestTable(challengeTestTableName)
+	persister := setupChallengeTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, challengeTestTableName)
+	tableName := persister.GetTableName(challengeTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	_, _ = createAndSaveTestChallenge(t, persister, true)
 
 }
 
 func TestGetChallenge(t *testing.T) {
-	persister, err := setupTestTable(challengeTestTableName)
+	persister := setupChallengeTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, challengeTestTableName)
+	tableName := persister.GetTableName(challengeTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	modelChallenge, challengeID := createAndSaveTestChallenge(t, persister, true)
 
 	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder(
-		[]int{challengeID}, challengeTestTableName)
+		[]int{challengeID}, tableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -1789,7 +2012,7 @@ func TestGetChallenge(t *testing.T) {
 	}
 
 	_, err = persister.challengesByChallengeIDsInTableInOrder(
-		[]int{}, challengeTestTableName)
+		[]int{}, tableName)
 	if err == nil {
 		t.Errorf("Should have received an error on empty challenges ID")
 	}
@@ -1798,7 +2021,7 @@ func TestGetChallenge(t *testing.T) {
 	}
 
 	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder(
-		[]int{1002040929}, challengeTestTableName)
+		[]int{1002040929}, tableName)
 	if err != nil {
 		t.Errorf("Should have received an error on empty challenges ID")
 	}
@@ -1812,12 +2035,10 @@ func TestGetChallenge(t *testing.T) {
 }
 
 func TestGetChallengesForListingAddresses(t *testing.T) {
-	persister, err := setupTestTable(challengeTestTableName)
+	persister := setupChallengeTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, challengeTestTableName)
+	tableName := persister.GetTableName(challengeTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	// Multiple for a single address
 	challenge1, _ := createAndSaveTestChallenge(t, persister, false)
@@ -1836,7 +2057,7 @@ func TestGetChallengesForListingAddresses(t *testing.T) {
 
 	listingChallenges, err := persister.challengesByListingAddressesInTable(
 		addrs,
-		challengeTestTableName,
+		tableName,
 	)
 	if err != nil {
 		t.Errorf("Error getting values from DB: %v", err)
@@ -1881,7 +2102,7 @@ func TestGetChallengesForListingAddresses(t *testing.T) {
 
 	_, err = persister.challengesByListingAddressesInTable(
 		[]common.Address{},
-		challengeTestTableName,
+		tableName,
 	)
 	if err == nil {
 		t.Errorf("Should have received an error on empty addresses")
@@ -1892,7 +2113,7 @@ func TestGetChallengesForListingAddresses(t *testing.T) {
 
 	listingChallenges, err = persister.challengesByListingAddressesInTable(
 		[]common.Address{common.HexToAddress("0x39eD84CE90Bc48DD76C4760DD0F90997Ba274F9d")},
-		challengeTestTableName,
+		tableName,
 	)
 	if err != nil {
 		t.Errorf("Should have received an error on bad address")
@@ -1907,20 +2128,20 @@ func TestGetChallengesForListingAddresses(t *testing.T) {
 }
 
 func TestGetChallengesForListingAddress(t *testing.T) {
-	persister, err := setupTestTable(challengeTestTableName)
+	persister := setupChallengeTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, challengeTestTableName)
+	tableName := persister.GetTableName(challengeTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	_, _ = createAndSaveTestChallenge(t, persister, false)
 	_, _ = createAndSaveTestChallenge(t, persister, false)
 	_, _ = createAndSaveTestChallenge(t, persister, false)
 
 	challengesFromDB, err := persister.challengesByListingAddressInTable(
 		common.HexToAddress(testAddress),
-		challengeTestTableName,
+		tableName,
 	)
+
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -1949,14 +2170,12 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 }
 
 func TestNilResultsChallenges(t *testing.T) {
-	persister, err := setupTestTable(challengeTestTableName)
+	persister := setupChallengeTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, challengeTestTableName)
+	tableName := persister.GetTableName(challengeTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
-	challenge, err := persister.challengeByChallengeIDFromTable(0, challengeTestTableName)
+	challenge, err := persister.challengeByChallengeIDFromTable(0, tableName)
 	if err != cpersist.ErrPersisterNoResults {
 		t.Errorf("Error should be %v but is %v", cpersist.ErrPersisterNoResults, err)
 	}
@@ -1965,7 +2184,7 @@ func TestNilResultsChallenges(t *testing.T) {
 	}
 
 	blankAddress := common.Address{}
-	challenges, err := persister.challengesByListingAddressInTable(blankAddress, challengeTestTableName)
+	challenges, err := persister.challengesByListingAddressInTable(blankAddress, tableName)
 	if err != cpersist.ErrPersisterNoResults {
 		t.Errorf("Error should be no results %v", err)
 	}
@@ -1976,15 +2195,14 @@ func TestNilResultsChallenges(t *testing.T) {
 }
 
 func TestUpdateChallenge(t *testing.T) {
-	persister, err := setupTestTable(challengeTestTableName)
+	persister := setupChallengeTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, challengeTestTableName)
+	tableName := persister.GetTableName(challengeTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	_, challengeID := createAndSaveTestChallenge(t, persister, true)
 
-	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
+	challengesFromDB, err := persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, tableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -1995,12 +2213,12 @@ func TestUpdateChallenge(t *testing.T) {
 	newTotalTokens := big.NewInt(int64(231231312312))
 	challengeFromDB.SetTotalTokens(newTotalTokens)
 
-	err = persister.updateChallengeInTable(challengeFromDB, []string{"TotalTokens"}, challengeTestTableName)
+	err = persister.updateChallengeInTable(challengeFromDB, []string{"TotalTokens"}, tableName)
 	if err != nil {
 		t.Errorf("Error updating challenge: %v", err)
 	}
 
-	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, challengeTestTableName)
+	challengesFromDB, err = persister.challengesByChallengeIDsInTableInOrder([]int{challengeID}, tableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -2030,13 +2248,8 @@ func setupSamplePoll(randListing bool) (*model.Poll, *big.Int) {
 	), pollID
 }
 
-func setupPollTable(t *testing.T) *PostgresPersister {
-	persister, err := setupTestTable(pollTestTableName)
-	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	return persister
+func setupPollTestTable(t *testing.T) *PostgresPersister {
+	return setupTestTable(t, pollTestTableName)
 }
 
 func createAndSaveTestPoll(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Poll, *big.Int) {
@@ -2044,7 +2257,7 @@ func createAndSaveTestPoll(t *testing.T, persister *PostgresPersister, randListi
 	modelPoll, pollID := setupSamplePoll(randListing)
 
 	// insert to table
-	err := persister.createPollInTable(modelPoll, pollTestTableName)
+	err := persister.createPollInTable(modelPoll, persister.GetTableName(pollTestTableName))
 	if err != nil {
 		t.Errorf("error saving poll: %v", err)
 	}
@@ -2052,44 +2265,40 @@ func createAndSaveTestPoll(t *testing.T, persister *PostgresPersister, randListi
 }
 
 func TestCreatePoll(t *testing.T) {
-	persister, err := setupTestTable(pollTestTableName)
+	persister := setupPollTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, pollTestTableName)
+	tableName := persister.GetTableName(pollTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	_, _ = createAndSaveTestPoll(t, persister, true)
 
 }
 
 func TestNilResultsPoll(t *testing.T) {
-	persister, err := setupTestTable(pollTestTableName)
+	persister := setupPollTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, pollTestTableName)
+	tableName := persister.GetTableName(pollTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	pollID := 0
-	poll, err := persister.pollByPollIDFromTable(pollID)
+	poll, err := persister.pollByPollIDFromTable(pollID, tableName)
+	if err != cpersist.ErrPersisterNoResults {
+		t.Errorf("Error getting poll from table: %v", err)
+	}
 	if poll != nil {
 		t.Errorf("Poll should be nil but is %v", poll)
-	}
-	if err != cpersist.ErrPersisterNoResults {
-		t.Errorf("Error should be %v but is %v", cpersist.ErrPersisterNoResults, err)
 	}
 }
 
 func TestUpdatePoll(t *testing.T) {
-	persister, err := setupTestTable(pollTestTableName)
+	persister := setupPollTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, pollTestTableName)
+	tableName := persister.GetTableName(pollTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	_, pollID := createAndSaveTestPoll(t, persister, true)
 
-	pollsFromDB, err := persister.pollsByPollIDsInTableInOrder([]int{int(pollID.Int64())}, pollTestTableName)
+	pollsFromDB, err := persister.pollsByPollIDsInTableInOrder([]int{int(pollID.Int64())}, tableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -2101,12 +2310,12 @@ func TestUpdatePoll(t *testing.T) {
 	newVotes := big.NewInt(30)
 	pollFromDB.UpdateVotesFor(newVotes)
 
-	err = persister.updatePollInTable(pollFromDB, []string{"VotesFor"}, pollTestTableName)
+	err = persister.updatePollInTable(pollFromDB, []string{"VotesFor"}, tableName)
 	if err != nil {
 		t.Errorf("Error updating poll %v", err)
 	}
 
-	pollsFromDB, err = persister.pollsByPollIDsInTableInOrder([]int{int(pollID.Int64())}, pollTestTableName)
+	pollsFromDB, err = persister.pollsByPollIDsInTableInOrder([]int{int(pollID.Int64())}, tableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -2138,19 +2347,15 @@ func setupSampleAppeal(randListing bool) (*model.Appeal, *big.Int) {
 	), originalChallengeID
 }
 
-func setupAppealTable(t *testing.T) *PostgresPersister {
-	persister, err := setupTestTable(appealTestTableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	return persister
+func setupAppealTestTable(t *testing.T) *PostgresPersister {
+	return setupTestTable(t, appealTestTableName)
 }
 
 func createAndSaveTestAppeal(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Appeal, *big.Int) {
 	// sample appeal
 	modelAppeal, challengeID := setupSampleAppeal(randListing)
 	// insert to table
-	err := persister.createAppealInTable(modelAppeal, appealTestTableName)
+	err := persister.createAppealInTable(modelAppeal, persister.GetTableName(appealTestTableName))
 	if err != nil {
 		t.Errorf("error saving appeal: %v", err)
 	}
@@ -2158,26 +2363,24 @@ func createAndSaveTestAppeal(t *testing.T, persister *PostgresPersister, randLis
 }
 
 func TestCreateAppeal(t *testing.T) {
-	persister, err := setupTestTable(appealTestTableName)
+	persister := setupAppealTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, appealTestTableName)
+	tableName := persister.GetTableName(appealTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	_, _ = createAndSaveTestAppeal(t, persister, true)
 
 }
 
 func TestUpdateAppeal(t *testing.T) {
-	persister, err := setupTestTable(appealTestTableName)
+	persister := setupAppealTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, appealTestTableName)
+	tableName := persister.GetTableName(appealTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	_, challengeID := createAndSaveTestAppeal(t, persister, true)
 
-	appealsFromDB, err := persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64())}, appealTestTableName)
+	appealsFromDB, err := persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64())}, tableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -2189,12 +2392,12 @@ func TestUpdateAppeal(t *testing.T) {
 	newChallengeID := big.NewInt(100)
 	appealFromDB.SetAppealChallengeID(newChallengeID)
 
-	err = persister.updateAppealInTable(appealFromDB, []string{"AppealChallengeID"}, appealTestTableName)
+	err = persister.updateAppealInTable(appealFromDB, []string{"AppealChallengeID"}, tableName)
 	if err != nil {
 		t.Errorf("Error updating appeal %v", err)
 	}
 
-	appealsFromDB, err = persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64())}, appealTestTableName)
+	appealsFromDB, err = persister.appealsByChallengeIDsInTableInOrder([]int{int(challengeID.Int64())}, tableName)
 	if err != nil {
 		t.Errorf("Error getting value from DB: %v", err)
 	}
@@ -2208,20 +2411,18 @@ func TestUpdateAppeal(t *testing.T) {
 }
 
 func TestNilResultsAppeal(t *testing.T) {
-	persister, err := setupTestTable(appealTestTableName)
+	persister := setupAppealTestTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, appealTestTableName)
+	tableName := persister.GetTableName(appealTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
-	challengeID := 0
-	appeal, err := persister.appealByChallengeIDFromTable(challengeID)
-	if appeal != nil {
+	challengeIDs := []int{0}
+	appeal, err := persister.appealsByChallengeIDsInTableInOrder(challengeIDs, tableName)
+	if appeal[0] != nil {
 		t.Errorf("Appeal should be nil but is %v", appeal)
 	}
-	if err != cpersist.ErrPersisterNoResults {
-		t.Errorf("Error should be %v but is %v", cpersist.ErrPersisterNoResults, err)
+	if err != nil {
+		t.Errorf("Error getting appeals, err: %v", err)
 	}
 }
 
@@ -2230,17 +2431,16 @@ All tests for cron table:
 */
 
 func TestTypeExistsInCronTable(t *testing.T) {
-	tableName := "cron_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, cronTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(cronTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// insert something
 	queryString := fmt.Sprintf("INSERT INTO %s(data_persisted, data_type) VALUES(0, 'timestamp')", tableName)
-	_, err = persister.db.Exec(queryString)
+	_, err := persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Inserting into the cron table should have worked but it didn't, %v", err)
 	}
@@ -2258,11 +2458,9 @@ func TestTypeExistsInCronTable(t *testing.T) {
 }
 
 func TestTimestampOfLastEventForCron(t *testing.T) {
-	tableName := "cron_test"
-	persister, err := setupTestTable(tableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	persister := setupTestTable(t, cronTestTableName)
+	defer persister.Close()
+	tableName := persister.GetTableName(cronTestTableName)
 	defer deleteTestTable(t, persister, tableName)
 
 	// There should be no rows in the table. In this case lastCronTimestamp should insert a nil value.
@@ -2277,16 +2475,14 @@ func TestTimestampOfLastEventForCron(t *testing.T) {
 }
 
 func TestUpdateTimestampForCron(t *testing.T) {
-	tableName := "cron_test"
-	persister, err := setupTestTable(tableName)
-	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tableName)
 
+	persister := setupTestTable(t, cronTestTableName)
+	defer persister.Close()
+	tableName := persister.GetTableName(cronTestTableName)
+
+	defer deleteTestTable(t, persister, tableName)
 	newTimestamp := int64(1212121212)
-	err = persister.updateCronTimestampInTable(newTimestamp, tableName)
+	err := persister.updateCronTimestampInTable(newTimestamp, tableName)
 	if err != nil {
 		t.Errorf("Error updating cron table, %v", err)
 	}
@@ -2318,12 +2514,11 @@ func TestUpdateTimestampForCron(t *testing.T) {
 }
 
 func TestLastEventHashesFromTable(t *testing.T) {
-	tableName := "cron_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, cronTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(cronTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	// There should be no rows in the table. In this case lastEventHashes should insert a nil value.
@@ -2334,19 +2529,19 @@ func TestLastEventHashesFromTable(t *testing.T) {
 	if strings.Join(eventHashes, ",") != "" {
 		t.Errorf("Event Hashes should be empty but are %v", eventHashes)
 	}
+
 }
 
 func TestUpdateEventHashes(t *testing.T) {
-	tableName := "cron_test"
-	persister, err := setupTestTable(tableName)
+
+	persister := setupTestTable(t, cronTestTableName)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
+	tableName := persister.GetTableName(cronTestTableName)
+
 	defer deleteTestTable(t, persister, tableName)
 
 	newEventHashes := []string{"testhash1", "testhash2"}
-	err = persister.updateEventHashesInTable(newEventHashes, tableName)
+	err := persister.updateEventHashesInTable(newEventHashes, tableName)
 	if err != nil {
 		t.Errorf("Error updating cron table, %v", err)
 	}
@@ -2386,16 +2581,12 @@ func setupSampleTokenTransfer() *model.TokenTransfer {
 }
 
 func setupTokenTransferTable(t *testing.T) *PostgresPersister {
-	persister, err := setupTestTable(tokenTransferTestTableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	return persister
+	return setupTestTable(t, tokenTransferTestTableName)
 }
 
 func createAndSaveTestTokenTransfer(t *testing.T, persister *PostgresPersister) *model.TokenTransfer {
 	transfer := setupSampleTokenTransfer()
-	err := persister.createTokenTransferInTable(transfer, tokenTransferTestTableName)
+	err := persister.createTokenTransferInTable(transfer, persister.GetTableName(tokenTransferTestTableName))
 	if err != nil {
 		t.Errorf("error saving token transfer: %v", err)
 	}
@@ -2403,27 +2594,25 @@ func createAndSaveTestTokenTransfer(t *testing.T, persister *PostgresPersister) 
 }
 
 func TestCreateTokenTransfer(t *testing.T) {
-	persister, err := setupTestTable(tokenTransferTestTableName)
+	persister := setupTokenTransferTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tokenTransferTestTableName)
+	tableName := persister.GetTableName(tokenTransferTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	_ = createAndSaveTestTokenTransfer(t, persister)
 }
 
 func TestGetTokenTransfersForToAddress(t *testing.T) {
-	persister, err := setupTestTable(tokenTransferTestTableName)
+	persister := setupTokenTransferTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tokenTransferTestTableName)
+	tableName := persister.GetTableName(tokenTransferTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
 	transfer := createAndSaveTestTokenTransfer(t, persister)
 
 	purchases, err := persister.tokenTransfersByToAddressFromTable(
 		transfer.ToAddress(),
-		tokenTransferTestTableName,
+		tableName,
 	)
 	if err != nil {
 		t.Errorf("Should have not gotten error from transfer query: err: %v", err)
@@ -2448,18 +2637,16 @@ func TestGetTokenTransfersForToAddress(t *testing.T) {
 }
 
 func TestGetTokenTransfersForTxHash(t *testing.T) {
-	persister, err := setupTestTable(tokenTransferTestTableName)
+	persister := setupTokenTransferTable(t)
 	defer persister.Close()
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	defer deleteTestTable(t, persister, tokenTransferTestTableName)
+	tableName := persister.GetTableName(tokenTransferTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 	transfer := createAndSaveTestTokenTransfer(t, persister)
 
 	blockData := transfer.BlockData()
 	purchases, err := persister.tokenTransfersByTxHashFromTable(
 		common.HexToHash(blockData.TxHash()),
-		tokenTransferTestTableName,
+		tableName,
 	)
 	if err != nil {
 		t.Errorf("Should have not gotten error from transfer query: err: %v", err)
@@ -2521,16 +2708,13 @@ func setupSampleParamProposal2() *model.ParameterProposal {
 	)
 }
 func setupParamProposalTable(t *testing.T) *PostgresPersister {
-	persister, err := setupTestTable(parameterProposalTestTableName)
-	if err != nil {
-		t.Errorf("Error connecting to DB: %v", err)
-	}
-	return persister
+	return setupTestTable(t, parameterProposalTestTableName)
 }
 
 func createAndSaveTestParamProposal(t *testing.T, persister *PostgresPersister) *model.ParameterProposal {
 	paramProposal := setupSampleParamProposal()
-	err := persister.createParameterProposalInTable(paramProposal, parameterProposalTestTableName)
+	tableName := persister.GetTableName(parameterProposalTestTableName)
+	err := persister.createParameterProposalInTable(paramProposal, tableName)
 	if err != nil {
 		t.Errorf("error saving param proposal: %v", err)
 	}
@@ -2539,7 +2723,8 @@ func createAndSaveTestParamProposal(t *testing.T, persister *PostgresPersister) 
 
 func createAndSaveTestParamProposal2(t *testing.T, persister *PostgresPersister) *model.ParameterProposal {
 	paramProposal := setupSampleParamProposal2()
-	err := persister.createParameterProposalInTable(paramProposal, parameterProposalTestTableName)
+	tableName := persister.GetTableName(parameterProposalTestTableName)
+	err := persister.createParameterProposalInTable(paramProposal, tableName)
 	if err != nil {
 		t.Errorf("error saving param proposal: %v", err)
 	}
@@ -2548,21 +2733,22 @@ func createAndSaveTestParamProposal2(t *testing.T, persister *PostgresPersister)
 
 func TestCreateParameterProposal(t *testing.T) {
 	persister := setupParamProposalTable(t)
+	tableName := persister.GetTableName(parameterProposalTestTableName)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 	_ = createAndSaveTestParamProposal(t, persister)
 }
 
 func TestParamProposalByPropID(t *testing.T) {
 	persister := setupParamProposalTable(t)
+	tableName := persister.GetTableName(parameterProposalTestTableName)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, parameterProposalTestTableName)
-
+	defer deleteTestTable(t, persister, tableName)
 	paramProposal := createAndSaveTestParamProposal(t, persister)
 
 	propID := paramProposal.PropID()
 
-	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, parameterProposalTestTableName)
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, tableName)
 	if err != nil {
 		t.Errorf("Error saving parameter proposal to db: %v", err)
 	}
@@ -2574,8 +2760,9 @@ func TestParamProposalByPropID(t *testing.T) {
 
 func TestParamProposalByName(t *testing.T) {
 	persister := setupParamProposalTable(t)
+	tableName := persister.GetTableName(parameterProposalTestTableName)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	_ = createAndSaveTestParamProposal(t, persister)
 	_ = createAndSaveTestParamProposal2(t, persister)
@@ -2584,7 +2771,7 @@ func TestParamProposalByName(t *testing.T) {
 	active := true
 	getAll := false
 
-	dbParamProposalsActive, err := persister.paramProposalByNameFromTable(name, active, parameterProposalTestTableName)
+	dbParamProposalsActive, err := persister.paramProposalByNameFromTable(name, active, tableName)
 	if err != nil {
 		t.Errorf("Error getting parameter proposal from db %v", err)
 	}
@@ -2593,7 +2780,7 @@ func TestParamProposalByName(t *testing.T) {
 		t.Errorf("Number of active proposals should be 1 but is %v", len(dbParamProposalsActive))
 	}
 
-	dbAllParamProposals, err := persister.paramProposalByNameFromTable(name, getAll, parameterProposalTestTableName)
+	dbAllParamProposals, err := persister.paramProposalByNameFromTable(name, getAll, tableName)
 	if err != nil {
 		t.Errorf("Error getting parameter proposal from db %v", err)
 	}
@@ -2605,8 +2792,9 @@ func TestParamProposalByName(t *testing.T) {
 
 func TestUpdateParamProposal(t *testing.T) {
 	persister := setupParamProposalTable(t)
+	tableName := persister.GetTableName(parameterProposalTestTableName)
 	defer persister.Close()
-	defer deleteTestTable(t, persister, parameterProposalTestTableName)
+	defer deleteTestTable(t, persister, tableName)
 
 	paramProposal := createAndSaveTestParamProposal(t, persister)
 	paramProposal.SetAccepted(false)
@@ -2616,12 +2804,12 @@ func TestUpdateParamProposal(t *testing.T) {
 
 	updatedFields := []string{"Accepted", "Expired"}
 
-	err := persister.updateParamProposalInTable(paramProposal, updatedFields, parameterProposalTestTableName)
+	err := persister.updateParamProposalInTable(paramProposal, updatedFields, tableName)
 	if err != nil {
 		t.Errorf("Error updating parameter proposal, %v", err)
 	}
 
-	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, parameterProposalTestTableName)
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, tableName)
 	if err != nil {
 		t.Errorf("Error getting param proposal from db, err %v", err)
 	}
@@ -2632,5 +2820,262 @@ func TestUpdateParamProposal(t *testing.T) {
 
 	if !dbParamProposal.Expired() {
 		t.Error("Wrong value for expired field after update")
+	}
+}
+
+/*
+ * All tests for user_challenge_data table:
+ */
+
+func setupSampleUserChallengeData(userAddress common.Address, pollID *big.Int,
+	pollRevealEndDate *big.Int, latestVote bool) *model.UserChallengeData {
+	numTokens := big.NewInt(1000)
+	userDidCommit := true
+	pollType := model.ChallengePollType
+	lastUpdatedDateTs := ctime.CurrentEpochSecsInInt64()
+	voteCommittedTs := lastUpdatedDateTs
+	ucd := model.NewUserChallengeData(
+		userAddress, pollID, numTokens, userDidCommit, pollRevealEndDate, pollType,
+		voteCommittedTs, lastUpdatedDateTs,
+	)
+	ucd.SetLatestVote(latestVote)
+	return ucd
+}
+
+func setupUserChallengeDataTable(t *testing.T) *PostgresPersister {
+	return setupTestTable(t, userChallengeDataTestTableName)
+}
+
+func createAndSaveTestUserChallengeData(t *testing.T, persister *PostgresPersister,
+	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int,
+	latestVote bool) *model.UserChallengeData {
+	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate,
+		latestVote)
+	tableName := persister.GetTableName(userChallengeDataTestTableName)
+	err := persister.createUserChallengeDataInTable(userChallengeData, tableName)
+	if err != nil {
+		t.Errorf("error saving user challenge data: %v", err)
+	}
+	return userChallengeData
+}
+
+func createAndSaveTestUserChallengeDataForCollect(t *testing.T, persister *PostgresPersister,
+	userAddress common.Address, pollID *big.Int, pollRevealEndDate *big.Int, isPassed bool) *model.UserChallengeData {
+	userChallengeData := setupSampleUserChallengeData(userAddress, pollID, pollRevealEndDate, true)
+	tableName := persister.GetTableName(userChallengeDataTestTableName)
+	userChallengeData.SetChoice(big.NewInt(1))
+	userChallengeData.SetDidUserCollect(false)
+	userChallengeData.SetPollIsPassed(isPassed)
+	err := persister.createUserChallengeDataInTable(userChallengeData, tableName)
+	if err != nil {
+		t.Errorf("error saving user challenge data: %v", err)
+	}
+	return userChallengeData
+}
+
+func TestCreateUserChallengeData(t *testing.T) {
+	persister := setupUserChallengeDataTable(t)
+	tableName := persister.GetTableName(userChallengeDataTestTableName)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, tableName)
+	pollID := big.NewInt(1)
+	userAddress := common.HexToAddress(testAddress)
+	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID, pollRevealEndDate,
+		true)
+}
+
+func TestUserChallengeByCriteria(t *testing.T) {
+	persister := setupUserChallengeDataTable(t)
+	tableName := persister.GetTableName(userChallengeDataTestTableName)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, tableName)
+	pollID1 := big.NewInt(1)
+	userAddress := common.HexToAddress(testAddress)
+	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
+	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1,
+		pollRevealEndDate, true)
+
+	userChallengeDataDB, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress: userAddress.Hex(),
+		PollID:      pollID1.Uint64(),
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if userChallengeData.PollID().Cmp(userChallengeDataDB[0].PollID()) != 0 {
+		t.Errorf("Field mismatch %v, %v", userChallengeData.PollID(), userChallengeDataDB[0].PollID())
+	}
+	if userChallengeData.UserAddress() != userChallengeDataDB[0].UserAddress() {
+		t.Errorf("Field mismatch %v, %v", userChallengeData.UserAddress(), userChallengeDataDB[0].UserAddress())
+	}
+
+	// hexAddress := cstrings.RandomHexStr(32)
+	// userAddress2 := common.HexToAddress(hexAddress)
+	pollID2 := big.NewInt(2)
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID2, pollRevealEndDate, true)
+
+	userChallengeDataDB2, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress: userAddress.Hex(),
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if len(userChallengeDataDB2) != 2 {
+		t.Errorf("Should have gotten 2 objects, but only got %v", len(userChallengeDataDB2))
+	}
+
+	if userChallengeDataDB2[0].PollID().Cmp(pollID1) != 0 && userChallengeDataDB2[1].PollID().Cmp(pollID2) != 0 {
+		t.Errorf("PollIDs are not correct")
+	}
+
+	userChallengeDataDB3, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress:   userAddress.Hex(),
+		CanUserReveal: true,
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if len(userChallengeDataDB3) != 2 {
+		t.Errorf("Should have 2 userchallengedata objects but only have %v", userChallengeDataDB3)
+	}
+
+	pollID3 := big.NewInt(3)
+	earlierRevealDate := big.NewInt(ctime.CurrentEpochSecsInInt64() - int64(2))
+
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID3,
+		earlierRevealDate, true)
+
+	userChallengeDataDB4, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress:   userAddress.Hex(),
+		CanUserRescue: true,
+	}, tableName)
+
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if len(userChallengeDataDB4) != 1 {
+		t.Errorf("Should only have 1 result but have %v", len(userChallengeDataDB4))
+	}
+
+	pollID4 := big.NewInt(4)
+	_ = createAndSaveTestUserChallengeDataForCollect(t, persister,
+		userAddress, pollID4, earlierRevealDate, true)
+
+	userChallengeDataDB5, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		CanUserCollect: true,
+	}, tableName)
+
+	if err != nil {
+		t.Errorf("Error getting data from table %v", err)
+	}
+
+	if len(userChallengeDataDB5) != 1 {
+		t.Errorf("Should have 1 result but have %v", len(userChallengeDataDB5))
+	}
+}
+
+func TestUpdateUserChallengeData(t *testing.T) {
+	persister := setupUserChallengeDataTable(t)
+	tableName := persister.GetTableName(userChallengeDataTestTableName)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, tableName)
+
+	pollID1 := big.NewInt(1)
+	userAddress := common.HexToAddress(testAddress)
+	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
+	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1,
+		pollRevealEndDate, true)
+
+	// NOTE: don't need L2788
+	userChallengeData.SetPollIsPassed(true)
+
+	updateInUserChallengeData := &model.UserChallengeData{}
+	updateInUserChallengeData.SetPollIsPassed(true)
+	updateInUserChallengeData.SetPollID(pollID1)
+	updatedFields := []string{"PollIsPassed"}
+	updateWithUserAddress := false
+
+	err := persister.updateUserChallengeDataInTable(updateInUserChallengeData, updatedFields,
+		updateWithUserAddress, true, tableName)
+	if err != nil {
+		t.Errorf("Error updating userchallengedata: %v", err)
+	}
+
+	// check to see if all userchallengedata objects with this pollID have pollID is passed updated
+	userChallengeDataDB, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		PollID: pollID1.Uint64(),
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error saving data to table %v", err)
+	}
+
+	if !userChallengeDataDB[0].PollIsPassed() {
+		t.Error("pollIsPassed field should have been updated")
+	}
+	if userChallengeDataDB[0].PollRevealEndDate().Cmp(pollRevealEndDate) != 0 {
+		t.Error("pollRevealEndDate value is wrong")
+	}
+}
+
+func TestMultipleVoteCommitted(t *testing.T) {
+	persister := setupUserChallengeDataTable(t)
+	tableName := persister.GetTableName(userChallengeDataTestTableName)
+	defer persister.Close()
+	defer deleteTestTable(t, persister, tableName)
+
+	pollID1 := big.NewInt(1)
+	userAddress := common.HexToAddress(testAddress)
+	pollRevealEndDate := big.NewInt(ctime.CurrentEpochSecsInInt64() + int64(60*2))
+	_ = createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1,
+		pollRevealEndDate, false)
+
+	userChallengeData := createAndSaveTestUserChallengeData(t, persister, userAddress, pollID1,
+		pollRevealEndDate, true)
+
+	userChallengeDataDB4, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress: userAddress.Hex(),
+		PollID:      pollID1.Uint64(),
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting userchallengedata: err %v", err)
+	}
+
+	if len(userChallengeDataDB4) != 1 {
+		t.Error("Should have only 1 userChallengeData returned")
+	}
+
+	userChallengeData.SetPollIsPassed(true)
+	updateInUserChallengeData := &model.UserChallengeData{}
+	updateInUserChallengeData.SetPollIsPassed(true)
+	updateInUserChallengeData.SetPollID(pollID1)
+	updatedFields := []string{"PollIsPassed"}
+	updateWithUserAddress := false
+	err = persister.updateUserChallengeDataInTable(updateInUserChallengeData, updatedFields,
+		updateWithUserAddress, true, tableName)
+	if err != nil {
+		t.Errorf("Error updating userchallengedata: %v", err)
+	}
+
+	userChallengeDataDB5, err := persister.userChallengeDataByCriteriaFromTable(&model.UserChallengeDataCriteria{
+		UserAddress: userAddress.Hex(),
+		PollID:      pollID1.Uint64(),
+	}, tableName)
+	if err != nil {
+		t.Errorf("Error getting userchallengedata: err %v", err)
+	}
+
+	if len(userChallengeDataDB5) != 1 {
+		t.Error("Should have only 1 userChallengeData returned")
+	}
+	if userChallengeDataDB5[0].PollIsPassed() == false {
+		t.Error("PollIsPassed should be true")
+	}
+	if userChallengeDataDB5[0].LatestVote() == false {
+		t.Error("latestVote should be false")
 	}
 }

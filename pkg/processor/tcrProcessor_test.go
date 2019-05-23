@@ -1,7 +1,7 @@
 package processor_test
 
 import (
-	"fmt"
+	// "fmt"
 	"math/big"
 	// "reflect"
 	"runtime"
@@ -22,7 +22,6 @@ import (
 )
 
 var (
-	testAddress  = "0xDFe273082089bB7f70Ee36Eebcde64832FE97E55"
 	challengeID1 = big.NewInt(120)
 	// appealChallengeID1 = big.NewInt(130)
 )
@@ -30,11 +29,11 @@ var (
 func memoryCheck(contracts *contractutils.AllTestContracts) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	fmt.Printf("alloc = %v, totalalloc = %v, sys = %v, gor = %v\n",
-		m.Alloc/1000000,
-		m.TotalAlloc/1000000,
-		m.Sys/1000000,
-		runtime.NumGoroutine())
+	// fmt.Printf("alloc = %v, totalalloc = %v, sys = %v, gor = %v\n",
+	// 	m.Alloc/1000000,
+	// 	m.TotalAlloc/1000000,
+	// 	m.Sys/1000000,
+	// 	runtime.NumGoroutine())
 	// contracts.ClearStruct()
 	runtime.GC()
 }
@@ -234,15 +233,25 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	return event
 // }
 
+// func createNewPollInPersistenceForTCRTest(challengeID *big.Int, persister *testutils.TestPersister,
+// 	commitEndDate *big.Int, revealEndDate *big.Int) {
+// 	poll := model.NewPoll(challengeID, commitEndDate, revealEndDate, big.NewInt(1000),
+// 		big.NewInt(100), big.NewInt(100), ctime.CurrentEpochSecsInInt64())
+// 	_ = persister.CreatePoll(poll)
+// }
+
 // func createAndProcChallenge1(t *testing.T,
 // 	tcrProc *processor.TcrEventProcessor, newsroomAddress common.Address,
-// 	tcrAddress common.Address) *crawlermodel.Event {
+// 	tcrAddress common.Address, persister *testutils.TestPersister) *crawlermodel.Event {
+// 	// NOTE: if creating new challenge, also have to create a new poll
+// 	commitEndDate := big.NewInt(1653860896)
+// 	revealEndDate := big.NewInt(1653860896)
 // 	challenge1 := &contract.CivilTCRContractChallenge{
 // 		ListingAddress: newsroomAddress,
 // 		ChallengeID:    challengeID1,
 // 		Data:           "DATA",
-// 		CommitEndDate:  big.NewInt(1653860896),
-// 		RevealEndDate:  big.NewInt(1653860896),
+// 		CommitEndDate:  commitEndDate,
+// 		RevealEndDate:  revealEndDate,
 // 		Challenger:     common.HexToAddress(testAddress),
 // 		Raw: types.Log{
 // 			Address:     common.HexToAddress(testAddress),
@@ -264,6 +273,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 		ctime.CurrentEpochSecsInInt64(),
 // 		crawlermodel.Filterer,
 // 	)
+// 	createNewPollInPersistenceForTCRTest(challengeID1, persister, commitEndDate, revealEndDate)
 // 	_, err := tcrProc.Process(event)
 // 	if err != nil {
 // 		t.Errorf("Should not have failed processing events: err: %v", err)
@@ -631,6 +641,8 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 		persister,
 // 		persister,
 // 		persister,
+// 		persister,
+// 		persister,
 // 		persister)
 // 	return contracts, persister, tcrProc
 // }
@@ -639,7 +651,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	contracts, persister, tcrProc := setupTcrProcessor(t)
 // 	listingAddress := contracts.NewsroomAddr.Hex()
 // 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	_ = createAndProcChallenge1Succeeded(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 // 	_ = createAndProcAppealRequested(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 // 	_ = createAndProcAppealGranted(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
@@ -814,7 +826,8 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	listing := persister.Listings[listingAddress]
 // 	unstakedDeposit := listing.UnstakedDeposit()
 
-// 	challengeEvent := createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	challengeEvent := createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr,
+// 		contracts.CivilTcrAddr, persister)
 // 	eventPayload := challengeEvent.EventPayload()
 
 // 	listing = persister.Listings[listingAddress]
@@ -860,7 +873,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	// listing := persister.listings[listingAddress]
 // 	// unstakedDeposit := listing.UnstakedDeposit()
 
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	challengeFailedEvent := createAndProcChallenge1Failed(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 // 	challengeFailedEventPayload := challengeFailedEvent.EventPayload()
 
@@ -889,7 +902,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	// listing := persister.listings[listingAddress]
 // 	// unstakedDeposit := listing.UnstakedDeposit()
 
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	challengeSucceededEvent := createAndProcChallenge1Succeeded(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 // 	challengeSucceededEventPayload := challengeSucceededEvent.EventPayload()
 
@@ -918,7 +931,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 // 	listingAddress := contracts.NewsroomAddr.Hex()
 
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	_ = createAndProcChallenge1Failed(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 
 // 	challengeOverturnedEvent := createAndProcFailedChallenge1Overturned(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
@@ -945,7 +958,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 // 	listingAddress := contracts.NewsroomAddr.Hex()
 // 	listing := persister.Listings[listingAddress]
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	_ = createAndProcChallenge1Succeeded(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 
 // 	challengeOverturnedEvent := createAndProcSuccessfulChallenge1Overturned(t, tcrProc,
@@ -974,7 +987,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	// Appeal: new appeal
 // 	contracts, persister, tcrProc := setupTcrProcessor(t)
 // 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	_ = createAndProcChallenge1Succeeded(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 
 // 	appealRequestedEvent := createAndProcAppealRequested(t, tcrProc,
@@ -1010,7 +1023,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	// Appeal: appealGranted, appealOpenToChallengeExpiry
 // 	contracts, persister, tcrProc := setupTcrProcessor(t)
 // 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	_ = createAndProcChallenge1Succeeded(t, tcrProc, contracts.NewsroomAddr,
 // 		contracts.CivilTcrAddr)
 
@@ -1046,7 +1059,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	// Challenge: new challenge
 // 	contracts, persister, tcrProc := setupTcrProcessor(t)
 // 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	_ = createAndProcChallenge1Succeeded(t, tcrProc, contracts.NewsroomAddr,
 // 		contracts.CivilTcrAddr)
 
@@ -1082,7 +1095,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	// Challenge: resolved, totalTokens, changes from call to resolveOverturnedChallenge()
 // 	contracts, persister, tcrProc := setupTcrProcessor(t)
 // 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	_ = createAndProcChallenge1Succeeded(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 
 // 	_ = createAndProcAppealRequested(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
@@ -1120,7 +1133,7 @@ func createAndProcAppEvent(t *testing.T, tcrProc *processor.TcrEventProcessor,
 // 	// Appeal: overturned -- we don't have an overturned field
 // 	contracts, persister, tcrProc := setupTcrProcessor(t)
 // 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
-// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
+// 	_ = createAndProcChallenge1(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr, persister)
 // 	_ = createAndProcChallenge1Succeeded(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 
 // 	_ = createAndProcAppealRequested(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
