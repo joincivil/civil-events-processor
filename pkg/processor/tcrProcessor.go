@@ -120,7 +120,7 @@ func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	// NOTE(IS): RewardClaimed is the only TCR event that doesn't emit a listingAddress
 	if eventName == "RewardClaimed" {
 		challengeID, errID := t.challengeIDFromEvent(event)
-		if err != nil {
+		if errID != nil {
 			return ran, errID
 		}
 		log.Infof("Handling Reward Claimed for Challenge %v\n", challengeID)
