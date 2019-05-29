@@ -295,7 +295,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:52d6c9d1c16503fdcea28e4dde6445c334d225ee66a48abc2df8f3dfc36f5c30"
+  digest = "1:4e6da000dcb3c391fe7f1516c1161551eeaa3071c1b7a71eeacb50f1f2405beb"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
@@ -313,7 +313,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "0363615657eccffde8bafc2418e7787a8a568702"
+  revision = "a4bddb2a6977717ad13fc92d7142c418f2e42f85"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
@@ -772,6 +772,7 @@
     "github.com/joincivil/go-common/pkg/bytes",
     "github.com/joincivil/go-common/pkg/config",
     "github.com/joincivil/go-common/pkg/errors",
+    "github.com/joincivil/go-common/pkg/eth",
     "github.com/joincivil/go-common/pkg/generated/contract",
     "github.com/joincivil/go-common/pkg/http",
     "github.com/joincivil/go-common/pkg/numbers",
