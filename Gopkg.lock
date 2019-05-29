@@ -277,7 +277,7 @@
   revision = "0dae4fefe7c0e190f7b5a78dac28a1c82cc8d849"
 
 [[projects]]
-  branch = "png/update-go-ethereum"
+  branch = "master"
   digest = "1:d09b1912cff03a200ce7fd1668b3d61ae50766f50c90f13cc3384e1feb4cf860"
   name = "github.com/joincivil/civil-events-crawler"
   packages = [
@@ -290,7 +290,7 @@
     "pkg/utils",
   ]
   pruneopts = "UT"
-  revision = "896e1127e928ca73dfe5438ca872b4618a3ada8c"
+  revision = "104ac5b260df70d82168cf9d4905326214aef81b"
 
 [[projects]]
   branch = "master"

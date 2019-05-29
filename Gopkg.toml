@@ -48,7 +48,7 @@ required = ["github.com/99designs/gqlgen"]
 
 [[constraint]]
   name = "github.com/joincivil/civil-events-crawler"
-  branch = "png/update-go-ethereum"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/davecgh/go-spew"
