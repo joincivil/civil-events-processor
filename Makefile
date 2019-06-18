@@ -21,8 +21,12 @@ DOCKER:=$(shell command -v docker 2> /dev/null)
 APT:=$(shell command -v apt-get 2> /dev/null)
 
 ## Gometalinter installation
-GOMETALINTER_INSTALLER=scripts/gometalinter_install.sh
-GOMETALINTER_VERSION_TAG=v2.0.11
+# GOMETALINTER_INSTALLER=scripts/gometalinter_install.sh
+# GOMETALINTER_VERSION_TAG=v2.0.11
+
+# curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin vX.Y.Z
+GOLANGCILINT_URL=https://install.goreleaser.com/github.com/golangci/golangci-lint.sh
+GOLANGCILINT_VERSION_TAG=v1.16.0
 
 ## Reliant on go and $GOPATH being set
 .PHONY: check-go-env
@@ -50,6 +54,7 @@ install-dep: check-go-env ## Installs dep
 .PHONY: install-linter
 install-linter: check-go-env ## Installs linter
 	sh $(GOMETALINTER_INSTALLER) -b $(GOPATH)/bin $(GOMETALINTER_VERSION_TAG)
+		@curl -sfL $(GOLANGCILINT_URL) | sh -s -- -b $(shell go env GOPATH)/bin $(GOLANGCILINT_VERSION_TAG)
 ifdef APT
 	@sudo apt-get install golang-race-detector-runtime || true
 endif
@@ -79,7 +84,7 @@ ifeq ("$(wildcard $(POSTGRES_DATA_DIR))", "")
 endif
 	docker run -e "POSTGRES_USER="$(POSTGRES_USER) -e "POSTGRES_PASSWORD"=$(POSTGRES_PSWD) -e "POSTGRES_DB"=$(POSTGRES_DB_NAME) \
 	    -v $$PWD/$(POSTGRES_DATA_DIR)/postgresql:/var/lib/postgresql -d -p $(POSTGRES_PORT):$(POSTGRES_PORT) \
-		$(POSTGRES_DOCKER_IMAGE);
+		$(POSTGRES_DOCKER_IMAGE) -N 500;
 
 .PHONY: postgres-check-available
 postgres-check-available:
@@ -112,10 +117,10 @@ pubsub-stop: check-docker-env ## Stops the pubsub simulator
 	@docker stop `docker ps -q --filter "ancestor=$(PUBSUB_SIM_DOCKER_IMAGE)"`
 	@echo 'Google pubsub simulator down'
 
-## gometalinter config in .gometalinter.json
+## golangci-lint config in .golangci.yml
 .PHONY: lint
 lint: ## Runs linting.
-	@gometalinter ./...
+	@golangci-lint run ./...
 
 .PHONY: build
 build: ## Builds the main file
@@ -127,7 +132,7 @@ test: ## Runs unit tests and tests code coverage
 
 .PHONY: test-integration
 test-integration: ## Runs tagged integration tests
-	@echo 'mode: atomic' > coverage.txt && PUBSUB_EMULATOR_HOST=localhost:8042 $(GOTEST) -covermode=atomic -coverprofile=coverage.txt -v -race -timeout=10m -tags=integration ./...
+	@echo 'mode: atomic' > coverage.txt && PUBSUB_EMULATOR_HOST=localhost:8042 $(GOTEST) -covermode=atomic -coverprofile=coverage.txt -v -race -timeout=2m -tags=integration ./...
 
 .PHONY: cover
 cover: test ## Runs unit tests, code coverage, and runs HTML coverage tool.

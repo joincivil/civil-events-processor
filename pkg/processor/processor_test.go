@@ -191,6 +191,10 @@ func TestProcessor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to setup the contracts: %v", err)
 	}
+	// _, err = contracts.CivilTcrContract.Challenge(&bind.TransactOpts{}, contracts.NewsroomAddr, "")
+	// if err != nil {
+	// 	t.Fatalf("Was not able to challenge: err: %v", err)
+	// }
 	persister := &testutils.TestPersister{}
 	processorParams := &processor.NewEventProcessorParams{
 		Client:                 contracts.Client,
@@ -211,12 +215,12 @@ func TestProcessor(t *testing.T) {
 	if len(persister.Listings) != 1 {
 		t.Errorf("Should have only seen 1 listing but saw %v", len(persister.Listings))
 	}
-	if len(persister.GovEvents[contracts.NewsroomAddr.Hex()]) != 3 {
+	if len(persister.GovEvents[contracts.NewsroomAddr.Hex()]) != 2 {
 		t.Errorf("Should have seen 2 govEvents but saw %v", len(persister.GovEvents[contracts.NewsroomAddr.Hex()]))
 	}
-	if len(persister.Challenges) != 1 {
-		t.Errorf("Should have seen 1 challenge but saw %v", len(persister.Challenges))
-	}
+	// if len(persister.Challenges) != 1 {
+	// 	t.Errorf("Should have seen 1 challenge but saw %v", len(persister.Challenges))
+	// }
 	if len(persister.Revisions[contracts.NewsroomAddr.Hex()]) != 1 {
 		t.Errorf("Should have seen 1 revision but saw %v", len(persister.Revisions))
 	}

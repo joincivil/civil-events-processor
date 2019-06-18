@@ -43,12 +43,12 @@ required = ["github.com/99designs/gqlgen"]
   revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/ethereum/go-ethereum"
+  revision = "008d250e3c57e1b8a350c8049fe4af71cf26a7e9"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/joincivil/civil-events-crawler"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/davecgh/go-spew"
