@@ -176,5 +176,11 @@ func postgresPersister(config cconfig.PersisterConfig, versionNumber string) (*p
 		// log.Errorf("Error creating table indices, stopping...; err: %v", err)
 		return nil, err
 	}
+	// Attempts to run all the necessary table updates/migrations here
+	err = persister.RunMigrations()
+	if err != nil {
+		// log.Errorf("Error running migrations, stopping...; err: %v", err)
+		return nil, err
+	}
 	return persister, nil
 }
