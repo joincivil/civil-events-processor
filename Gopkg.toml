@@ -47,6 +47,10 @@ required = ["github.com/99designs/gqlgen"]
   revision = "008d250e3c57e1b8a350c8049fe4af71cf26a7e9"
 
 [[constraint]]
+  branch = "master"
+  name = "github.com/joincivil/go-common"
+
+[[constraint]]
   name = "github.com/joincivil/civil-events-crawler"
   branch = "master"
 

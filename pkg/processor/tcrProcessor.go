@@ -589,7 +589,7 @@ func (t *TcrEventProcessor) updateUserChallengeDataForChallengeRes(pollID *big.I
 		salt := userChallengeData.Salt()
 		voterReward, err := tcrContract.VoterReward(&bind.CallOpts{}, voter, pollID, salt)
 		if err != nil {
-			log.Errorf("Error getting voter reward: %v, %v, %v, err: %v", voter, pollID, salt, err)
+			log.Errorf("Error getting voter reward: %v, %v, %v, err: %v", voter.Hex(), pollID, salt, err)
 		}
 		var isVoterWinner bool
 		if (pollIsPassed && userChallengeData.Choice().Int64() == 1) ||
