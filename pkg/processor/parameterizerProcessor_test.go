@@ -15,6 +15,7 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
+	cerrors "github.com/joincivil/go-common/pkg/errors"
 	"github.com/joincivil/go-common/pkg/generated/contract"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
@@ -37,6 +38,7 @@ func setupParameterizerProcessor(t *testing.T) (*contractutils.AllTestContracts,
 		persister,
 		persister,
 		persister,
+		&cerrors.NullErrorReporter{},
 	)
 	return contracts, persister, paramProc
 }

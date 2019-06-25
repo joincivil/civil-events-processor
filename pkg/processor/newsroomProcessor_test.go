@@ -14,6 +14,7 @@ import (
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
+	cerrors "github.com/joincivil/go-common/pkg/errors"
 	ctime "github.com/joincivil/go-common/pkg/time"
 )
 
@@ -172,12 +173,14 @@ func setupApplicationAndNewsroomProcessor(t *testing.T) (*contractutils.AllTestC
 		persister,
 		persister,
 		persister,
-		persister)
+		persister,
+		&cerrors.NullErrorReporter{})
 	_ = createAndProcAppEvent(t, tcrProc, contracts.NewsroomAddr, contracts.CivilTcrAddr)
 	newsroomProc := processor.NewNewsroomEventProcessor(
 		contracts.Client,
 		persister,
-		persister)
+		persister,
+		&cerrors.NullErrorReporter{})
 	return contracts, persister, newsroomProc
 }
 
