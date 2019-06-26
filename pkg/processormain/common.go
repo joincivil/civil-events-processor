@@ -12,6 +12,7 @@ import (
 
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/persistence"
 	"github.com/joincivil/civil-events-processor/pkg/processor"
 	"github.com/joincivil/civil-events-processor/pkg/utils"
 
@@ -103,6 +104,7 @@ func initPubSubEvents(config *utils.ProcessorConfig, ps *cpubsub.GooglePubSub) (
 
 // InitializedPersisters contains initialized persisters needed to run processor
 type InitializedPersisters struct {
+	Persister         *persistence.PostgresPersister
 	Cron              model.CronPersister
 	Event             crawlermodel.EventDataPersister
 	Listing           model.ListingPersister
@@ -118,9 +120,9 @@ type InitializedPersisters struct {
 
 // InitPersisters inits the persisters from the config file
 func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, error) {
-	cronPersister, err := helpers.CronPersister(config, config.VersionNumber)
+	persister, err := helpers.Persister(config, config.VersionNumber)
 	if err != nil {
-		log.Errorf("Error getting the cron persister: %v", err)
+		log.Errorf("Error getting the persister: %v", err)
 		return nil, err
 	}
 	eventPersister, err := helpers.EventPersister(config)
@@ -128,109 +130,26 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		log.Errorf("Error getting the event persister: %v", err)
 		return nil, err
 	}
-	listingPersister, err := helpers.ListingPersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w listingPersister: err: %v", err)
-		return nil, err
-	}
-	contentRevisionPersister, err := helpers.ContentRevisionPersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w contentRevisionPersister: err: %v", err)
-		return nil, err
-	}
-	governanceEventPersister, err := helpers.GovernanceEventPersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w governanceEventPersister: err: %v", err)
-		return nil, err
-	}
-	challengePersister, err := helpers.ChallengePersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w ChallengePersister: err: %v", err)
-		return nil, err
-	}
-	pollPersister, err := helpers.PollPersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w PollPersister: err: %v", err)
-		return nil, err
-	}
-	appealPersister, err := helpers.AppealPersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w AppealPersister: err: %v", err)
-		return nil, err
-	}
-	transferPersister, err := helpers.TokenTransferPersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w transferPersister: err: %v", err)
-		return nil, err
-	}
-	paramProposalPersister, err := helpers.ParameterizerPersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w paramProposalPersister %v", err)
-		return nil, err
-	}
-	userChallengeDataPersister, err := helpers.UserChallengeDataPersister(config, config.VersionNumber)
-	if err != nil {
-		log.Errorf("Error w userChallengeDataPersister %v", err)
-		return nil, err
-	}
+
 	return &InitializedPersisters{
-		Cron:              cronPersister,
+		Persister:         persister.(*persistence.PostgresPersister),
+		Cron:              persister.(model.CronPersister),
 		Event:             eventPersister,
-		Listing:           listingPersister,
-		ContentRevision:   contentRevisionPersister,
-		GovernanceEvent:   governanceEventPersister,
-		Challenge:         challengePersister,
-		Poll:              pollPersister,
-		Appeal:            appealPersister,
-		TokenTransfer:     transferPersister,
-		ParameterProposal: paramProposalPersister,
-		UserChallengeData: userChallengeDataPersister,
+		Listing:           persister.(model.ListingPersister),
+		ContentRevision:   persister.(model.ContentRevisionPersister),
+		GovernanceEvent:   persister.(model.GovernanceEventPersister),
+		Challenge:         persister.(model.ChallengePersister),
+		Poll:              persister.(model.PollPersister),
+		Appeal:            persister.(model.AppealPersister),
+		TokenTransfer:     persister.(model.TokenTransferPersister),
+		ParameterProposal: persister.(model.ParamProposalPersister),
+		UserChallengeData: persister.(model.UserChallengeDataPersister),
 	}, nil
 }
 
 // ClosePersisters closes all the initialized persisters via Close()
 func ClosePersisters(persisters *InitializedPersisters) {
-	err := persisters.Cron.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	// err = persisters.Event.Close()
-	// if err != nil {
-	// 	log.Errorf("Error closing persister: err: %v", err)
-	// }
-	err = persisters.Listing.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	err = persisters.ContentRevision.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	err = persisters.GovernanceEvent.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	err = persisters.Challenge.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	err = persisters.Poll.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	err = persisters.Appeal.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	err = persisters.TokenTransfer.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	err = persisters.ParameterProposal.Close()
-	if err != nil {
-		log.Errorf("Error closing persister: err: %v", err)
-	}
-	err = persisters.UserChallengeData.Close()
+	err := persisters.Persister.Close()
 	if err != nil {
 		log.Errorf("Error closing persister: err: %v", err)
 	}
