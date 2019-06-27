@@ -4,6 +4,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/robfig/cron"
@@ -84,7 +85,13 @@ func (c *ProcessorConfig) OutputUsage() {
 // PopulateFromEnv processes the environment vars, populates ProcessorConfig
 // with the respective values, and validates the values.
 func (c *ProcessorConfig) PopulateFromEnv() error {
-	err := envconfig.Process(envVarPrefixProcessor, c)
+	envEnvVar := fmt.Sprintf("%v_ENV", strings.ToUpper(envVarPrefixProcessor))
+	err := cconfig.PopulateFromDotEnv(envEnvVar)
+	if err != nil {
+		return err
+	}
+
+	err = envconfig.Process(envVarPrefixProcessor, c)
 	if err != nil {
 		return err
 	}
