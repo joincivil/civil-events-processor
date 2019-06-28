@@ -814,9 +814,13 @@ func (p *PostgresPersister) updateListingInTable(listing *model.Listing, updated
 		return errors.Wrap(err, "error creating query string for update")
 	}
 	dbListing := postgres.NewListing(listing)
-	_, err = p.db.NamedExec(queryString, dbListing)
+	result, err := p.db.NamedExec(queryString, dbListing)
 	if err != nil {
 		return errors.Wrap(err, "error updating fields in db")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -975,9 +979,14 @@ func (p *PostgresPersister) updateContentRevisionInTable(revision *model.Content
 		return errors.WithMessage(err, "error creating query string for update")
 	}
 	dbContentRevision := postgres.NewContentRevision(revision)
-	_, err = p.db.NamedExec(queryString, dbContentRevision)
+
+	result, err := p.db.NamedExec(queryString, dbContentRevision)
 	if err != nil {
 		return errors.Wrap(err, "error updating fields in db")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -1134,9 +1143,13 @@ func (p *PostgresPersister) updateGovernanceEventInTable(govEvent *model.Governa
 		return errors.Wrap(err, "error creating query string for update")
 	}
 	dbGovEvent := postgres.NewGovernanceEvent(govEvent)
-	_, err = p.db.NamedExec(queryString, dbGovEvent)
+	result, err := p.db.NamedExec(queryString, dbGovEvent)
 	if err != nil {
 		return errors.Wrap(err, "error updating fields in db")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -1187,9 +1200,13 @@ func (p *PostgresPersister) updateChallengeInTable(challenge *model.Challenge, u
 	}
 
 	dbChallenge := postgres.NewChallenge(challenge)
-	_, err = p.db.NamedExec(queryString, dbChallenge)
+	result, err := p.db.NamedExec(queryString, dbChallenge)
 	if err != nil {
 		return errors.Wrap(err, "error updating fields in challenge table")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -1389,9 +1406,13 @@ func (p *PostgresPersister) updatePollInTable(poll *model.Poll, updatedFields []
 		return errors.Wrap(err, "error creating query string for update")
 	}
 	dbPoll := postgres.NewPoll(poll)
-	_, err = p.db.NamedExec(queryString, dbPoll)
+	result, err := p.db.NamedExec(queryString, dbPoll)
 	if err != nil {
 		return errors.Wrap(err, "error updating fields in poll table")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -1487,9 +1508,13 @@ func (p *PostgresPersister) updateAppealInTable(appeal *model.Appeal, updatedFie
 	}
 
 	dbAppeal := postgres.NewAppeal(appeal)
-	_, err = p.db.NamedExec(queryString, dbAppeal)
+	result, err := p.db.NamedExec(queryString, dbAppeal)
 	if err != nil {
 		return errors.Wrap(err, "error updating fields in appeal table")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -1805,9 +1830,14 @@ func (p *PostgresPersister) updateParamProposalInTable(paramProposal *model.Para
 		return fmt.Errorf("Error creating query string for update: %v ", err)
 	}
 	dbParamProposal := postgres.NewParameterProposal(paramProposal)
-	_, err = p.db.NamedExec(queryString, dbParamProposal)
+
+	result, err := p.db.NamedExec(queryString, dbParamProposal)
 	if err != nil {
 		return fmt.Errorf("Error updating fields in db: %v", err)
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -1937,9 +1967,14 @@ func (p *PostgresPersister) updateUserChallengeDataInTable(userChallengeData *mo
 		return fmt.Errorf("Error creating query string for update: %v ", err)
 	}
 	dbUserChallengeData := postgres.NewUserChallengeData(userChallengeData)
-	_, err = p.db.NamedExec(queryString, dbUserChallengeData)
+
+	result, err := p.db.NamedExec(queryString, dbUserChallengeData)
 	if err != nil {
 		return fmt.Errorf("Error updating fields in db: %v", err)
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -1983,4 +2018,15 @@ func (p *PostgresPersister) addWhereAnd(buf *bytes.Buffer) {
 	} else {
 		buf.WriteString(" AND") // nolint: gosec
 	}
+}
+
+func (p *PostgresPersister) checkUpdateRowsAffected(result sql.Result) error {
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "error updating checking affected rows in db")
+	}
+	if affected <= 0 {
+		return errors.New("error no rows affected on update")
+	}
+	return nil
 }
