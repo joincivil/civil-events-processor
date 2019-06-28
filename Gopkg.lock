@@ -277,6 +277,14 @@
   revision = "0dae4fefe7c0e190f7b5a78dac28a1c82cc8d849"
 
 [[projects]]
+  digest = "1:ecd9aa82687cf31d1585d4ac61d0ba180e42e8a6182b85bd785fcca8dfeefc1b"
+  name = "github.com/joho/godotenv"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "23d116af351c84513e1946b527c88823e476be13"
+  version = "v1.3.0"
+
+[[projects]]
   branch = "master"
   digest = "1:d09b1912cff03a200ce7fd1668b3d61ae50766f50c90f13cc3384e1feb4cf860"
   name = "github.com/joincivil/civil-events-crawler"
@@ -294,7 +302,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:11d1612e5cf3830a984c66ba52424dba336b659afbbb6d5c515c2f37993bc0e5"
+  digest = "1:1e1d0d205202fd3af45ac27f796ac5069c0b9988040c7820af620dce38cade7c"
   name = "github.com/joincivil/go-common"
   packages = [
     "pkg/bytes",
@@ -312,7 +320,7 @@
     "pkg/time",
   ]
   pruneopts = "UT"
-  revision = "bb68c50b19ab4a2b8691e524ff600b1f25e7612d"
+  revision = "fb0a40c2471c766b0aa1b6dcb4e3280d4e460a2f"
 
 [[projects]]
   digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
