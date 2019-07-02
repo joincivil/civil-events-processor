@@ -20,6 +20,7 @@ import (
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
+	"github.com/joincivil/civil-events-processor/pkg/testutils"
 
 	crawlerPostgres "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres"
 
@@ -49,7 +50,9 @@ const (
 )
 
 func setupDBConnection(t *testing.T) *PostgresPersister {
-	postgresPersister, err := NewPostgresPersister(postgresHost, postgresPort, postgresUser, postgresPswd, postgresDBName)
+	creds := testutils.GetTestDBCreds()
+
+	postgresPersister, err := NewPostgresPersister(creds.Host, creds.Port, creds.User, creds.Password, creds.Dbname)
 	if err != nil {
 		t.Errorf("Error setting up new persister: err: %v", err)
 	}
@@ -261,7 +264,7 @@ func TestTableSetup(t *testing.T) {
 	versionNo := "123456"
 	err := persister.saveVersionToTable(versionTestTableName, &versionNo)
 	if err != nil {
-		t.Errorf("Error saving  version: %v", err)
+		t.Errorf("Error saving version: %v", err)
 	}
 	persister.version = &versionNo
 	if err != nil {

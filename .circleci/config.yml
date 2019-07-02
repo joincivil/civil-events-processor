@@ -5,10 +5,13 @@ defaults: &defaults
       # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
       - image: circleci/golang:1.11.1
       # CircleCI PostgreSQL images available at: https://hub.docker.com/r/circleci/postgres/
-      - image: circleci/postgres:9.4.12-alpine
+      - image: circleci/postgres:9.6-alpine
         environment:
           POSTGRES_USER: root
           POSTGRES_DB: circle_test
+      # Run the Google Pub Sub emulator
+      - image: kinok/google-pubsub-emulator:latest
+
 jobs:
   build:
     <<: *defaults
@@ -53,7 +56,7 @@ jobs:
             - vendor
             - cmd
             - scripts
-            - .gometalinter.json
+            - .golangci.yml
 
   lint:
     <<: *defaults
@@ -82,7 +85,7 @@ jobs:
                DB_URL: "postgres://root@localhost:5432/circle_test?sslmode=disable"
                DB_MIGRATIONS: /go/src/github.com/joincivil/civil-events-processor/migrations
             command: |
-               make test
+               make test-integration
 
   setup-gcp:
     docker:
