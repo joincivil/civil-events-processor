@@ -34,6 +34,12 @@ import (
 
 // NOTE(IS): cpersist.ErrPersisterNoResults is only returned for single queries
 
+var (
+	// ErrNoRowsAffected is returned when a query affects no rows. Mainly returned
+	// by update methods.
+	ErrNoRowsAffected = errors.New("no rows affected on update")
+)
+
 const (
 	// ProcessorServiceName is the name for the processor service
 	ProcessorServiceName       = "processor"
@@ -381,9 +387,12 @@ func (p *PostgresPersister) InitProcessorVersion(versionNumber *string) error {
 	if currentVersion != nil && (versionNumber == nil || *versionNumber == "") {
 		// NOTE(IS): Use existing version, but update timestamp
 		versionNumber = currentVersion
+		log.Infof("Using data version from DB, updating ts: %v", *versionNumber)
+
+	} else {
+		log.Infof("Updating data version: %v", *versionNumber)
 	}
 
-	log.Infof("Updated data version: %v", *versionNumber)
 	p.version = versionNumber
 	return p.SaveVersion(versionNumber)
 }
@@ -2026,7 +2035,7 @@ func (p *PostgresPersister) checkUpdateRowsAffected(result sql.Result) error {
 		return errors.Wrap(err, "error updating checking affected rows in db")
 	}
 	if affected <= 0 {
-		return errors.New("error no rows affected on update")
+		return ErrNoRowsAffected
 	}
 	return nil
 }
