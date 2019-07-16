@@ -22,6 +22,9 @@ const (
 
 // ProcessorConfig is the master config for the processor derived from environment
 // variables.
+//
+// If CronConfig is set, will use the cron process.  If it is not set, will setup
+// the subscription to the crawler pubsub to listen for trigger events.
 type ProcessorConfig struct {
 	CronConfig string `envconfig:"cron_config" desc:"Cron config string * * * * *"`
 	EthAPIURL  string `envconfig:"eth_api_url" required:"true" desc:"Ethereum API address"`
