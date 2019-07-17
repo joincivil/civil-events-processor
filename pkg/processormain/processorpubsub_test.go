@@ -343,7 +343,7 @@ func TestMessageOrder(t *testing.T) {
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent2})
 		cps.PublishProcessorTriggerMessage()
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 		quitChan <- true
 		wg.Done()
 	}()
