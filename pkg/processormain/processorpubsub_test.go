@@ -251,6 +251,9 @@ func TestProcessorPubSub(t *testing.T) {
 	wg.Add(2)
 
 	go runProcessorPubSub(t, &wg, persisters, cps, proc, quitChan)
+	defer func() {
+		close(quitChan)
+	}()
 
 	go func() {
 		// Save filtered fake events here to Events persistence
@@ -325,12 +328,17 @@ func TestMessageOrder(t *testing.T) {
 	wg.Add(2)
 
 	go runProcessorPubSub(t, &wg, persisters, cps, proc, quitChan)
+	defer func() {
+		close(quitChan)
+	}()
+
+	time.Sleep(2 * time.Second)
 
 	go func() {
 		watchedEvent := createNewsroomNameChangedEvent(t, "namechange1", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent})
 		cps.PublishProcessorTriggerMessage()
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 		watchedEvent2 := createNewsroomNameChangedEvent(t, "namechange2", contracts.NewsroomAddr)
 		_ = testEventPersister.SaveEvents([]*crawlermodel.Event{watchedEvent2})
 		cps.PublishProcessorTriggerMessage()
@@ -341,9 +349,12 @@ func TestMessageOrder(t *testing.T) {
 	}()
 	wg.Wait()
 
-	listing, _ := persisters.Listing.ListingByAddress(contracts.NewsroomAddr)
+	listing, err := persisters.Listing.ListingByAddress(contracts.NewsroomAddr)
+	if err != nil {
+		t.Fatalf("Should not have gotten error for %v: err: %v", contracts.NewsroomAddr.Hex(), err)
+	}
 	if listing == nil {
-		t.Errorf("Should have gotten listing with listing address %v in persistence", contracts.NewsroomAddr.Hex())
+		t.Fatalf("Should have gotten listing with listing address %v in persistence", contracts.NewsroomAddr.Hex())
 	}
 
 	if listing.Name() != "namechange2" {
