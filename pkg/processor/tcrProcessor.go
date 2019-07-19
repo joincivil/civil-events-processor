@@ -171,6 +171,10 @@ func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 		log.Infof("Handling ListingRemoved for %v\n", listingAddress.Hex())
 		err = t.processTCRListingRemoved(event, listingAddress, tcrAddress)
 
+	case "ListingWithdrawn":
+		log.Infof("Handling ListingWithdrawn for %v\n", listingAddress.Hex())
+		err = t.processTCRListingWithdrawn(event, listingAddress, tcrAddress)
+
 	case "Challenge":
 		log.Infof("Handling Challenge for %v\n", listingAddress.Hex())
 		err = t.processTCRChallenge(event, listingAddress, tcrAddress)
@@ -367,6 +371,11 @@ func (t *TcrEventProcessor) processTCRApplicationRemoved(event *crawlermodel.Eve
 func (t *TcrEventProcessor) processTCRListingRemoved(event *crawlermodel.Event,
 	listingAddress common.Address, tcrAddress common.Address) error {
 	return t.resetListing(event, listingAddress, model.GovernanceStateRemoved, tcrAddress)
+}
+
+func (t *TcrEventProcessor) processTCRListingWithdrawn(event *crawlermodel.Event,
+	listingAddress common.Address, tcrAddress common.Address) error {
+	return t.resetListing(event, listingAddress, model.GovernanceStateListingWithdrawn, tcrAddress)
 }
 
 func (t *TcrEventProcessor) processTCRChallengeFailed(event *crawlermodel.Event,
