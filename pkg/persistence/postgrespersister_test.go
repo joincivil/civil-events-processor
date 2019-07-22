@@ -1042,7 +1042,6 @@ func TestListingsByCriteria(t *testing.T) {
 	modelListingWhitelisted.SetName("Test Listing G")
 	modelListingWhitelisted.SetApprovalDateTs(now + int64(10))
 	modelListingWhitelisted.SetWhitelisted(true)
-	modelListingWhitelisted.SetDiscourseTopicID(int64(200))
 	// Create another modelListing where challenge failed
 	modelListingNoChallenge, _ := setupSampleListing()
 	modelListingNoChallenge.SetName("Test Listing A")
@@ -1054,6 +1053,14 @@ func TestListingsByCriteria(t *testing.T) {
 	modelListingPastApplicationPhase.SetApprovalDateTs(now + int64(8))
 	appExpiry = big.NewInt(ctime.CurrentEpochSecsInInt64() - 100)
 	modelListingPastApplicationPhase.SetAppExpiry(appExpiry)
+	// Create another listing that was withdrawn
+	modelListingWithdrawn, _ := setupSampleListing()
+	modelListingWithdrawn.SetLastGovernanceState(model.GovernanceStateListingWithdrawn)
+	modelListingWithdrawn.SetName("Test Listing F")
+	modelListingWithdrawn.SetApprovalDateTs(now + int64(3))
+	modelListingWithdrawn.SetWhitelisted(false)
+	modelListingWithdrawn.SetChallengeID(big.NewInt(0))
+	modelListingWithdrawn.SetAppExpiry(big.NewInt(0))
 
 	// save to test table
 	err := persister.createListingForTable(modelListingWhitelistedActiveChallenge, tableName)
@@ -1077,6 +1084,10 @@ func TestListingsByCriteria(t *testing.T) {
 		t.Errorf("error saving listing: %v", err)
 	}
 	err = persister.createListingForTable(modelListingPastApplicationPhase, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+	err = persister.createListingForTable(modelListingWithdrawn, tableName)
 	if err != nil {
 		t.Errorf("error saving listing: %v", err)
 	}
@@ -1108,8 +1119,8 @@ func TestListingsByCriteria(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting listing by criteria: %v", err)
 	}
-	if len(listingsFromDB) != 6 {
-		t.Error("Number of listings should be 6")
+	if len(listingsFromDB) != 7 {
+		t.Error("Number of listings should be 7")
 	}
 	if listingsFromDB[0].ContractAddress().Hex() != modelListingWhitelistedActiveChallenge.ContractAddress().Hex() {
 		t.Error("First listing is incorrect, ordering might be wrong")
@@ -1127,6 +1138,9 @@ func TestListingsByCriteria(t *testing.T) {
 		t.Error("Fifth listing is incorrect, ordering might be wrong")
 	}
 	if listingsFromDB[5].ContractAddress().Hex() != modelListingPastApplicationPhase.ContractAddress().Hex() {
+		t.Error("Sixth listing is incorrect, ordering might be wrong")
+	}
+	if listingsFromDB[6].ContractAddress().Hex() != modelListingWithdrawn.ContractAddress().Hex() {
 		t.Error("Last listing is incorrect, ordering might be wrong")
 	}
 
@@ -1192,18 +1206,6 @@ func TestListingsByCriteria(t *testing.T) {
 	}
 	if len(listingsFromDB) != 3 {
 		t.Errorf("Three listings should have been returned but there are %v", len(listingsFromDB))
-	}
-
-	foundTopicID := false
-	for _, listing := range listingsFromDB {
-		if listing.DiscourseTopicID() == 200 {
-			foundTopicID = true
-			break
-		}
-	}
-
-	if !foundTopicID {
-		t.Errorf("Should have set one of the discourse topic IDs to 200")
 	}
 }
 
