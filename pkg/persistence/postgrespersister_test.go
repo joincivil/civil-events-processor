@@ -1042,7 +1042,6 @@ func TestListingsByCriteria(t *testing.T) {
 	modelListingWhitelisted.SetName("Test Listing G")
 	modelListingWhitelisted.SetApprovalDateTs(now + int64(10))
 	modelListingWhitelisted.SetWhitelisted(true)
-	modelListingWhitelisted.SetDiscourseTopicID(int64(200))
 	// Create another modelListing where challenge failed
 	modelListingNoChallenge, _ := setupSampleListing()
 	modelListingNoChallenge.SetName("Test Listing A")
@@ -1207,18 +1206,6 @@ func TestListingsByCriteria(t *testing.T) {
 	}
 	if len(listingsFromDB) != 3 {
 		t.Errorf("Three listings should have been returned but there are %v", len(listingsFromDB))
-	}
-
-	foundTopicID := false
-	for _, listing := range listingsFromDB {
-		if listing.DiscourseTopicID() == 200 {
-			foundTopicID = true
-			break
-		}
-	}
-
-	if !foundTopicID {
-		t.Errorf("Should have set one of the discourse topic IDs to 200")
 	}
 }
 
