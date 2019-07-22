@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"strconv"
 
 	"math/big"
 	"strings"
@@ -737,7 +738,11 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 
 	} else if criteria.RejectedOnly {
 		p.addWhereAnd(queryBuf)
-		queryBuf.WriteString(" whitelisted = false AND challenge_id = 0") // nolint: gosec
+		// whitelisted = false
+		// challenge_id = 0 (not -1 or greater)
+		// last_gov_state != ListingWithdrawn (which indicates a complete withdrawal from the registry)
+		queryBuf.WriteString(" whitelisted = false AND challenge_id = 0 AND last_governance_state != ") // nolint: gosec
+		queryBuf.WriteString(strconv.Itoa(int(model.GovernanceStateListingWithdrawn)))                  // nolint: gosec
 
 	} else if criteria.ActiveChallenge && criteria.CurrentApplication {
 		if joinTableName == "" {
