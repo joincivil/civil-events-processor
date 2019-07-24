@@ -2,14 +2,18 @@
 
 
 [[projects]]
-  digest = "1:c98a29d4088336aa0ff6923426abf6bea429d512a1d9be780391f34b804ab475"
+  digest = "1:b3a6eb80b5f7e7936bf950e6376201032748d819d24dee4e36690b517d979642"
   name = "cloud.google.com/go"
   packages = [
     "compute/metadata",
+    "datastore",
     "errorreporting",
     "errorreporting/apiv1beta1",
     "iam",
+    "internal",
+    "internal/fields",
     "internal/optional",
+    "internal/trace",
     "internal/version",
     "pubsub",
     "pubsub/apiv1",
@@ -199,7 +203,7 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  digest = "1:80f4debf54b0e37858e87d04dabd569bb347bb22426eabcafe94799e3b7933d9"
+  digest = "1:3770844789ca56914dd1289acf93bd4bf8d7ea15e9cfb430041eb32ac4880e76"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -215,6 +219,7 @@
     "ptypes/empty",
     "ptypes/struct",
     "ptypes/timestamp",
+    "ptypes/wrappers",
   ]
   pruneopts = "UT"
   revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
@@ -652,9 +657,11 @@
   revision = "202502a5a9245830b5ec7b877e26b67760da8e67"
 
 [[projects]]
-  digest = "1:dd6e1a70c3d069cb58cb5cd234a6aca65c31b87eecce857b0b140aec96fcee91"
+  digest = "1:c197c60f102bbf3d1a207035bb91c3ed73ea6dccb0a1c05a8fafcc93a701201e"
   name = "google.golang.org/api"
   packages = [
+    "googleapi",
+    "googleapi/internal/uritemplates",
     "googleapi/transport",
     "internal",
     "iterator",
@@ -692,16 +699,19 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:917400bc2740d0a5b3c6e6d7cd19c0e5812b4f061c0296ad94195f707b93b804"
+  digest = "1:6144fa3d5263523ded3d9cd0bb57261f8fb32ba1ce04f850c171e209c934b5ad"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/annotations",
     "googleapis/api/label",
     "googleapis/api/monitoredres",
+    "googleapis/datastore/v1",
     "googleapis/devtools/clouderrorreporting/v1beta1",
     "googleapis/iam/v1",
     "googleapis/pubsub/v1",
+    "googleapis/rpc/code",
     "googleapis/rpc/status",
+    "googleapis/type/latlng",
     "protobuf/field_mask",
   ]
   pruneopts = "UT"
@@ -798,6 +808,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "cloud.google.com/go/datastore",
     "cloud.google.com/go/pubsub",
     "github.com/99designs/gqlgen",
     "github.com/davecgh/go-spew/spew",
