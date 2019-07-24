@@ -2884,6 +2884,7 @@ func createAndSaveTestUserChallengeDataForCollect(t *testing.T, persister *Postg
 	userChallengeData.SetChoice(big.NewInt(1))
 	userChallengeData.SetDidUserCollect(false)
 	userChallengeData.SetPollIsPassed(isPassed)
+	userChallengeData.SetIsVoterWinner(true)
 	err := persister.createUserChallengeDataInTable(userChallengeData, tableName)
 	if err != nil {
 		t.Errorf("error saving user challenge data: %v", err)
