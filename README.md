@@ -51,3 +51,21 @@ Run `make test` and launches the HTML code coverage tool.
 ```
 make cover
 ```
+
+## Run
+
+The processor relies on environment vars for configuration. To configure locally, edit the `.env` file included in the repo to what is needed. 
+
+To run the service:
+
+```
+go run cmd/processor/main.go
+```
+
+To find all the available configuration environment vars:
+
+```
+go run cmd/processor/main.go -h
+```
+
+
