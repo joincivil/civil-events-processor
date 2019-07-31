@@ -23,7 +23,7 @@ import (
 // InitErrorReporter inits an error reporter struct
 func InitErrorReporter(config *utils.ProcessorConfig) (cerrors.ErrorReporter, error) {
 	errRepConfig := &cerrors.MetaErrorReporterConfig{
-		StackDriverProjectID:      "civil-media",
+		StackDriverProjectID:      config.StackDriverProjectID,
 		StackDriverServiceName:    "processor",
 		StackDriverServiceVersion: "1.0",
 		SentryDSN:                 config.SentryDsn,
