@@ -4,7 +4,7 @@ This repository contains proprietary code to process captured Civil contract eve
 
 ## Install Requirements
 
-This project is using `make` to run setup, builds, tests, etc.
+This project is using `make` to run setup, builds, tests, etc and has been tested and running on `go 1.12.7`.
 
 Ensure that your `$GOPATH` and `$GOROOT` are setup properly in your shell configuration and that this repo is cloned into the appropriate place in the `$GOPATH`. i.e. `$GOPATH/src/github.com/joincivil/civil-events-processor/`
 
@@ -54,7 +54,7 @@ make cover
 
 ## Run
 
-The processor relies on environment vars for configuration. To configure locally, edit the `.env` file included in the repo to what is needed. 
+The processor relies on environment vars for configuration. To configure locally, edit the `.env` file included in the repo to what is needed.
 
 To run the service:
 
