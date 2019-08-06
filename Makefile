@@ -23,10 +23,6 @@ DOCKER:=$(shell command -v docker 2> /dev/null)
 APT:=$(shell command -v apt-get 2> /dev/null)
 GOVERCURRENT=$(shell go version |awk {'print $$3'})
 
-## Gometalinter installation
-# GOMETALINTER_INSTALLER=scripts/gometalinter_install.sh
-# GOMETALINTER_VERSION_TAG=v2.0.11
-
 # curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin vX.Y.Z
 GOLANGCILINT_URL=https://install.goreleaser.com/github.com/golangci/golangci-lint.sh
 GOLANGCILINT_VERSION_TAG=v1.16.0
