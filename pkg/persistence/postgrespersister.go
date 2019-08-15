@@ -1777,7 +1777,8 @@ func (p *PostgresPersister) createParameterProposalInTable(paramProposal *model.
 	queryString := p.insertIntoDBQueryString(tableName, postgres.ParameterProposal{})
 	_, err := p.db.NamedExec(queryString, dbParamProposal)
 	if err != nil {
-		return fmt.Errorf("Error saving parameter proposal to table: %v", err)
+		return fmt.Errorf("Error saving parameter proposal to table: id: %v, err: %v",
+			cbytes.Byte32ToHexString(paramProposal.PropID()), err)
 	}
 	return nil
 }
