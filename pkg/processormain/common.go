@@ -23,7 +23,7 @@ import (
 // InitErrorReporter inits an error reporter struct
 func InitErrorReporter(config *utils.ProcessorConfig) (cerrors.ErrorReporter, error) {
 	errRepConfig := &cerrors.MetaErrorReporterConfig{
-		StackDriverProjectID:      "civil-media",
+		StackDriverProjectID:      config.StackDriverProjectID,
 		StackDriverServiceName:    "processor",
 		StackDriverServiceVersion: "1.0",
 		SentryDSN:                 config.SentryDsn,
@@ -179,13 +179,11 @@ func RunProcessor(proc *processor.EventProcessor, persisters *InitializedPersist
 	if err != nil {
 		log.Errorf("Error processing events: err: %v", err)
 		errRep.Error(err, nil)
-		return
 	}
 
 	err = SaveLastEventInformation(persisters.Cron, events, lastTs)
 	if err != nil {
 		log.Errorf("Error saving last seen event info %v: err: %v", lastTs, err)
 		errRep.Error(err, nil)
-		return
 	}
 }

@@ -146,6 +146,9 @@ func ProcessorCronMain(config *utils.ProcessorConfig, persisters *InitializedPer
 		os.Exit(2)
 	}
 
+	// runProcessorCron one startup before waiting for cron to trigger
+	runProcessorCron(config, persisters, errRep)
+
 	cr := cron.New()
 	err = cr.AddFunc(config.CronConfig, func() { runProcessorCron(config, persisters, errRep) })
 	if err != nil {
