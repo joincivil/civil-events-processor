@@ -78,3 +78,5 @@ require (
 	gopkg.in/yaml.v2 v2.2.2 // indirect
 	honnef.co/go/tools v0.0.0-20190315113450-95959eaf5e3c // indirect
 )
+
+replace git.apache.org/thrift.git v0.12.0 => github.com/apache/thrift v0.12.0
