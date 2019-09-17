@@ -239,6 +239,8 @@ type AppealPersister interface {
 type ParameterPersister interface {
 	// ParameterByName gets a parameter by name
 	ParameterByName(paramName string) (*Parameter, error)
+	// ParametersByName gets a slice of parameter by name
+	ParametersByName(paramName []string) ([]*Parameter, error)
 	// UpdateParameter updates a parameter value
 	UpdateParameter(parameter *Parameter, updatedFields []string) error
 	// CreateDefaultValues creates Parameter default values

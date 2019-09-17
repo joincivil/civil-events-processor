@@ -578,6 +578,16 @@ func (t *TestPersister) ParameterByName(name string) (*model.Parameter, error) {
 	return t.Parameter[name], nil
 }
 
+// ParametersByName returns a slice of parameters with given names
+func (t *TestPersister) ParametersByName(names []string) ([]*model.Parameter, error) {
+	results := []*model.Parameter{}
+	for _, paramName := range names {
+		parameter := t.Parameter[paramName]
+		results = append(results, parameter)
+	}
+	return results, nil
+}
+
 // UpdateParameter updates the parameter
 func (t *TestPersister) UpdateParameter(parameter *model.Parameter, updatedFields []string) error {
 	if t.Parameter == nil {
