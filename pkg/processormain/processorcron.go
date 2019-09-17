@@ -125,6 +125,7 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 			AppealPersister:            persisters.Appeal,
 			TokenTransferPersister:     persisters.TokenTransfer,
 			ParameterProposalPersister: persisters.ParameterProposal,
+			ParameterPersister:         persisters.Parameter,
 			UserChallengeDataPersister: persisters.UserChallengeData,
 			GooglePubSub:               pubsub,
 			PubSubEventsTopicName:      config.PubSubEventsTopicName,
@@ -146,6 +147,12 @@ func ProcessorCronMain(config *utils.ProcessorConfig, persisters *InitializedPer
 		os.Exit(2)
 	}
 
+	err = persisters.Parameter.CreateDefaultValues(config)
+	if err != nil {
+		log.Errorf("Error creating default values: err: %v", err)
+		errRep.Error(err, nil)
+		os.Exit(1)
+	}
 	// runProcessorCron one startup before waiting for cron to trigger
 	runProcessorCron(config, persisters, errRep)
 

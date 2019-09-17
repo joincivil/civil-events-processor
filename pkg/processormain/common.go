@@ -115,6 +115,7 @@ type InitializedPersisters struct {
 	Appeal            model.AppealPersister
 	TokenTransfer     model.TokenTransferPersister
 	ParameterProposal model.ParamProposalPersister
+	Parameter         model.ParameterPersister
 	UserChallengeData model.UserChallengeDataPersister
 }
 
@@ -143,6 +144,7 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		Appeal:            persister.(model.AppealPersister),
 		TokenTransfer:     persister.(model.TokenTransferPersister),
 		ParameterProposal: persister.(model.ParamProposalPersister),
+		Parameter:         persister.(model.ParameterPersister),
 		UserChallengeData: persister.(model.UserChallengeDataPersister),
 	}, nil
 }

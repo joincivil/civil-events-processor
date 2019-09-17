@@ -165,6 +165,13 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		os.Exit(2)
 	}
 
+	err = persisters.Parameter.CreateDefaultValues(config)
+	if err != nil {
+		log.Errorf("Error creating default values: err: %v", err)
+		errRep.Error(err, nil)
+		return
+	}
+
 	ps, err := initPubSub(config)
 	if err != nil {
 		log.Errorf("Error initializing pubsub: err: %v", err)
@@ -210,6 +217,7 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		AppealPersister:            persisters.Appeal,
 		TokenTransferPersister:     persisters.TokenTransfer,
 		ParameterProposalPersister: persisters.ParameterProposal,
+		ParameterPersister:         persisters.Parameter,
 		UserChallengeDataPersister: persisters.UserChallengeData,
 		GooglePubSub:               eventsPs,
 		PubSubEventsTopicName:      config.PubSubEventsTopicName,

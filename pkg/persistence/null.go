@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 // NullPersister is a persister that does not save any values and always returns
@@ -227,6 +228,21 @@ func (n *NullPersister) TokenTransfersByToAddress(addr common.Address) ([]*model
 
 // CreateTokenTransfer creates an token transfer
 func (n *NullPersister) CreateTokenTransfer(appeal *model.TokenTransfer) error {
+	return nil
+}
+
+// ParameterByName gets a parameter from persistence using paramName
+func (n *NullPersister) ParameterByName(paramName string) (*model.Parameter, error) {
+	return &model.Parameter{}, nil
+}
+
+// UpdateParameter updates the value of a parameter in table
+func (n *NullPersister) UpdateParameter(parameter *model.Parameter, updatedFields []string) error {
+	return nil
+}
+
+// CreateDefaultValues creates Parameter default values
+func (n *NullPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
 	return nil
 }
 

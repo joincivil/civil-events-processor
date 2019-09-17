@@ -67,6 +67,7 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.Client,
 		params.ChallengePersister,
 		params.ParameterProposalPersister,
+		params.ParameterPersister,
 		params.PollPersister,
 		params.UserChallengeDataPersister,
 		params.ErrRep,
@@ -95,6 +96,7 @@ type NewEventProcessorParams struct {
 	AppealPersister            model.AppealPersister
 	TokenTransferPersister     model.TokenTransferPersister
 	ParameterProposalPersister model.ParamProposalPersister
+	ParameterPersister         model.ParameterPersister
 	UserChallengeDataPersister model.UserChallengeDataPersister
 	GooglePubSub               *pubsub.GooglePubSub
 	PubSubEventsTopicName      string

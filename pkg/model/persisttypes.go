@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 // SortByType is a string enum of the sort type
@@ -230,6 +231,18 @@ type AppealPersister interface {
 	CreateAppeal(appeal *Appeal) error
 	// UpdateAppeal updates an appeal
 	UpdateAppeal(appeal *Appeal, updatedFields []string) error
+	// Close shuts down the persister
+	Close() error
+}
+
+// ParameterPersister is the interface to store ParameterData
+type ParameterPersister interface {
+	// ParameterByName gets a parameter by name
+	ParameterByName(paramName string) (*Parameter, error)
+	// UpdateParameter updates a parameter value
+	UpdateParameter(parameter *Parameter, updatedFields []string) error
+	// CreateDefaultValues creates Parameter default values
+	CreateDefaultValues(config *utils.ProcessorConfig) error
 	// Close shuts down the persister
 	Close() error
 }

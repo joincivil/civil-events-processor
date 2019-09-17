@@ -119,6 +119,11 @@ func (p *ParameterProposal) SetExpired(expired bool) {
 	p.expired = expired
 }
 
+// SetChallengeID sets the challengeID field
+func (p *ParameterProposal) SetChallengeID(challengeID *big.Int) {
+	p.challengeID = challengeID
+}
+
 // SetLastUpdatedDateTs sets the value of the last time this proposal was updated
 func (p *ParameterProposal) SetLastUpdatedDateTs(date int64) {
 	p.lastUpdatedDateTs = date
