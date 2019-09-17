@@ -45,6 +45,7 @@ const (
 	tokenTransferTestTableName     = "token_transfer_test"
 	versionTestTableName           = "version_test"
 	parameterProposalTestTableName = "parameter_proposal_test"
+	parameterTableTestName         = "parameter_table_test"
 	userChallengeDataTestTableName = "user_challenge_data_test"
 	testAddress                    = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 )
@@ -86,6 +87,8 @@ func setupTestTable(t *testing.T, tableName string) *PostgresPersister {
 		queryString = postgres.CreateParameterProposalTableQuery(persister.GetTableName(tableName))
 	case "user_challenge_data_test":
 		queryString = postgres.CreateUserChallengeDataTableQuery(persister.GetTableName(tableName))
+	case "parameter_test":
+		queryString = postgres.CreateParameterTableQuery(persister.GetTableName(tableName))
 	}
 
 	_, err := persister.db.Query(queryString)
@@ -155,6 +158,12 @@ func setupAllTestTables(t *testing.T, persister *PostgresPersister) {
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", userChallengeDataTestTableName, err)
 	}
+
+	queryString = postgres.CreateParameterTableQuery(persister.GetTableName(parameterTableTestName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", parameterTableTestName, err)
+	}
 }
 
 func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
@@ -195,6 +204,10 @@ func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
 		t.Errorf("Couldn't delete test table %s: %v", parameterProposalTestTableName, err)
 	}
 	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(userChallengeDataTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", userChallengeDataTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterTableTestName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", userChallengeDataTestTableName, err)
 	}
@@ -279,6 +292,7 @@ func TestTableSetup(t *testing.T) {
 	checkTableExists(t, pollTestTableName, persister)
 	checkTableExists(t, appealTestTableName, persister)
 	checkTableExists(t, tokenTransferTestTableName, persister)
+	checkTableExists(t, parameterTableTestName, persister)
 
 	deleteAllTestTables(t, persister)
 	deleteTestVersionTable(t, persister)

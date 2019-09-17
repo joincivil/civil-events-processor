@@ -2,12 +2,14 @@ package testutils
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	cpersist "github.com/joincivil/go-common/pkg/persistence"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 const (
@@ -26,6 +28,7 @@ type TestPersister struct {
 	TokenTransfers       map[string][]*model.TokenTransfer
 	TokenTransfersTxHash map[string][]*model.TokenTransfer
 	ParameterProposal    map[[32]byte]*model.ParameterProposal
+	Parameter            map[string]*model.Parameter
 	UserChallengeData    map[int]map[string]*model.UserChallengeData
 	Timestamp            int64
 	EventHashes          []string
@@ -565,7 +568,41 @@ func (t *TestPersister) ParamProposalByName(name string, active bool) ([]*model.
 // UpdateParamProposal updates parameter propsal in table
 func (t *TestPersister) UpdateParamProposal(paramProposal *model.ParameterProposal, updatedFields []string) error {
 	propID := paramProposal.PropID()
+
 	t.ParameterProposal[propID] = paramProposal
+	return nil
+}
+
+// ParameterByName returns the parameter with given name
+func (t *TestPersister) ParameterByName(name string) (*model.Parameter, error) {
+	return t.Parameter[name], nil
+}
+
+// UpdateParameter updates the parameter
+func (t *TestPersister) UpdateParameter(parameter *model.Parameter, updatedFields []string) error {
+	if t.Parameter == nil {
+		t.Parameter = map[string]*model.Parameter{}
+	}
+
+	paramName := parameter.ParamName()
+
+	t.Parameter[paramName] = parameter
+	return nil
+}
+
+// CreateDefaultValues creates Parameter default values
+func (t *TestPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
+	if t.Parameter == nil {
+		t.Parameter = map[string]*model.Parameter{}
+	}
+	for paramName, value := range config.ParameterizerDefaults() {
+		val := new(big.Int)
+		_, err := fmt.Sscan(value, val)
+		if err != nil {
+			return err
+		}
+		t.Parameter[paramName] = model.NewParameter(paramName, val)
+	}
 	return nil
 }
 

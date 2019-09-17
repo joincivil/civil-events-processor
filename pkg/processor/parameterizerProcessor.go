@@ -28,17 +28,20 @@ var paramChallengeEventNames = []string{"ChallengeFailed", "ChallengeSucceeded",
 const (
 	proposalAcceptedFieldName      = "Accepted"
 	proposalExpiredFieldName       = "Expired"
+	proposalChallengeIDFieldName   = "ChallengeID"
 	userChallengeIsPassedFieldName = "PollIsPassed"
+	valueFieldName                 = "Value"
 )
 
 // NewParameterizerEventProcessor is a convenience function to init a parameterizer processor
 func NewParameterizerEventProcessor(client bind.ContractBackend, challengePersister model.ChallengePersister,
-	paramProposalPersister model.ParamProposalPersister, pollPersister model.PollPersister,
+	paramProposalPersister model.ParamProposalPersister, parameterPersister model.ParameterPersister, pollPersister model.PollPersister,
 	userChallengeDataPersister model.UserChallengeDataPersister, errRep cerrors.ErrorReporter) *ParameterizerEventProcessor {
 	return &ParameterizerEventProcessor{
 		client:                     client,
 		challengePersister:         challengePersister,
 		paramProposalPersister:     paramProposalPersister,
+		parameterPersister:         parameterPersister,
 		pollPersister:              pollPersister,
 		userChallengeDataPersister: userChallengeDataPersister,
 		errRep:                     errRep,
@@ -50,6 +53,7 @@ type ParameterizerEventProcessor struct {
 	client                     bind.ContractBackend
 	challengePersister         model.ChallengePersister
 	paramProposalPersister     model.ParamProposalPersister
+	parameterPersister         model.ParameterPersister
 	pollPersister              model.PollPersister
 	userChallengeDataPersister model.UserChallengeDataPersister
 	errRep                     cerrors.ErrorReporter
@@ -143,7 +147,16 @@ func (p *ParameterizerEventProcessor) processProposalAccepted(event *crawlermode
 	if err != nil {
 		return err
 	}
+	parameter, err := p.getExistingParameter(event)
+	if err != nil {
+		return err
+	}
+	parameter.SetValue(paramProposal.Value())
 	paramProposal.SetAccepted(true)
+	err = p.parameterPersister.UpdateParameter(parameter, []string{valueFieldName})
+	if err != nil {
+		return err
+	}
 	return p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalAcceptedFieldName})
 }
 
@@ -159,6 +172,15 @@ func (p *ParameterizerEventProcessor) processProposalExpired(event *crawlermodel
 func (p *ParameterizerEventProcessor) processParameterizerChallenge(event *crawlermodel.Event,
 	challengeID *big.Int) error {
 	_, err := p.newChallenge(event.ContractAddress(), challengeID)
+	if err != nil {
+		return err
+	}
+	paramProposal, err := p.getExistingParameterProposal(event)
+	if err != nil {
+		return err
+	}
+	paramProposal.SetChallengeID(challengeID)
+	err = p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalChallengeIDFieldName})
 	return err
 }
 
@@ -169,6 +191,19 @@ func (p *ParameterizerEventProcessor) processChallengeFailed(event *crawlermodel
 	err := p.setPollIsPassedInPoll(challengeID, pollIsPassed)
 	if err != nil {
 		return fmt.Errorf("Error setting isPassed field in poll, err: %v", err)
+	}
+	paramProposal, err := p.getExistingParameterProposal(event)
+	if err != nil {
+		return err
+	}
+	parameter, err := p.getExistingParameter(event)
+	if err != nil {
+		return err
+	}
+	parameter.SetValue(paramProposal.Value())
+	err = p.parameterPersister.UpdateParameter(parameter, []string{valueFieldName})
+	if err != nil {
+		return err
 	}
 	return p.processChallengeResolution(event, challengeID, pollIsPassed)
 }
@@ -289,6 +324,25 @@ func (p *ParameterizerEventProcessor) getExistingParameterProposal(event *crawle
 		}
 	}
 	return paramProposal, nil
+}
+
+func (p *ParameterizerEventProcessor) getExistingParameter(event *crawlermodel.Event) (*model.Parameter, error) {
+	propID, err := p.getPropIDFromEvent(event)
+	if err != nil {
+		return nil, err
+	}
+	// get parameterization from db, use its `name` value to get parameter
+	paramProposal, err := p.paramProposalPersister.ParamProposalByPropID(propID)
+	if err != nil && err != cpersist.ErrPersisterNoResults {
+		return nil, err
+	}
+	// get parameter from db
+	parameter, err := p.parameterPersister.ParameterByName(paramProposal.Name())
+	if err != nil && err != cpersist.ErrPersisterNoResults {
+		return nil, err
+	}
+
+	return parameter, nil
 }
 
 func (p *ParameterizerEventProcessor) newParameterizationFromProposal(event *crawlermodel.Event) error {
