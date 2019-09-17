@@ -252,7 +252,7 @@ func (n *NullPersister) CreateParameterProposal(paramProposal *model.ParameterPr
 }
 
 // ParamProposalByPropID gets a parameter proposal from persistence using propID
-func (n *NullPersister) ParamProposalByPropID(propID [32]byte) (*model.ParameterProposal, error) {
+func (n *NullPersister) ParamProposalByPropID(propID [32]byte, active bool) (*model.ParameterProposal, error) {
 	return &model.ParameterProposal{}, nil
 }
 

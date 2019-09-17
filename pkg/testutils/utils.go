@@ -540,7 +540,7 @@ func (t *TestPersister) CreateParameterProposal(paramProposal *model.ParameterPr
 }
 
 // ParamProposalByPropID gets a parameter proposal from persistence using propID
-func (t *TestPersister) ParamProposalByPropID(propID [32]byte) (*model.ParameterProposal, error) {
+func (t *TestPersister) ParamProposalByPropID(propID [32]byte, active bool) (*model.ParameterProposal, error) {
 	paramProposal, ok := t.ParameterProposal[propID]
 	if !ok {
 		return nil, cpersist.ErrPersisterNoResults
