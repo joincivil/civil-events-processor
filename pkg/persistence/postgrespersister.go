@@ -418,9 +418,9 @@ func (p *PostgresPersister) CreateParameterProposal(paramProposal *model.Paramet
 }
 
 // ParamProposalByPropID gets parameter proposal by propID
-func (p *PostgresPersister) ParamProposalByPropID(propID [32]byte) (*model.ParameterProposal, error) {
+func (p *PostgresPersister) ParamProposalByPropID(propID [32]byte, active bool) (*model.ParameterProposal, error) {
 	paramProposalTableName := p.GetTableName(postgres.ParameterProposalTableBaseName)
-	return p.paramProposalByPropIDFromTable(propID, paramProposalTableName)
+	return p.paramProposalByPropIDFromTable(propID, active, paramProposalTableName)
 }
 
 // ParamProposalByName gets parameter proposals by name. active=true will get only active
@@ -1900,10 +1900,14 @@ func (p *PostgresPersister) createParameterProposalInTable(paramProposal *model.
 	return nil
 }
 
-func (p *PostgresPersister) paramProposalByPropIDFromTable(propID [32]byte,
-	tableName string) (*model.ParameterProposal, error) {
+func (p *PostgresPersister) paramProposalByPropIDFromTable(
+	propID [32]byte,
+	active bool,
+	tableName string,
+) (*model.ParameterProposal, error) {
+
 	paramProposalData := []postgres.ParameterProposal{}
-	queryString := p.paramProposalQuery(tableName)
+	queryString := p.paramProposalQuery(tableName, active)
 	propIDString := cbytes.Byte32ToHexString(propID)
 	err := p.db.Select(&paramProposalData, queryString, propIDString)
 	if err != nil {
@@ -1978,9 +1982,12 @@ func (p *PostgresPersister) updateParamProposalQuery(updatedFields []string, tab
 	return queryString.String(), nil
 }
 
-func (p *PostgresPersister) paramProposalQuery(tableName string) string {
+func (p *PostgresPersister) paramProposalQuery(tableName string, active bool) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.ParameterProposal{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE prop_id=$1", fieldNames, tableName) // nolint: gosec
+	if active {
+		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
+	}
 	return queryString
 }
 

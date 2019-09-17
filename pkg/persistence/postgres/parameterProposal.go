@@ -19,7 +19,8 @@ const (
 func CreateParameterProposalTableQuery(tableName string) string {
 	queryString := fmt.Sprintf(`
         CREATE TABLE IF NOT EXISTS %s(
-            prop_id TEXT PRIMARY KEY,
+            id TEXT PRIMARY KEY,
+            prop_id TEXT,
             name TEXT,
             value NUMERIC,
             deposit NUMERIC,
@@ -36,6 +37,8 @@ func CreateParameterProposalTableQuery(tableName string) string {
 
 // ParameterProposal is postgres definition of model.ParameterProposal
 type ParameterProposal struct {
+	ID string `db:"id"`
+
 	Name string `db:"name"`
 
 	Value float64 `db:"value"`
@@ -63,6 +66,7 @@ func NewParameterProposal(parameterProposal *model.ParameterProposal) *Parameter
 	propID := bytes.Byte32ToHexString(parameterProposal.PropID())
 	deposit := numbers.BigIntToFloat64(parameterProposal.Deposit())
 	return &ParameterProposal{
+		ID:                parameterProposal.ID(),
 		Name:              parameterProposal.Name(),
 		Value:             value,
 		PropID:            propID,
@@ -88,6 +92,7 @@ func (p *ParameterProposal) DbToParameterProposalData() (*model.ParameterProposa
 	challengeID := big.NewInt(p.ChallengeID)
 	proposer := common.HexToAddress(p.Proposer)
 	parameterProposalParams := &model.ParameterProposalParams{
+		ID:                p.ID,
 		Name:              p.Name,
 		Value:             value,
 		PropID:            propID,

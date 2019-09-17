@@ -321,7 +321,7 @@ func TestProcessProposalAccepted(t *testing.T) {
 	}
 	payload := reparamProp.EventPayload()
 	propID := payload["PropID"]
-	persistedProp, _ := persister.ParamProposalByPropID(propID.([32]byte))
+	persistedProp, _ := persister.ParamProposalByPropID(propID.([32]byte), true)
 	if !persistedProp.Accepted() {
 		t.Error("Persisted proposal accepted field should be true")
 	}
@@ -337,9 +337,9 @@ func TestProcessProposalExpired(t *testing.T) {
 	}
 	payload := reparamProp.EventPayload()
 	propID := payload["PropID"]
-	persistedProp, _ := persister.ParamProposalByPropID(propID.([32]byte))
+	persistedProp, _ := persister.ParamProposalByPropID(propID.([32]byte), true)
 	if !persistedProp.Expired() {
-		t.Error("Persisted proposal accepted field should be true")
+		t.Error("Persisted proposal expired field should be true")
 	}
 	memoryCheck(contracts)
 }

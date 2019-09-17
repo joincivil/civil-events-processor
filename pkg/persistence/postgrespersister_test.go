@@ -2709,6 +2709,7 @@ func TestGetTokenTransfersForTxHash(t *testing.T) {
 func setupSampleParamProposal() *model.ParameterProposal {
 	return model.NewParameterProposal(
 		&model.ParameterProposalParams{
+			ID:                "commitStageLen1800",
 			Name:              "commitStageLen",
 			Value:             big.NewInt(1800),
 			PropID:            [32]byte{0, 1},
@@ -2726,6 +2727,7 @@ func setupSampleParamProposal() *model.ParameterProposal {
 func setupSampleParamProposal2() *model.ParameterProposal {
 	return model.NewParameterProposal(
 		&model.ParameterProposalParams{
+			ID:                "commitStageLen1200",
 			Name:              "commitStageLen",
 			Value:             big.NewInt(1200),
 			PropID:            [32]byte{0, 3},
@@ -2780,7 +2782,7 @@ func TestParamProposalByPropID(t *testing.T) {
 
 	propID := paramProposal.PropID()
 
-	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, tableName)
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, true, tableName)
 	if err != nil {
 		t.Errorf("Error saving parameter proposal to db: %v", err)
 	}
@@ -2841,7 +2843,7 @@ func TestUpdateParamProposal(t *testing.T) {
 		t.Errorf("Error updating parameter proposal, %v", err)
 	}
 
-	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, tableName)
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, false, tableName)
 	if err != nil {
 		t.Errorf("Error getting param proposal from db, err %v", err)
 	}

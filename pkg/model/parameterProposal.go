@@ -8,6 +8,7 @@ import (
 
 // ParameterProposalParams are params to create a new parameter proposal
 type ParameterProposalParams struct {
+	ID                string
 	Name              string
 	Value             *big.Int
 	PropID            [32]byte
@@ -23,6 +24,7 @@ type ParameterProposalParams struct {
 // NewParameterProposal is a convenience function to create a new parameter proposal
 func NewParameterProposal(params *ParameterProposalParams) *ParameterProposal {
 	return &ParameterProposal{
+		id:                params.ID,
 		name:              params.Name,
 		value:             params.Value,
 		propID:            params.PropID,
@@ -38,6 +40,8 @@ func NewParameterProposal(params *ParameterProposalParams) *ParameterProposal {
 
 // ParameterProposal represents a parameterizer proposal
 type ParameterProposal struct {
+	id string
+
 	name string
 
 	value *big.Int
@@ -57,6 +61,11 @@ type ParameterProposal struct {
 	expired bool
 
 	lastUpdatedDateTs int64
+}
+
+// ID is the id of the parameter field
+func (p *ParameterProposal) ID() string {
+	return p.id
 }
 
 // Name is the name of the parameter field

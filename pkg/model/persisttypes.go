@@ -264,7 +264,7 @@ type ParamProposalPersister interface {
 	// CreateParameterProposal creates a new parameter proposal
 	CreateParameterProposal(paramProposal *ParameterProposal) error
 	// ParamProposalByPropID gets a parameter proposal from persistence using propID
-	ParamProposalByPropID(propID [32]byte) (*ParameterProposal, error)
+	ParamProposalByPropID(propID [32]byte, active bool) (*ParameterProposal, error)
 	// ParamProposalByName gets parameter proposals by name from persistence
 	ParamProposalByName(name string, active bool) ([]*ParameterProposal, error)
 	// UpdateParamProposal updates parameter propsal in table
