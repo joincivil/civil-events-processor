@@ -236,6 +236,11 @@ func (n *NullPersister) ParameterByName(paramName string) (*model.Parameter, err
 	return &model.Parameter{}, nil
 }
 
+// ParametersByName gets a slice of parameters by name
+func (n *NullPersister) ParametersByName(paramName []string) ([]*model.Parameter, error) {
+	return []*model.Parameter{}, nil
+}
+
 // UpdateParameter updates the value of a parameter in table
 func (n *NullPersister) UpdateParameter(parameter *model.Parameter, updatedFields []string) error {
 	return nil

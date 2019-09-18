@@ -346,6 +346,12 @@ func (p *PostgresPersister) CreateTokenTransfer(purchase *model.TokenTransfer) e
 	return p.createTokenTransferInTable(purchase, tokenTransferTableName)
 }
 
+// ParametersByName gets the parameter with given name
+func (p *PostgresPersister) ParametersByName(paramNames []string) ([]*model.Parameter, error) {
+	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
+	return p.parametersByName(paramNames, parameterTableName)
+}
+
 // ParameterByName gets the parameter with given name
 func (p *PostgresPersister) ParameterByName(paramName string) (*model.Parameter, error) {
 	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
@@ -1345,6 +1351,50 @@ func (p *PostgresPersister) challengesByChallengeIDsInTableInOrder(challengeIDs 
 	}
 
 	return challenges, nil
+}
+
+func (p *PostgresPersister) parametersByName(paramNames []string, tableName string) ([]*model.Parameter, error) {
+	if len(paramNames) <= 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	queryString := p.parameterByNameQuery(tableName)
+	query, args, err := sqlx.In(queryString, paramNames)
+	if err != nil {
+		return nil, errors.Wrap(err, "error preparing 'IN' statement")
+	}
+	query = p.db.Rebind(query)
+
+	rows, err := p.db.Queryx(query, args...)
+
+	defer p.closeRows(rows)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving parameters from table")
+	}
+
+	parametersMap := map[string]*model.Parameter{}
+	for rows.Next() {
+		var dbParameter postgres.Parameter
+		err = rows.StructScan(&dbParameter)
+		if err != nil {
+			return nil, errors.Wrap(err, "error scanning row from IN query")
+		}
+
+		modelParameter := dbParameter.DbToParameterData()
+		parametersMap[modelParameter.ParamName()] = modelParameter
+	}
+
+	parameters := make([]*model.Parameter, len(paramNames))
+	for i, paramName := range paramNames {
+		retrievedParameter, ok := parametersMap[paramName]
+		if ok {
+			parameters[i] = retrievedParameter
+		} else {
+			parameters[i] = nil
+		}
+	}
+
+	return parameters, nil
 }
 
 func (p *PostgresPersister) parameterByName(paramName string, tableName string) (*model.Parameter, error) {
