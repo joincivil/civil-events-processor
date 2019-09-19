@@ -161,6 +161,11 @@ func (n *NullPersister) ChallengesByListingAddresses(addr []common.Address) ([][
 	return [][]*model.Challenge{}, nil
 }
 
+// ChallengesByChallengerAddress returns a slice of challenges started by given user
+func (n *NullPersister) ChallengesByChallengerAddress(addr common.Address) ([]*model.Challenge, error) {
+	return []*model.Challenge{}, nil
+}
+
 // CreateChallenge creates a new challenge
 func (n *NullPersister) CreateChallenge(challenge *model.Challenge) error {
 	return nil

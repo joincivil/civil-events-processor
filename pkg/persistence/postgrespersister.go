@@ -271,6 +271,12 @@ func (p *PostgresPersister) ChallengesByListingAddress(addr common.Address) ([]*
 	return p.challengesByListingAddressInTable(addr, challengeTableName)
 }
 
+// ChallengesByChallengerAddress returns a slice of challenges started by given user
+func (p *PostgresPersister) ChallengesByChallengerAddress(addr common.Address) ([]*model.Challenge, error) {
+	challengeTableName := p.GetTableName(postgres.ChallengeTableBaseName)
+	return p.challengesByChallengerAddressInTable(addr, challengeTableName)
+}
+
 // PollByPollID gets a poll by pollID
 func (p *PostgresPersister) PollByPollID(pollID int) (*model.Poll, error) {
 	pollTableName := p.GetTableName(postgres.PollTableBaseName)
@@ -1530,6 +1536,41 @@ func (p *PostgresPersister) challengesByListingAddressQuery(tableName string) st
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
 	queryString := fmt.Sprintf( // nolint: gosec
 		"SELECT %s FROM %s WHERE listing_address = $1 ORDER BY challenge_id;",
+		fieldNames,
+		tableName,
+	)
+	return queryString
+}
+
+// challengesByChallengerAddressInTable retrieves a list of challenges for a challenger sorted
+// by challenge_id
+func (p *PostgresPersister) challengesByChallengerAddressInTable(addr common.Address, tableName string) ([]*model.Challenge, error) {
+	challenges := []*model.Challenge{}
+	queryString := p.challengesByChallengerAddressQuery(tableName)
+
+	dbChallenges := []*postgres.Challenge{}
+	err := p.db.Select(&dbChallenges, queryString, addr.Hex())
+	if err != nil {
+		return challenges, errors.Wrap(err, "error retrieving challenges from table")
+	}
+
+	if len(dbChallenges) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	for _, dbChallenge := range dbChallenges {
+		challenges = append(challenges, dbChallenge.DbToChallengeData())
+	}
+
+	return challenges, nil
+}
+
+// challengesByChallengerAddressQuery returns the query string to retrieved a list of
+// challenges for a specified challenger sorted by challenge_id
+func (p *PostgresPersister) challengesByChallengerAddressQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
+	queryString := fmt.Sprintf( // nolint: gosec
+		"SELECT %s FROM %s WHERE lower(challenger) = lower($1) ORDER BY challenge_id;",
 		fieldNames,
 		tableName,
 	)
