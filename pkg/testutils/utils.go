@@ -320,6 +320,17 @@ func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []int) ([]*model.C
 	return results, nil
 }
 
+// ChallengesByChallengerAddress returns a slice of challenges started by given user
+func (t *TestPersister) ChallengesByChallengerAddress(addr common.Address) ([]*model.Challenge, error) {
+	results := []*model.Challenge{}
+	for _, challenge := range t.Challenges {
+		if challenge.Challenger() == addr {
+			results = append(results, challenge)
+		}
+	}
+	return results, nil
+}
+
 // ChallengesByListingAddress gets a list of challenges by listing
 func (t *TestPersister) ChallengesByListingAddress(addr common.Address) ([]*model.Challenge, error) {
 	challenges := []*model.Challenge{}

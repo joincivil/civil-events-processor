@@ -197,6 +197,8 @@ type ChallengePersister interface {
 	// ChallengesByListingAddresses gets slice of challenges in order by challenge ID
 	// for a each listing address in order of addresses
 	ChallengesByListingAddresses(addr []common.Address) ([][]*Challenge, error)
+	// ChallengesByChallengerAddress returns a slice of challenges started by given user
+	ChallengesByChallengerAddress(addr common.Address)([]*Challenge, error)
 	// CreateChallenge creates a new challenge
 	CreateChallenge(challenge *Challenge) error
 	// UpdateChallenge updates a challenge

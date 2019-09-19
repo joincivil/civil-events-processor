@@ -48,6 +48,8 @@ const (
 	parameterTableTestName         = "parameter_table_test"
 	userChallengeDataTestTableName = "user_challenge_data_test"
 	testAddress                    = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
+	testAddress2                   = "0x22e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d331d"
+	testAddress3                   = "0x11e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d371d"
 )
 
 func setupDBConnection(t *testing.T) *PostgresPersister {
@@ -1944,9 +1946,9 @@ func setupChallengeByChallengeID(challengeIDInt int, resolved bool) *model.Chall
 	return testChallenge
 }
 
-func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
+func setupSampleChallenge(randListing bool, challengerAddr string) (*model.Challenge, int) {
 	var listingAddr common.Address
-	address2, _ := cstrings.RandomHexStr(32)
+
 	if randListing {
 		address1, _ := cstrings.RandomHexStr(32)
 		listingAddr = common.HexToAddress(address1)
@@ -1958,7 +1960,7 @@ func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 	challengeIDInt := mathrand.Intn(10000)
 	challengeID := big.NewInt(int64(challengeIDInt))
 	statement := ""
-	challenger := common.HexToAddress(address2)
+	challenger := common.HexToAddress(challengerAddr)
 	stake := new(big.Int)
 	stake.SetString("100000000000000000000", 10)
 	rewardPool := new(big.Int)
@@ -1979,9 +1981,22 @@ func setupChallengeTestTable(t *testing.T) *PostgresPersister {
 
 func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Challenge, int) {
 	// sample challenge
-	modelChallenge, challengeID := setupSampleChallenge(randListing)
+	challenger, _ := cstrings.RandomHexStr(32)
+	modelChallenge, challengeID := setupSampleChallenge(randListing, challenger)
 
 	// insert to table
+	return insertTestChallengeToTable(t, persister, modelChallenge, challengeID)
+}
+
+func createAndSaveTestChallengeWithChallenger(t *testing.T, persister *PostgresPersister, randListing bool, challenger string) (*model.Challenge, int) {
+	// sample challenge
+	modelChallenge, challengeID := setupSampleChallenge(randListing, challenger)
+
+	// insert to table
+	return insertTestChallengeToTable(t, persister, modelChallenge, challengeID)
+}
+
+func insertTestChallengeToTable(t *testing.T, persister *PostgresPersister, modelChallenge *model.Challenge, challengeID int) (*model.Challenge, int) {
 	err := persister.createChallengeInTable(modelChallenge, persister.GetTableName(challengeTestTableName))
 	if err != nil {
 		t.Errorf("error saving challenge: %v", err)
@@ -2183,6 +2198,48 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 	}
 	if len(challengesFromDB) != 3 {
 		t.Errorf("Should have gotten 3 results for address")
+	}
+
+	previousChallengeID := big.NewInt(-1)
+	for _, ch := range challengesFromDB {
+		if ch.ListingAddress().Hex() != testAddress {
+			t.Errorf("Should have gotten all challenges for a single address")
+		}
+		if ch.ChallengeID().Cmp(previousChallengeID) != 1 {
+			t.Errorf(
+				"Should have returned the list in order: %v, %v",
+				ch.ChallengeID(),
+				previousChallengeID,
+			)
+		}
+		previousChallengeID = ch.ChallengeID()
+	}
+}
+
+func TestGetChallengesForChallengerAddress(t *testing.T) {
+	persister := setupChallengeTestTable(t)
+	defer persister.Close()
+	tableName := persister.GetTableName(challengeTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
+	_, _ = createAndSaveTestChallengeWithChallenger(t, persister, false, testAddress2)
+	_, _ = createAndSaveTestChallengeWithChallenger(t, persister, false, testAddress2)
+	_, _ = createAndSaveTestChallengeWithChallenger(t, persister, false, testAddress3)
+
+	challengesFromDB, err := persister.challengesByChallengerAddressInTable(
+		common.HexToAddress(testAddress2),
+		tableName,
+	)
+
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+
+	if len(challengesFromDB) == 0 {
+		t.Errorf("Should have gotten some results for address")
+	}
+	if len(challengesFromDB) != 2 {
+		t.Errorf("Should have gotten 2 results for address")
 	}
 
 	previousChallengeID := big.NewInt(-1)
