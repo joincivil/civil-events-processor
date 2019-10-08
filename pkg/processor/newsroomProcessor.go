@@ -1,11 +1,10 @@
 package processor
 
 import (
-	"math/big"
-	"strings"
-
 	log "github.com/golang/glog"
 	"github.com/pkg/errors"
+	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/scraper"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 const (
@@ -254,7 +254,11 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 			log.Errorf("Could not find newsroomUrl in the charter data: %v", charterData.URI())
 			n.errRep.Error(errors.Errorf("could not find newsroomUrl in charter data: %v", charterData.URI()), nil)
 		} else {
-			listing.SetURL(nrURL.(string))
+			cleanURL, err := utils.CleanURL(nrURL.(string))
+			if err != nil {
+				log.Errorf("Bad URL Found in Charter: %v", charterData.URI())
+			}
+			listing.SetURL(cleanURL)
 			updatedFields = append(updatedFields, urlFieldName)
 		}
 	}
