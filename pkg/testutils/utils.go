@@ -20,6 +20,7 @@ const (
 //TestPersister is a test persister
 type TestPersister struct {
 	Listings             map[string]*model.Listing
+	ListingsByURL        map[string]*model.Listing
 	Revisions            map[string][]*model.ContentRevision
 	GovEvents            map[string][]*model.GovernanceEvent
 	Challenges           map[int]*model.Challenge
@@ -81,13 +82,26 @@ func (t *TestPersister) ListingByAddress(address common.Address) (*model.Listing
 	return listing, nil
 }
 
+// ListingByCleanedNewsroomURL retrieves a listing based on url
+func (t *TestPersister) ListingByCleanedNewsroomURL(cleanedURL string) (*model.Listing, error) {
+	listing := t.ListingsByURL[cleanedURL]
+	if listing == nil {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	return listing, nil
+}
+
 // CreateListing creates a new listing
 func (t *TestPersister) CreateListing(listing *model.Listing) error {
 	addressHex := listing.ContractAddress().Hex()
 	if t.Listings == nil {
 		t.Listings = map[string]*model.Listing{}
 	}
+	if t.ListingsByURL == nil {
+		t.ListingsByURL = map[string]*model.Listing{}
+	}
 	t.Listings[addressHex] = listing
+	t.ListingsByURL[listing.CleanedURL()] = listing
 	return nil
 }
 
@@ -97,7 +111,11 @@ func (t *TestPersister) UpdateListing(listing *model.Listing, updatedFields []st
 	if t.Listings == nil {
 		t.Listings = map[string]*model.Listing{}
 	}
+	if t.ListingsByURL == nil {
+		t.ListingsByURL = map[string]*model.Listing{}
+	}
 	t.Listings[addressHex] = listing
+	t.ListingsByURL[listing.CleanedURL()] = listing
 	return nil
 }
 
@@ -107,7 +125,11 @@ func (t *TestPersister) DeleteListing(listing *model.Listing) error {
 	if t.Listings == nil {
 		t.Listings = map[string]*model.Listing{}
 	}
+	if t.ListingsByURL == nil {
+		t.ListingsByURL = map[string]*model.Listing{}
+	}
 	delete(t.Listings, addressHex)
+	delete(t.ListingsByURL, listing.CleanedURL())
 	return nil
 }
 
