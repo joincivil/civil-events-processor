@@ -120,7 +120,7 @@ func (p *PostgresPersister) ListingByAddress(address common.Address) (*model.Lis
 	return p.listingByAddressFromTable(address, listingTableName)
 }
 
-// ListingByNewsroomURL retrieves listings based on addresses
+// ListingByNewsroomURL retrieves listings based on newsroom urls
 func (p *PostgresPersister) ListingByNewsroomURL(newsroomURL string) (*model.Listing, error) {
 	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
 	return p.listingByNewsroomURLFromTable(newsroomURL, listingTableName)
