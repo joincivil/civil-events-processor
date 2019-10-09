@@ -104,6 +104,8 @@ type ListingPersister interface {
 	UpdateListing(listing *Listing, updatedFields []string) error
 	// DeleteListing removes a listing
 	DeleteListing(listing *Listing) error
+	// ListingByCleanedNewsroomURL retrieves a listing that matches the given url
+	ListingByCleanedNewsroomURL(cleanedURL string) (*Listing, error)
 	// Close shuts down the persister
 	Close() error
 }

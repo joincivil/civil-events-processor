@@ -34,6 +34,11 @@ func (n *NullPersister) ListingByAddress(address common.Address) (*model.Listing
 	return &model.Listing{}, nil
 }
 
+// ListingByCleanedNewsroomURL returns listing that matches given url
+func (n *NullPersister) ListingByCleanedNewsroomURL(cleanedURL string) (*model.Listing, error) {
+	return &model.Listing{}, nil
+}
+
 // CreateListing creates a new listing
 func (n *NullPersister) CreateListing(listing *model.Listing) error {
 	return nil
