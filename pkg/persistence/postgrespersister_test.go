@@ -351,6 +351,7 @@ func setupSampleListing() (*model.Listing, common.Address) {
 		AppExpiry:            appExpiry,
 		UnstakedDeposit:      unstakedDeposit,
 		ChallengeID:          challengeID,
+		CleanedURL:           "cleaned_url_string",
 	}
 	testListing := model.NewListing(testListingParams)
 	return testListing, contractAddress
@@ -401,6 +402,7 @@ func setupSampleListingUnchallenged() (*model.Listing, common.Address) {
 		LastUpdatedDateTs:    1257894000,
 		AppExpiry:            appExpiry,
 		UnstakedDeposit:      unstakedDeposit,
+		CleanedURL:           "cleaned_url_string",
 	}
 	testListing := model.NewListing(testListingParams)
 	return testListing, contractAddress
@@ -491,7 +493,7 @@ func TestListingByNewsroomURL(t *testing.T) {
 	}
 
 	// retrieve from test table
-	_, err = persister.listingByNewsroomURLFromTable(modelListing.URL(), tableName)
+	_, err = persister.listingByCleanedNewsroomURLFromTable(modelListing.CleanedURL(), tableName)
 
 	if err != nil {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
