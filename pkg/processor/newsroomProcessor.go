@@ -254,11 +254,12 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 			log.Errorf("Could not find newsroomUrl in the charter data: %v", charterData.URI())
 			n.errRep.Error(errors.Errorf("could not find newsroomUrl in charter data: %v", charterData.URI()), nil)
 		} else {
+			listing.SetURL(nrURL.(string))
 			cleanURL, err := utils.CleanURL(nrURL.(string))
 			if err != nil {
 				log.Errorf("Bad URL Found in Charter: %v", charterData.URI())
 			}
-			listing.SetURL(cleanURL)
+			listing.SetCleanedURL(cleanURL)
 			updatedFields = append(updatedFields, urlFieldName)
 		}
 	}

@@ -40,6 +40,7 @@ func CreateListingTableQuery(tableName string) string {
             app_expiry INT,
             challenge_id INT,
 			unstaked_deposit NUMERIC
+			cleaned_url TEXT,
         );
     `, tableName)
 	return queryString
@@ -97,6 +98,8 @@ type Listing struct {
 	UnstakedDeposit float64 `db:"unstaked_deposit"`
 
 	ChallengeID int64 `db:"challenge_id"`
+
+	CleanedURL string `db:"cleaned_url"`
 }
 
 // NewListing constructs a listing for DB from a model.Listing
@@ -155,6 +158,7 @@ func NewListing(listing *model.Listing) *Listing {
 		AppExpiry:            appExpiry,
 		UnstakedDeposit:      unstakedDeposit,
 		ChallengeID:          challengeID,
+		CleanedURL:           listing.CleanedURL(),
 	}
 }
 
@@ -198,6 +202,7 @@ func (l *Listing) DbToListingData() *model.Listing {
 		AppExpiry:            appExpiry,
 		UnstakedDeposit:      unstakedDeposit,
 		ChallengeID:          challengeID,
+		CleanedURL:           l.CleanedURL,
 	}
 	return model.NewListing(listingParams)
 }

@@ -223,6 +223,7 @@ type NewListingParams struct {
 	AppExpiry            *big.Int
 	UnstakedDeposit      *big.Int
 	ChallengeID          *big.Int
+	CleanedURL           string
 }
 
 // NewListing is a convenience function to initialize a new Listing struct
@@ -244,6 +245,7 @@ func NewListing(params *NewListingParams) *Listing {
 		appExpiry:            params.AppExpiry,
 		unstakedDeposit:      params.UnstakedDeposit,
 		challengeID:          params.ChallengeID,
+		cleanedURL:           params.CleanedURL,
 	}
 }
 
@@ -280,6 +282,8 @@ type Listing struct {
 	unstakedDeposit *big.Int
 
 	challengeID *big.Int
+
+	cleanedURL string
 }
 
 // Name returns the newsroom name
@@ -331,6 +335,16 @@ func (l *Listing) URL() string {
 // SetURL sets the URL of the newsroom
 func (l *Listing) SetURL(url string) {
 	l.url = url
+}
+
+// CleanedURL is the homepage of the newsroom, stripped of non-identifying url data
+func (l *Listing) CleanedURL() string {
+	return l.cleanedURL
+}
+
+// SetCleanedURL sets the CleanedUrl of the newsroom
+func (l *Listing) SetCleanedURL(cleanedURL string) {
+	l.cleanedURL = cleanedURL
 }
 
 // Charter returns the data regarding charter post for the newsroom
