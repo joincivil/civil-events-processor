@@ -39,8 +39,8 @@ func CreateListingTableQuery(tableName string) string {
             last_updated_timestamp INT,
             app_expiry INT,
             challenge_id INT,
-			unstaked_deposit NUMERIC
-			cleaned_url TEXT,
+			unstaked_deposit NUMERIC,
+			cleaned_url TEXT
         );
     `, tableName)
 	return queryString
@@ -56,11 +56,12 @@ func CreateListingTableIndicesQuery(tableName string) string {
 }
 
 // CreateListingTableMigrationQuery returns the query to do db migrations
-// func CreateListingTableMigrationQuery(tableName string) string {
-// queryString := fmt.Sprintf(`
-// `, tableName)
-// return queryString
-// }
+func CreateListingTableMigrationQuery(tableName string) string {
+	queryString := fmt.Sprintf(`
+		ALTER TABLE %s ADD COLUMN IF NOT EXISTS cleaned_url TEXT;
+	`, tableName)
+	return queryString
+}
 
 // Listing is the model definition for listing table in crawler db
 // NOTE(IS) : golang<->postgres doesn't support list of strings. for now, OwnerAddresses and ContributorAddresses
