@@ -618,7 +618,13 @@ func (p *PostgresPersister) CreateIndices() error {
 	return err
 }
 
+// RunMigrations runs migrations for necessary tables
 func (p *PostgresPersister) RunMigrations() error {
+	migrationQuery := postgres.CreateListingTableMigrationQuery(p.GetTableName(postgres.ListingTableBaseName))
+	_, err := p.db.Exec(migrationQuery)
+	if err != nil {
+		return errors.Wrap(err, "error migrating listing table indices")
+	}
 	return nil
 }
 
