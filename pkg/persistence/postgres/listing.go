@@ -51,7 +51,8 @@ func CreateListingTableIndicesQuery(tableName string) string {
 	queryString := fmt.Sprintf(`
 		CREATE INDEX IF NOT EXISTS listing_whitelisted_type_idx ON %s (whitelisted);
 		CREATE INDEX IF NOT EXISTS listing_creation_timestamp_idx ON %s (creation_timestamp);
-	`, tableName, tableName)
+		CREATE INDEX IF NOT EXISTS url_idx ON %s (url)
+	`, tableName, tableName, tableName)
 	return queryString
 }
 
