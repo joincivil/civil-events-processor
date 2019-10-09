@@ -120,6 +120,12 @@ func (p *PostgresPersister) ListingByAddress(address common.Address) (*model.Lis
 	return p.listingByAddressFromTable(address, listingTableName)
 }
 
+// ListingByNewsroomURL retrieves listings based on addresses
+func (p *PostgresPersister) ListingByNewsroomURL(newsroomURL string) (*model.Listing, error) {
+	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
+	return p.listingByNewsroomURLFromTable(newsroomURL, listingTableName)
+}
+
 // CreateListing creates a new listing
 func (p *PostgresPersister) CreateListing(listing *model.Listing) error {
 	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
@@ -779,8 +785,65 @@ func (p *PostgresPersister) listingsByAddressesFromTableInOrder(addresses []comm
 	return listings, nil
 }
 
+func (p *PostgresPersister) listingsByNewsroomURLsFromTableInOrder(newsroomURLs []string,
+	tableName string) ([]*model.Listing, error) {
+	if len(newsroomURLs) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	queryString := p.listingByNewsroomURLsQuery(tableName)
+	query, args, err := sqlx.In(queryString, newsroomURLs)
+	if err != nil {
+		return nil, errors.Wrap(err, "error preparing 'IN' statement")
+	}
+
+	query = p.db.Rebind(query)
+	rows, err := p.db.Queryx(query, args...)
+	defer p.closeRows(rows)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving listings from table")
+	}
+
+	listingsMap := map[string]*model.Listing{}
+	for rows.Next() {
+		var dbListing postgres.Listing
+		err = rows.StructScan(&dbListing)
+		if err != nil {
+			return nil, errors.Wrap(err, "error scanning row from IN query")
+		}
+		modelListing := dbListing.DbToListingData()
+		listingsMap[modelListing.URL()] = modelListing
+	}
+
+	// NOTE(IS): This is not ideal, but we should return the listings in same
+	// order as newsroomURLs (also needed for dataloader in api-server)
+	// so looping through listings again.
+	listings := make([]*model.Listing, len(newsroomURLs))
+	for i, newsroomURL := range newsroomURLs {
+		retrievedListing, ok := listingsMap[newsroomURL]
+		if ok {
+			listings[i] = retrievedListing
+		} else {
+			listings[i] = nil
+		}
+	}
+	return listings, nil
+}
+
 func (p *PostgresPersister) listingByAddressFromTable(address common.Address, tableName string) (*model.Listing, error) {
 	listings, err := p.listingsByAddressesFromTableInOrder([]common.Address{address}, tableName)
+	if len(listings) > 0 {
+		if listings[0] == nil {
+			err = cpersist.ErrPersisterNoResults
+		}
+		return listings[0], err
+	}
+	return nil, err
+
+}
+
+func (p *PostgresPersister) listingByNewsroomURLFromTable(newsroomURL string, tableName string) (*model.Listing, error) {
+	listings, err := p.listingsByNewsroomURLsFromTableInOrder([]string{newsroomURL}, tableName)
 	if len(listings) > 0 {
 		if listings[0] == nil {
 			err = cpersist.ErrPersisterNoResults
@@ -879,6 +942,12 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 func (p *PostgresPersister) listingByAddressesQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE contract_address IN (?);", fieldNames, tableName) // nolint: gosec
+	return queryString
+}
+
+func (p *PostgresPersister) listingByNewsroomURLsQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE url IN (?);", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
 

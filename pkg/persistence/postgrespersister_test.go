@@ -472,6 +472,33 @@ func TestListingByAddress(t *testing.T) {
 
 }
 
+// TestListingByNewsroomURL tests that the query we are using to get Listing works
+func TestListingByNewsroomURL(t *testing.T) {
+
+	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
+	tableName := persister.GetTableName(listingTestTableName)
+
+	defer deleteTestTable(t, persister, tableName)
+
+	// create fake listing in listing_test
+	modelListing, _ := setupSampleListing()
+
+	// save to test table
+	err := persister.createListingForTable(modelListing, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	// retrieve from test table
+	_, err = persister.listingByNewsroomURLFromTable(modelListing.URL(), tableName)
+
+	if err != nil {
+		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
+	}
+
+}
+
 // TestListingCharterByAddress tests that the query we are using to get Listing works
 func TestListingCharterByAddress(t *testing.T) {
 
