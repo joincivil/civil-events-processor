@@ -129,6 +129,16 @@ func ParameterizerPersister(config cconfig.PersisterConfig, versionNumber string
 	return p.(model.ParamProposalPersister), nil
 }
 
+// ParameterPersister is a helper function to return the parameterpersister based
+// on the given configureation
+func ParameterPersister(config cconfig.PersisterConfig, versionNumber string) (model.ParameterPersister, error) {
+	p, err := Persister(config, versionNumber)
+	if err != nil {
+		return nil, err
+	}
+	return p.(model.ParameterPersister), nil
+}
+
 // UserChallengeDataPersister is a helper function to return the userchallengedatapersister based
 // on the given configuration.
 func UserChallengeDataPersister(config cconfig.PersisterConfig, versionNumber string) (model.UserChallengeDataPersister, error) {

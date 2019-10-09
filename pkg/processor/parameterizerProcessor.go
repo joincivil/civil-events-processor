@@ -28,17 +28,21 @@ var paramChallengeEventNames = []string{"ChallengeFailed", "ChallengeSucceeded",
 const (
 	proposalAcceptedFieldName      = "Accepted"
 	proposalExpiredFieldName       = "Expired"
+	proposalChallengeIDFieldName   = "ChallengeID"
 	userChallengeIsPassedFieldName = "PollIsPassed"
+	valueFieldName                 = "Value"
+	processByDuration              = 604800
 )
 
 // NewParameterizerEventProcessor is a convenience function to init a parameterizer processor
 func NewParameterizerEventProcessor(client bind.ContractBackend, challengePersister model.ChallengePersister,
-	paramProposalPersister model.ParamProposalPersister, pollPersister model.PollPersister,
+	paramProposalPersister model.ParamProposalPersister, parameterPersister model.ParameterPersister, pollPersister model.PollPersister,
 	userChallengeDataPersister model.UserChallengeDataPersister, errRep cerrors.ErrorReporter) *ParameterizerEventProcessor {
 	return &ParameterizerEventProcessor{
 		client:                     client,
 		challengePersister:         challengePersister,
 		paramProposalPersister:     paramProposalPersister,
+		parameterPersister:         parameterPersister,
 		pollPersister:              pollPersister,
 		userChallengeDataPersister: userChallengeDataPersister,
 		errRep:                     errRep,
@@ -50,6 +54,7 @@ type ParameterizerEventProcessor struct {
 	client                     bind.ContractBackend
 	challengePersister         model.ChallengePersister
 	paramProposalPersister     model.ParamProposalPersister
+	parameterPersister         model.ParameterPersister
 	pollPersister              model.PollPersister
 	userChallengeDataPersister model.UserChallengeDataPersister
 	errRep                     cerrors.ErrorReporter
@@ -143,8 +148,19 @@ func (p *ParameterizerEventProcessor) processProposalAccepted(event *crawlermode
 	if err != nil {
 		return err
 	}
+	parameter, err := p.getExistingParameter(event)
+	if err != nil {
+		return err
+	}
+	parameter.SetValue(paramProposal.Value())
 	paramProposal.SetAccepted(true)
-	return p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalAcceptedFieldName})
+	paramProposal.SetExpired(true)
+	err = p.parameterPersister.UpdateParameter(parameter, []string{valueFieldName})
+	if err != nil {
+		return err
+	}
+
+	return p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalAcceptedFieldName, proposalExpiredFieldName})
 }
 
 func (p *ParameterizerEventProcessor) processProposalExpired(event *crawlermodel.Event) error {
@@ -159,6 +175,15 @@ func (p *ParameterizerEventProcessor) processProposalExpired(event *crawlermodel
 func (p *ParameterizerEventProcessor) processParameterizerChallenge(event *crawlermodel.Event,
 	challengeID *big.Int) error {
 	_, err := p.newChallenge(event.ContractAddress(), challengeID)
+	if err != nil {
+		return err
+	}
+	paramProposal, err := p.getExistingParameterProposal(event)
+	if err != nil {
+		return err
+	}
+	paramProposal.SetChallengeID(challengeID)
+	err = p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalChallengeIDFieldName})
 	return err
 }
 
@@ -170,6 +195,29 @@ func (p *ParameterizerEventProcessor) processChallengeFailed(event *crawlermodel
 	if err != nil {
 		return fmt.Errorf("Error setting isPassed field in poll, err: %v", err)
 	}
+	paramProposal, err := p.getExistingParameterProposal(event)
+	if err != nil {
+		return err
+	}
+	processBy := paramProposal.AppExpiry().Int64() + processByDuration
+	if event.Timestamp() < processBy {
+		parameter, err := p.getExistingParameter(event)
+		if err != nil {
+			return err
+		}
+		parameter.SetValue(paramProposal.Value())
+		err = p.parameterPersister.UpdateParameter(parameter, []string{valueFieldName})
+		if err != nil {
+			return err
+		}
+	}
+
+	paramProposal.SetAccepted(true)
+	paramProposal.SetExpired(true)
+	err = p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalAcceptedFieldName, proposalExpiredFieldName})
+	if err != nil {
+		return err
+	}
 	return p.processChallengeResolution(event, challengeID, pollIsPassed)
 }
 
@@ -180,6 +228,15 @@ func (p *ParameterizerEventProcessor) processChallengeSucceeded(event *crawlermo
 	err := p.setPollIsPassedInPoll(challengeID, pollIsPassed)
 	if err != nil {
 		return fmt.Errorf("Error setting isPassed field in poll, err: %v", err)
+	}
+	paramProposal, err := p.getExistingParameterProposal(event)
+	if err != nil {
+		return err
+	}
+	paramProposal.SetExpired(true)
+	err = p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalExpiredFieldName})
+	if err != nil {
+		return err
 	}
 	return p.processChallengeResolution(event, challengeID, pollIsPassed)
 }
@@ -278,7 +335,7 @@ func (p *ParameterizerEventProcessor) getExistingParameterProposal(event *crawle
 		return nil, err
 	}
 	// get parameterization from db
-	paramProposal, err := p.paramProposalPersister.ParamProposalByPropID(propID)
+	paramProposal, err := p.paramProposalPersister.ParamProposalByPropID(propID, true)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
@@ -289,6 +346,25 @@ func (p *ParameterizerEventProcessor) getExistingParameterProposal(event *crawle
 		}
 	}
 	return paramProposal, nil
+}
+
+func (p *ParameterizerEventProcessor) getExistingParameter(event *crawlermodel.Event) (*model.Parameter, error) {
+	propID, err := p.getPropIDFromEvent(event)
+	if err != nil {
+		return nil, err
+	}
+	// get parameterization from db, use its `name` value to get parameter
+	paramProposal, err := p.paramProposalPersister.ParamProposalByPropID(propID, true)
+	if err != nil && err != cpersist.ErrPersisterNoResults {
+		return nil, err
+	}
+	// get parameter from db
+	parameter, err := p.parameterPersister.ParameterByName(paramProposal.Name())
+	if err != nil && err != cpersist.ErrPersisterNoResults {
+		return nil, err
+	}
+
+	return parameter, nil
 }
 
 func (p *ParameterizerEventProcessor) newParameterizationFromProposal(event *crawlermodel.Event) error {
@@ -321,15 +397,14 @@ func (p *ParameterizerEventProcessor) newParameterizationFromProposal(event *cra
 	accepted := false
 	currentTime := ctime.CurrentEpochSecsInInt64()
 
-	// calculate if expired
-	var expired bool
-	if currentTime < appExpiry.(*big.Int).Int64() {
-		expired = false
-	} else {
-		expired = true
-	}
+	nameString := name.(string)
+	valueString := (value.(*big.Int)).String()
+	appExpiryString := (appExpiry.(*big.Int)).String()
+
+	id := nameString + valueString + appExpiryString
 
 	paramProposal := model.NewParameterProposal(&model.ParameterProposalParams{
+		ID:                id,
 		Name:              name.(string),
 		Value:             value.(*big.Int),
 		PropID:            propID.([32]byte),
@@ -338,7 +413,7 @@ func (p *ParameterizerEventProcessor) newParameterizationFromProposal(event *cra
 		ChallengeID:       big.NewInt(0),
 		Proposer:          proposer.(common.Address),
 		Accepted:          accepted,
-		Expired:           expired,
+		Expired:           false,
 		LastUpdatedDateTs: currentTime,
 	})
 

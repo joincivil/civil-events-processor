@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 // NullPersister is a persister that does not save any values and always returns
@@ -160,6 +161,11 @@ func (n *NullPersister) ChallengesByListingAddresses(addr []common.Address) ([][
 	return [][]*model.Challenge{}, nil
 }
 
+// ChallengesByChallengerAddress returns a slice of challenges started by given user
+func (n *NullPersister) ChallengesByChallengerAddress(addr common.Address) ([]*model.Challenge, error) {
+	return []*model.Challenge{}, nil
+}
+
 // CreateChallenge creates a new challenge
 func (n *NullPersister) CreateChallenge(challenge *model.Challenge) error {
 	return nil
@@ -230,13 +236,33 @@ func (n *NullPersister) CreateTokenTransfer(appeal *model.TokenTransfer) error {
 	return nil
 }
 
+// ParameterByName gets a parameter from persistence using paramName
+func (n *NullPersister) ParameterByName(paramName string) (*model.Parameter, error) {
+	return &model.Parameter{}, nil
+}
+
+// ParametersByName gets a slice of parameters by name
+func (n *NullPersister) ParametersByName(paramName []string) ([]*model.Parameter, error) {
+	return []*model.Parameter{}, nil
+}
+
+// UpdateParameter updates the value of a parameter in table
+func (n *NullPersister) UpdateParameter(parameter *model.Parameter, updatedFields []string) error {
+	return nil
+}
+
+// CreateDefaultValues creates Parameter default values
+func (n *NullPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
+	return nil
+}
+
 // CreateParameterProposal creates a new parameter proposal
 func (n *NullPersister) CreateParameterProposal(paramProposal *model.ParameterProposal) error {
 	return nil
 }
 
 // ParamProposalByPropID gets a parameter proposal from persistence using propID
-func (n *NullPersister) ParamProposalByPropID(propID [32]byte) (*model.ParameterProposal, error) {
+func (n *NullPersister) ParamProposalByPropID(propID [32]byte, active bool) (*model.ParameterProposal, error) {
 	return &model.ParameterProposal{}, nil
 }
 

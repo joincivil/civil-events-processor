@@ -38,6 +38,7 @@ func setupParameterizerProcessor(t *testing.T) (*contractutils.AllTestContracts,
 		persister,
 		persister,
 		persister,
+		persister,
 		&cerrors.NullErrorReporter{},
 	)
 	return contracts, persister, paramProc
@@ -92,7 +93,29 @@ func createAndProcNewChallengeEvent(t *testing.T, contracts *contractutils.AllTe
 }
 
 func createAndProcNewChallengeFailedEvent(t *testing.T, contracts *contractutils.AllTestContracts,
-	paramProc *processor.ParameterizerEventProcessor) *crawlermodel.Event {
+	paramProc *processor.ParameterizerEventProcessor, persister *testutils.TestPersister) *crawlermodel.Event {
+	parameter := model.NewParameter("commitStageLen", big.NewInt(500))
+	err := persister.UpdateParameter(parameter, []string{"param_name", "value"})
+	if err != nil {
+		t.Errorf("Error Updating Parameter, err: %v", err)
+	}
+	proposal := model.NewParameterProposal(&model.ParameterProposalParams{
+		Name:              "commitStageLen",
+		Value:             big.NewInt(300),
+		PropID:            [32]byte{0x00, 0x01},
+		Deposit:           big.NewInt(123),
+		AppExpiry:         big.NewInt(123),
+		ChallengeID:       big.NewInt(0),
+		Proposer:          common.HexToAddress(testAddress),
+		Accepted:          false,
+		Expired:           false,
+		LastUpdatedDateTs: 0,
+	})
+	err = persister.CreateParameterProposal(proposal)
+	if err != nil {
+		t.Errorf("Error creating Parameter Proposal, err: %v", err)
+	}
+
 	challengeFailed := &contract.ParameterizerContractChallengeFailed{
 		PropID:      [32]byte{0x00, 0x01},
 		ChallengeID: big.NewInt(3),
@@ -117,7 +140,7 @@ func createAndProcNewChallengeFailedEvent(t *testing.T, contracts *contractutils
 		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
-	_, err := paramProc.Process(event)
+	_, err = paramProc.Process(event)
 	if err != nil {
 		t.Errorf("Should not have failed processing events, err: %v", err)
 	}
@@ -193,7 +216,20 @@ func createAndProcNewReparameterizationProp(t *testing.T, contracts *contractuti
 }
 
 func createAndProcNewProposalAccepted(t *testing.T, contracts *contractutils.AllTestContracts,
-	paramProc *processor.ParameterizerEventProcessor) *crawlermodel.Event {
+	paramProc *processor.ParameterizerEventProcessor, persister *testutils.TestPersister) *crawlermodel.Event {
+	parameter := model.NewParameter("commitStageLen", big.NewInt(500))
+	err := persister.UpdateParameter(parameter, []string{"param_name", "value"})
+	if err != nil {
+		t.Errorf("Failed updating parameter, err: %v", err)
+	}
+	startingParameter, err := persister.ParameterByName("commitStageLen")
+	if err != nil {
+		t.Errorf("Error getting Parameter by Name, err: %v", err)
+	}
+	startingValue := startingParameter.Value()
+	if startingValue.Uint64() != big.NewInt(500).Uint64() {
+		t.Errorf("Starting value for commitStageLen not correct. startingValue: %s", startingValue)
+	}
 	propAccepted := &contract.ParameterizerContractProposalAccepted{
 		Name:   "commitStageLen",
 		Value:  big.NewInt(1800),
@@ -217,9 +253,17 @@ func createAndProcNewProposalAccepted(t *testing.T, contracts *contractutils.All
 		ctime.CurrentEpochSecsInInt64(),
 		crawlermodel.Filterer,
 	)
-	_, err := paramProc.Process(event)
+	_, err = paramProc.Process(event)
 	if err != nil {
 		t.Errorf("Should not have failed processing events, err: %v", err)
+	}
+	endParameter, err := persister.ParameterByName("commitStageLen")
+	if err != nil {
+		t.Errorf("Error getting Parameter by Name, err: %v", err)
+	}
+	endValue := endParameter.Value()
+	if endValue.Uint64() != big.NewInt(1800).Uint64() {
+		t.Errorf("Ending value for commitStageLen not correct. endValue: %s", endValue)
 	}
 	return event
 }
@@ -271,13 +315,13 @@ func TestParameterizerEventProcessor(t *testing.T) {
 func TestProcessProposalAccepted(t *testing.T) {
 	contracts, persister, paramProc := setupParameterizerProcessor(t)
 	reparamProp := createAndProcNewReparameterizationProp(t, contracts, paramProc)
-	_ = createAndProcNewProposalAccepted(t, contracts, paramProc)
+	_ = createAndProcNewProposalAccepted(t, contracts, paramProc, persister)
 	if len(persister.ParameterProposal) != 1 {
 		t.Error("Should have only 1 parameter proposal in persister")
 	}
 	payload := reparamProp.EventPayload()
 	propID := payload["PropID"]
-	persistedProp, _ := persister.ParamProposalByPropID(propID.([32]byte))
+	persistedProp, _ := persister.ParamProposalByPropID(propID.([32]byte), true)
 	if !persistedProp.Accepted() {
 		t.Error("Persisted proposal accepted field should be true")
 	}
@@ -293,9 +337,9 @@ func TestProcessProposalExpired(t *testing.T) {
 	}
 	payload := reparamProp.EventPayload()
 	propID := payload["PropID"]
-	persistedProp, _ := persister.ParamProposalByPropID(propID.([32]byte))
+	persistedProp, _ := persister.ParamProposalByPropID(propID.([32]byte), true)
 	if !persistedProp.Expired() {
-		t.Error("Persisted proposal accepted field should be true")
+		t.Error("Persisted proposal expired field should be true")
 	}
 	memoryCheck(contracts)
 }
@@ -320,7 +364,7 @@ func TestProcessChallengeFailed(t *testing.T) {
 	contracts, persister, paramProc := setupParameterizerProcessor(t)
 	_ = createAndProcNewReparameterizationProp(t, contracts, paramProc)
 	challengeEvent := createAndProcNewChallengeEvent(t, contracts, paramProc, persister)
-	_ = createAndProcNewChallengeFailedEvent(t, contracts, paramProc)
+	_ = createAndProcNewChallengeFailedEvent(t, contracts, paramProc, persister)
 	if len(persister.Challenges) != 1 {
 		t.Error("Should have only 1 challenge in persister")
 	}

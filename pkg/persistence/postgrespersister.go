@@ -22,6 +22,7 @@ import (
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
 	"github.com/joincivil/civil-events-processor/pkg/persistence/postgres"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 
 	crawlerPostgres "github.com/joincivil/civil-events-crawler/pkg/persistence/postgres"
 
@@ -270,6 +271,12 @@ func (p *PostgresPersister) ChallengesByListingAddress(addr common.Address) ([]*
 	return p.challengesByListingAddressInTable(addr, challengeTableName)
 }
 
+// ChallengesByChallengerAddress returns a slice of challenges started by given user
+func (p *PostgresPersister) ChallengesByChallengerAddress(addr common.Address) ([]*model.Challenge, error) {
+	challengeTableName := p.GetTableName(postgres.ChallengeTableBaseName)
+	return p.challengesByChallengerAddressInTable(addr, challengeTableName)
+}
+
 // PollByPollID gets a poll by pollID
 func (p *PostgresPersister) PollByPollID(pollID int) (*model.Poll, error) {
 	pollTableName := p.GetTableName(postgres.PollTableBaseName)
@@ -345,6 +352,24 @@ func (p *PostgresPersister) CreateTokenTransfer(purchase *model.TokenTransfer) e
 	return p.createTokenTransferInTable(purchase, tokenTransferTableName)
 }
 
+// ParametersByName gets the parameter with given name
+func (p *PostgresPersister) ParametersByName(paramNames []string) ([]*model.Parameter, error) {
+	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
+	return p.parametersByName(paramNames, parameterTableName)
+}
+
+// ParameterByName gets the parameter with given name
+func (p *PostgresPersister) ParameterByName(paramName string) (*model.Parameter, error) {
+	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
+	return p.parameterByName(paramName, parameterTableName)
+}
+
+// UpdateParameter updates a parameter
+func (p *PostgresPersister) UpdateParameter(parameter *model.Parameter, updatedFields []string) error {
+	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
+	return p.updateParameterInTable(parameter, updatedFields, parameterTableName)
+}
+
 // SaveVersion saves the version for this persistence
 func (p *PostgresPersister) SaveVersion(versionNumber *string) error {
 	if versionNumber == nil || *versionNumber == "" {
@@ -405,9 +430,9 @@ func (p *PostgresPersister) CreateParameterProposal(paramProposal *model.Paramet
 }
 
 // ParamProposalByPropID gets parameter proposal by propID
-func (p *PostgresPersister) ParamProposalByPropID(propID [32]byte) (*model.ParameterProposal, error) {
+func (p *PostgresPersister) ParamProposalByPropID(propID [32]byte, active bool) (*model.ParameterProposal, error) {
 	paramProposalTableName := p.GetTableName(postgres.ParameterProposalTableBaseName)
-	return p.paramProposalByPropIDFromTable(propID, paramProposalTableName)
+	return p.paramProposalByPropIDFromTable(propID, active, paramProposalTableName)
 }
 
 // ParamProposalByName gets parameter proposals by name. active=true will get only active
@@ -457,6 +482,7 @@ func (p *PostgresPersister) CreateTables() error {
 	tokenTransferQuery := postgres.CreateTokenTransferTableQuery(p.GetTableName(postgres.TokenTransferTableBaseName))
 	parameterProposalQuery := postgres.CreateParameterProposalTableQuery(p.GetTableName(postgres.ParameterProposalTableBaseName))
 	userChallengeDataQuery := postgres.CreateUserChallengeDataTableQuery(p.GetTableName(postgres.UserChallengeDataTableBaseName))
+	parameterTableQuery := postgres.CreateParameterTableQuery(p.GetTableName(postgres.ParameterTableBaseName))
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -497,6 +523,52 @@ func (p *PostgresPersister) CreateTables() error {
 	_, err = p.db.Exec(userChallengeDataQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating user_challenge_data table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(parameterTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating parameter table in postgres: %v", err)
+	}
+
+	return nil
+}
+
+// CreateDefaultValues creates default values for tables that need them
+func (p *PostgresPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
+	return p.createDefaultParameterizerValues(config.ParameterizerDefaults())
+}
+
+func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string) error {
+	parameterTableCountQuery := postgres.CheckTableCount(p.GetTableName(postgres.ParameterTableBaseName))
+	var numRowsb int
+	err := p.db.QueryRow(parameterTableCountQuery).Scan(&numRowsb)
+	if err != nil {
+		return fmt.Errorf("Error checking parameter table count: %v", err)
+	}
+	if numRowsb == 0 {
+		err = p.createDefaultParameterValues(parameterizerDefaults)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *PostgresPersister) insertParameter(paramName string, value string) error {
+	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
+	addParameterValue := fmt.Sprintf(`INSERT INTO %s ("param_name", "value") VALUES ('%s', '%s')`, parameterTableName, paramName, value) // nolint: gosec
+	_, err := p.db.Exec(addParameterValue)
+	if err != nil {
+		return fmt.Errorf("Error inserting default parameter value: %v", err)
+	}
+	return nil
+}
+
+func (p *PostgresPersister) createDefaultParameterValues(parameterizerDefaults map[string]string) error {
+	for paramName, value := range parameterizerDefaults {
+		err := p.insertParameter(paramName, value)
+		if err != nil {
+			return fmt.Errorf("Errors inserting parameter: %s value: %s - err: %v", paramName, value, err)
+		}
 	}
 	return nil
 }
@@ -1287,6 +1359,82 @@ func (p *PostgresPersister) challengesByChallengeIDsInTableInOrder(challengeIDs 
 	return challenges, nil
 }
 
+func (p *PostgresPersister) parametersByName(paramNames []string, tableName string) ([]*model.Parameter, error) {
+	if len(paramNames) <= 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	queryString := p.parameterByNameQuery(tableName)
+	query, args, err := sqlx.In(queryString, paramNames)
+	if err != nil {
+		return nil, errors.Wrap(err, "error preparing 'IN' statement")
+	}
+	query = p.db.Rebind(query)
+
+	rows, err := p.db.Queryx(query, args...)
+
+	defer p.closeRows(rows)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving parameters from table")
+	}
+
+	parametersMap := map[string]*model.Parameter{}
+	for rows.Next() {
+		var dbParameter postgres.Parameter
+		err = rows.StructScan(&dbParameter)
+		if err != nil {
+			return nil, errors.Wrap(err, "error scanning row from IN query")
+		}
+
+		modelParameter := dbParameter.DbToParameterData()
+		parametersMap[modelParameter.ParamName()] = modelParameter
+	}
+
+	parameters := make([]*model.Parameter, len(paramNames))
+	for i, paramName := range paramNames {
+		retrievedParameter, ok := parametersMap[paramName]
+		if ok {
+			parameters[i] = retrievedParameter
+		} else {
+			parameters[i] = nil
+		}
+	}
+
+	return parameters, nil
+}
+
+func (p *PostgresPersister) parameterByName(paramName string, tableName string) (*model.Parameter, error) {
+	queryString := p.parameterByNameQuery(tableName)
+	query, args, err := sqlx.In(queryString, paramName)
+	if err != nil {
+		return nil, errors.Wrap(err, "error preparing 'IN' statement")
+	}
+	query = p.db.Rebind(query)
+	rows, err := p.db.Queryx(query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "error querying database")
+	}
+	defer p.closeRows(rows)
+
+	parameter := &model.Parameter{}
+	for rows.Next() {
+		var dbParameter postgres.Parameter
+		err = rows.StructScan(&dbParameter)
+		if err != nil {
+			return nil, errors.Wrap(err, "error scanning row from IN query")
+		}
+		parameter = dbParameter.DbToParameterData()
+	}
+
+	return parameter, nil
+}
+
+func (p *PostgresPersister) parameterByNameQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Parameter{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE param_name IN (?);", fieldNames, tableName) // nolint: gosec
+	return queryString
+}
+
 func (p *PostgresPersister) challengesByChallengeIDsQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE challenge_id IN (?);", fieldNames, tableName) // nolint: gosec
@@ -1394,6 +1542,41 @@ func (p *PostgresPersister) challengesByListingAddressQuery(tableName string) st
 	return queryString
 }
 
+// challengesByChallengerAddressInTable retrieves a list of challenges for a challenger sorted
+// by challenge_id
+func (p *PostgresPersister) challengesByChallengerAddressInTable(addr common.Address, tableName string) ([]*model.Challenge, error) {
+	challenges := []*model.Challenge{}
+	queryString := p.challengesByChallengerAddressQuery(tableName)
+
+	dbChallenges := []*postgres.Challenge{}
+	err := p.db.Select(&dbChallenges, queryString, addr.Hex())
+	if err != nil {
+		return challenges, errors.Wrap(err, "error retrieving challenges from table")
+	}
+
+	if len(dbChallenges) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	for _, dbChallenge := range dbChallenges {
+		challenges = append(challenges, dbChallenge.DbToChallengeData())
+	}
+
+	return challenges, nil
+}
+
+// challengesByChallengerAddressQuery returns the query string to retrieved a list of
+// challenges for a specified challenger sorted by challenge_id
+func (p *PostgresPersister) challengesByChallengerAddressQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
+	queryString := fmt.Sprintf( // nolint: gosec
+		"SELECT %s FROM %s WHERE lower(challenger) = lower($1) ORDER BY challenge_id;",
+		fieldNames,
+		tableName,
+	)
+	return queryString
+}
+
 func (p *PostgresPersister) createPollInTable(poll *model.Poll, tableName string) error {
 	dbPoll := postgres.NewPoll(poll)
 	queryString := p.insertIntoDBQueryString(tableName, postgres.Poll{})
@@ -1432,6 +1615,32 @@ func (p *PostgresPersister) updatePollQuery(updatedFields []string, tableName st
 		return "", err
 	}
 	queryString.WriteString(" WHERE poll_id=:poll_id;") // nolint: gosec
+	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) updateParameterInTable(parameter *model.Parameter, updatedFields []string, tableName string) error {
+	queryString, err := p.updateParameterQuery(updatedFields, tableName)
+	if err != nil {
+		return errors.Wrap(err, "error creating query string for update")
+	}
+	dbParameter := postgres.NewParameter(parameter)
+	result, err := p.db.NamedExec(queryString, dbParameter)
+	if err != nil {
+		return errors.Wrap(err, "error updating fields in poll table")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateParameterQuery(updatedFields []string, tableName string) (string, error) {
+	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.Parameter{})
+	if err != nil {
+		return "", err
+	}
+	queryString.WriteString(" WHERE param_name=:param_name;") // nolint: gosec
 	return queryString.String(), nil
 }
 
@@ -1782,10 +1991,14 @@ func (p *PostgresPersister) createParameterProposalInTable(paramProposal *model.
 	return nil
 }
 
-func (p *PostgresPersister) paramProposalByPropIDFromTable(propID [32]byte,
-	tableName string) (*model.ParameterProposal, error) {
+func (p *PostgresPersister) paramProposalByPropIDFromTable(
+	propID [32]byte,
+	active bool,
+	tableName string,
+) (*model.ParameterProposal, error) {
+
 	paramProposalData := []postgres.ParameterProposal{}
-	queryString := p.paramProposalQuery(tableName)
+	queryString := p.paramProposalQuery(tableName, active)
 	propIDString := cbytes.Byte32ToHexString(propID)
 	err := p.db.Select(&paramProposalData, queryString, propIDString)
 	if err != nil {
@@ -1860,9 +2073,12 @@ func (p *PostgresPersister) updateParamProposalQuery(updatedFields []string, tab
 	return queryString.String(), nil
 }
 
-func (p *PostgresPersister) paramProposalQuery(tableName string) string {
+func (p *PostgresPersister) paramProposalQuery(tableName string, active bool) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.ParameterProposal{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE prop_id=$1", fieldNames, tableName) // nolint: gosec
+	if active {
+		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
+	}
 	return queryString
 }
 

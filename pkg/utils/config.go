@@ -48,6 +48,8 @@ type ProcessorConfig struct {
 	StackDriverProjectID string `split_words:"true" desc:"Sets the Stackdriver project ID"`
 	SentryDsn            string `split_words:"true" desc:"Sets the Sentry DSN"`
 	SentryEnv            string `split_words:"true" desc:"Sets the Sentry environment"`
+
+	ParameterizerDefaultValues map[string]string `split_words:"true" required:"true" desc:"<parameter name>:<parameter value>. Delimit contract address with '|' for multiple addresses"`
 }
 
 // PersistType returns the persister type, implements PersisterConfig
@@ -78,6 +80,11 @@ func (c *ProcessorConfig) PostgresUser() string {
 // PostgresPw returns the postgres persister password, implements PersisterConfig
 func (c *ProcessorConfig) PostgresPw() string {
 	return c.PersisterPostgresPw
+}
+
+// ParameterizerDefaults returns the parameterizer default values
+func (c *ProcessorConfig) ParameterizerDefaults() map[string]string {
+	return c.ParameterizerDefaultValues
 }
 
 // OutputUsage prints the usage string to os.Stdout
@@ -115,6 +122,11 @@ func (c *ProcessorConfig) PopulateFromEnv() error {
 		return err
 	}
 
+	err = c.validateParameterizerDefaultValues()
+	if err != nil {
+		return err
+	}
+
 	return c.validatePersister()
 }
 
@@ -144,6 +156,18 @@ func (c *ProcessorConfig) validatePersister() error {
 		)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (c *ProcessorConfig) validateParameterizerDefaultValues() error {
+	for paramName, paramValue := range c.ParameterizerDefaultValues {
+		if paramName == "" {
+			return fmt.Errorf("Invalid parameter name: '%v'", paramName)
+		}
+		if paramValue == "" {
+			return fmt.Errorf("Invalid parameter value: '%v'", paramValue)
 		}
 	}
 	return nil

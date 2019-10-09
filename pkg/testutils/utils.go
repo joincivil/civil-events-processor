@@ -2,12 +2,14 @@ package testutils
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	cpersist "github.com/joincivil/go-common/pkg/persistence"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 const (
@@ -26,6 +28,7 @@ type TestPersister struct {
 	TokenTransfers       map[string][]*model.TokenTransfer
 	TokenTransfersTxHash map[string][]*model.TokenTransfer
 	ParameterProposal    map[[32]byte]*model.ParameterProposal
+	Parameter            map[string]*model.Parameter
 	UserChallengeData    map[int]map[string]*model.UserChallengeData
 	Timestamp            int64
 	EventHashes          []string
@@ -317,6 +320,17 @@ func (t *TestPersister) ChallengesByChallengeIDs(challengeIDs []int) ([]*model.C
 	return results, nil
 }
 
+// ChallengesByChallengerAddress returns a slice of challenges started by given user
+func (t *TestPersister) ChallengesByChallengerAddress(addr common.Address) ([]*model.Challenge, error) {
+	results := []*model.Challenge{}
+	for _, challenge := range t.Challenges {
+		if challenge.Challenger() == addr {
+			results = append(results, challenge)
+		}
+	}
+	return results, nil
+}
+
 // ChallengesByListingAddress gets a list of challenges by listing
 func (t *TestPersister) ChallengesByListingAddress(addr common.Address) ([]*model.Challenge, error) {
 	challenges := []*model.Challenge{}
@@ -537,7 +551,7 @@ func (t *TestPersister) CreateParameterProposal(paramProposal *model.ParameterPr
 }
 
 // ParamProposalByPropID gets a parameter proposal from persistence using propID
-func (t *TestPersister) ParamProposalByPropID(propID [32]byte) (*model.ParameterProposal, error) {
+func (t *TestPersister) ParamProposalByPropID(propID [32]byte, active bool) (*model.ParameterProposal, error) {
 	paramProposal, ok := t.ParameterProposal[propID]
 	if !ok {
 		return nil, cpersist.ErrPersisterNoResults
@@ -565,7 +579,51 @@ func (t *TestPersister) ParamProposalByName(name string, active bool) ([]*model.
 // UpdateParamProposal updates parameter propsal in table
 func (t *TestPersister) UpdateParamProposal(paramProposal *model.ParameterProposal, updatedFields []string) error {
 	propID := paramProposal.PropID()
+
 	t.ParameterProposal[propID] = paramProposal
+	return nil
+}
+
+// ParameterByName returns the parameter with given name
+func (t *TestPersister) ParameterByName(name string) (*model.Parameter, error) {
+	return t.Parameter[name], nil
+}
+
+// ParametersByName returns a slice of parameters with given names
+func (t *TestPersister) ParametersByName(names []string) ([]*model.Parameter, error) {
+	results := []*model.Parameter{}
+	for _, paramName := range names {
+		parameter := t.Parameter[paramName]
+		results = append(results, parameter)
+	}
+	return results, nil
+}
+
+// UpdateParameter updates the parameter
+func (t *TestPersister) UpdateParameter(parameter *model.Parameter, updatedFields []string) error {
+	if t.Parameter == nil {
+		t.Parameter = map[string]*model.Parameter{}
+	}
+
+	paramName := parameter.ParamName()
+
+	t.Parameter[paramName] = parameter
+	return nil
+}
+
+// CreateDefaultValues creates Parameter default values
+func (t *TestPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
+	if t.Parameter == nil {
+		t.Parameter = map[string]*model.Parameter{}
+	}
+	for paramName, value := range config.ParameterizerDefaults() {
+		val := new(big.Int)
+		_, err := fmt.Sscan(value, val)
+		if err != nil {
+			return err
+		}
+		t.Parameter[paramName] = model.NewParameter(paramName, val)
+	}
 	return nil
 }
 

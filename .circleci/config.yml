@@ -1,22 +1,23 @@
 version: 2
 
 defaults: &defaults
-    docker:
-      # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
-      - image: circleci/golang:1.12.7
-      # CircleCI PostgreSQL images available at: https://hub.docker.com/r/circleci/postgres/
-      - image: circleci/postgres:9.6-alpine
-        environment:
-          POSTGRES_USER: root
-          POSTGRES_DB: circle_test
-      # Run the Google Pub Sub emulator
-      - image: kinok/google-pubsub-emulator:latest
+  docker:
+    # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
+    - image: circleci/golang:1.12.7
+    # CircleCI PostgreSQL images available at: https://hub.docker.com/r/circleci/postgres/
+    - image: circleci/postgres:9.6-alpine
+      environment:
+        POSTGRES_USER: root
+        POSTGRES_DB: circle_test
+    # Run the Google Pub Sub emulator
+    - image: kinok/google-pubsub-emulator:latest
 
 jobs:
   build:
     <<: *defaults
     working_directory: ~/repos/civil-events-processor
     environment:
+      GOPROXY: https://proxy.golang.org
     steps:
       - run:
           name: Local docker sudo
@@ -29,11 +30,11 @@ jobs:
               echo sudo > ~/sudo
             fi
       - checkout
-      - setup_remote_docker:   # (2)
+      - setup_remote_docker: # (2)
           docker_layer_caching: true # (3)
       - run:
-           name: Setting up tools
-           command: make check-go-env
+          name: Setting up tools
+          command: make check-go-env
       - run:
           name: Waiting for Postgres to be ready
           command: |
@@ -70,51 +71,53 @@ jobs:
     <<: *defaults
     working_directory: ~/repos/civil-events-processor
     environment:
+      GOPROXY: https://proxy.golang.org
     steps:
-        - attach_workspace:
-            at: ./
-        - restore_cache:
-            keys:
-              - go-mod-v1-{{ checksum "go.sum" }}
-        - run:
-           name: Setting up tools
-           command: make install-linter
-        - run:
-            name: Run linter
-            command: make lint
-        - save_cache:
-            key: go-mod-v1-{{ checksum "go.sum" }}
-            paths:
-              - "/go/pkg/mod"
+      - attach_workspace:
+          at: ./
+      - restore_cache:
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
+      - run:
+          name: Setting up tools
+          command: make install-linter
+      - run:
+          name: Run linter
+          command: make lint
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
 
   test:
     <<: *defaults
     working_directory: ~/repos/civil-events-processor
     environment:
+      GOPROXY: https://proxy.golang.org
     steps:
-        - attach_workspace:
-            at: ./
-        - restore_cache:
-            keys:
-              - go-mod-v1-{{ checksum "go.sum" }}
-        - run:
-            name: Run unit tests
-            environment:
-               DB_URL: "postgres://root@localhost:5432/circle_test?sslmode=disable"
-               DB_MIGRATIONS: ~/repos/civil-events-processor/migrations
-            command: |
-               make test-integration
-        - save_cache:
-            key: go-mod-v1-{{ checksum "go.sum" }}
-            paths:
-              - "/go/pkg/mod"
+      - attach_workspace:
+          at: ./
+      - restore_cache:
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
+      - run:
+          name: Run unit tests
+          environment:
+            DB_URL: "postgres://root@localhost:5432/circle_test?sslmode=disable"
+            DB_MIGRATIONS: ~/repos/civil-events-processor/migrations
+          command: |
+            make test-integration
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
 
   setup-gcp:
     docker:
       - image: civilmedia/gcloud-node:latest
     working_directory: ~/repos/civil-events-processor
     steps:
-       - run:
+      - run:
           name: Dump Google Cloud Credentials to file
           command: |
             echo ${GOOGLE_AUTH} | base64 -d > ${HOME}/gcp-key.json
@@ -123,7 +126,7 @@ jobs:
             gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
             gcloud --quiet container clusters get-credentials ${GOOGLE_CLUSTER_NAME}
             gcloud docker --authorize-only
-       - persist_to_workspace:
+      - persist_to_workspace:
           root: /root
           paths:
             - gcp-key.json
@@ -155,9 +158,9 @@ jobs:
       - deploy:
           name: Push Containers to Registry
           command: |
-           gcloud config list
-           echo "pushing $GOOGLE_PROJECT_ID"
-           docker push gcr.io/$GOOGLE_PROJECT_ID/$CIRCLE_PROJECT_REPONAME
+            gcloud config list
+            echo "pushing $GOOGLE_PROJECT_ID"
+            docker push gcr.io/$GOOGLE_PROJECT_ID/$CIRCLE_PROJECT_REPONAME
 
   deploy-staging:
     docker:
@@ -165,7 +168,7 @@ jobs:
     working_directory: ~/repo
     steps:
       - attach_workspace:
-              at: /root
+          at: /root
       - deploy:
           name: Update Kubernetes Deployment on STAGING
           command: |

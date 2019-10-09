@@ -33,6 +33,10 @@ func TestCrawlerConfig(t *testing.T) {
 		"PROCESSOR_PERSISTER_POSTGRES_DBNAME",
 		"civil_crawler",
 	)
+	os.Setenv(
+		"PROCESSOR_PARAMETERIZER_DEFAULT_VALUES",
+		"minDeposit:50",
+	)
 	config := &utils.ProcessorConfig{}
 	err := config.PopulateFromEnv()
 	if err != nil {

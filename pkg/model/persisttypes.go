@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/joincivil/civil-events-processor/pkg/utils"
 )
 
 // SortByType is a string enum of the sort type
@@ -196,6 +197,8 @@ type ChallengePersister interface {
 	// ChallengesByListingAddresses gets slice of challenges in order by challenge ID
 	// for a each listing address in order of addresses
 	ChallengesByListingAddresses(addr []common.Address) ([][]*Challenge, error)
+	// ChallengesByChallengerAddress returns a slice of challenges started by given user
+	ChallengesByChallengerAddress(addr common.Address) ([]*Challenge, error)
 	// CreateChallenge creates a new challenge
 	CreateChallenge(challenge *Challenge) error
 	// UpdateChallenge updates a challenge
@@ -234,6 +237,20 @@ type AppealPersister interface {
 	Close() error
 }
 
+// ParameterPersister is the interface to store ParameterData
+type ParameterPersister interface {
+	// ParameterByName gets a parameter by name
+	ParameterByName(paramName string) (*Parameter, error)
+	// ParametersByName gets a slice of parameter by name
+	ParametersByName(paramName []string) ([]*Parameter, error)
+	// UpdateParameter updates a parameter value
+	UpdateParameter(parameter *Parameter, updatedFields []string) error
+	// CreateDefaultValues creates Parameter default values
+	CreateDefaultValues(config *utils.ProcessorConfig) error
+	// Close shuts down the persister
+	Close() error
+}
+
 // TokenTransferPersister is the persister interface to store TokenTransfer
 type TokenTransferPersister interface {
 	// TokenTransfersByTxHash gets a list of token transfers by txhash
@@ -251,7 +268,7 @@ type ParamProposalPersister interface {
 	// CreateParameterProposal creates a new parameter proposal
 	CreateParameterProposal(paramProposal *ParameterProposal) error
 	// ParamProposalByPropID gets a parameter proposal from persistence using propID
-	ParamProposalByPropID(propID [32]byte) (*ParameterProposal, error)
+	ParamProposalByPropID(propID [32]byte, active bool) (*ParameterProposal, error)
 	// ParamProposalByName gets parameter proposals by name from persistence
 	ParamProposalByName(name string, active bool) ([]*ParameterProposal, error)
 	// UpdateParamProposal updates parameter propsal in table

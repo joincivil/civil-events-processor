@@ -45,8 +45,11 @@ const (
 	tokenTransferTestTableName     = "token_transfer_test"
 	versionTestTableName           = "version_test"
 	parameterProposalTestTableName = "parameter_proposal_test"
+	parameterTableTestName         = "parameter_table_test"
 	userChallengeDataTestTableName = "user_challenge_data_test"
 	testAddress                    = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
+	testAddress2                   = "0x22e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d331d"
+	testAddress3                   = "0x11e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d371d"
 )
 
 func setupDBConnection(t *testing.T) *PostgresPersister {
@@ -86,6 +89,8 @@ func setupTestTable(t *testing.T, tableName string) *PostgresPersister {
 		queryString = postgres.CreateParameterProposalTableQuery(persister.GetTableName(tableName))
 	case "user_challenge_data_test":
 		queryString = postgres.CreateUserChallengeDataTableQuery(persister.GetTableName(tableName))
+	case "parameter_test":
+		queryString = postgres.CreateParameterTableQuery(persister.GetTableName(tableName))
 	}
 
 	_, err := persister.db.Query(queryString)
@@ -155,6 +160,12 @@ func setupAllTestTables(t *testing.T, persister *PostgresPersister) {
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", userChallengeDataTestTableName, err)
 	}
+
+	queryString = postgres.CreateParameterTableQuery(persister.GetTableName(parameterTableTestName))
+	_, err = persister.db.Query(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", parameterTableTestName, err)
+	}
 }
 
 func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
@@ -195,6 +206,10 @@ func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
 		t.Errorf("Couldn't delete test table %s: %v", parameterProposalTestTableName, err)
 	}
 	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(userChallengeDataTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", userChallengeDataTestTableName, err)
+	}
+	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterTableTestName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", userChallengeDataTestTableName, err)
 	}
@@ -279,6 +294,7 @@ func TestTableSetup(t *testing.T) {
 	checkTableExists(t, pollTestTableName, persister)
 	checkTableExists(t, appealTestTableName, persister)
 	checkTableExists(t, tokenTransferTestTableName, persister)
+	checkTableExists(t, parameterTableTestName, persister)
 
 	deleteAllTestTables(t, persister)
 	deleteTestVersionTable(t, persister)
@@ -1930,9 +1946,9 @@ func setupChallengeByChallengeID(challengeIDInt int, resolved bool) *model.Chall
 	return testChallenge
 }
 
-func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
+func setupSampleChallenge(randListing bool, challengerAddr string) (*model.Challenge, int) {
 	var listingAddr common.Address
-	address2, _ := cstrings.RandomHexStr(32)
+
 	if randListing {
 		address1, _ := cstrings.RandomHexStr(32)
 		listingAddr = common.HexToAddress(address1)
@@ -1944,7 +1960,7 @@ func setupSampleChallenge(randListing bool) (*model.Challenge, int) {
 	challengeIDInt := mathrand.Intn(10000)
 	challengeID := big.NewInt(int64(challengeIDInt))
 	statement := ""
-	challenger := common.HexToAddress(address2)
+	challenger := common.HexToAddress(challengerAddr)
 	stake := new(big.Int)
 	stake.SetString("100000000000000000000", 10)
 	rewardPool := new(big.Int)
@@ -1965,9 +1981,22 @@ func setupChallengeTestTable(t *testing.T) *PostgresPersister {
 
 func createAndSaveTestChallenge(t *testing.T, persister *PostgresPersister, randListing bool) (*model.Challenge, int) {
 	// sample challenge
-	modelChallenge, challengeID := setupSampleChallenge(randListing)
+	challenger, _ := cstrings.RandomHexStr(32)
+	modelChallenge, challengeID := setupSampleChallenge(randListing, challenger)
 
 	// insert to table
+	return insertTestChallengeToTable(t, persister, modelChallenge, challengeID)
+}
+
+func createAndSaveTestChallengeWithChallenger(t *testing.T, persister *PostgresPersister, randListing bool, challenger string) (*model.Challenge, int) {
+	// sample challenge
+	modelChallenge, challengeID := setupSampleChallenge(randListing, challenger)
+
+	// insert to table
+	return insertTestChallengeToTable(t, persister, modelChallenge, challengeID)
+}
+
+func insertTestChallengeToTable(t *testing.T, persister *PostgresPersister, modelChallenge *model.Challenge, challengeID int) (*model.Challenge, int) {
 	err := persister.createChallengeInTable(modelChallenge, persister.GetTableName(challengeTestTableName))
 	if err != nil {
 		t.Errorf("error saving challenge: %v", err)
@@ -2169,6 +2198,48 @@ func TestGetChallengesForListingAddress(t *testing.T) {
 	}
 	if len(challengesFromDB) != 3 {
 		t.Errorf("Should have gotten 3 results for address")
+	}
+
+	previousChallengeID := big.NewInt(-1)
+	for _, ch := range challengesFromDB {
+		if ch.ListingAddress().Hex() != testAddress {
+			t.Errorf("Should have gotten all challenges for a single address")
+		}
+		if ch.ChallengeID().Cmp(previousChallengeID) != 1 {
+			t.Errorf(
+				"Should have returned the list in order: %v, %v",
+				ch.ChallengeID(),
+				previousChallengeID,
+			)
+		}
+		previousChallengeID = ch.ChallengeID()
+	}
+}
+
+func TestGetChallengesForChallengerAddress(t *testing.T) {
+	persister := setupChallengeTestTable(t)
+	defer persister.Close()
+	tableName := persister.GetTableName(challengeTestTableName)
+	defer deleteTestTable(t, persister, tableName)
+
+	_, _ = createAndSaveTestChallengeWithChallenger(t, persister, false, testAddress2)
+	_, _ = createAndSaveTestChallengeWithChallenger(t, persister, false, testAddress2)
+	_, _ = createAndSaveTestChallengeWithChallenger(t, persister, false, testAddress3)
+
+	challengesFromDB, err := persister.challengesByChallengerAddressInTable(
+		common.HexToAddress(testAddress2),
+		tableName,
+	)
+
+	if err != nil {
+		t.Errorf("Error getting value from DB: %v", err)
+	}
+
+	if len(challengesFromDB) == 0 {
+		t.Errorf("Should have gotten some results for address")
+	}
+	if len(challengesFromDB) != 2 {
+		t.Errorf("Should have gotten 2 results for address")
 	}
 
 	previousChallengeID := big.NewInt(-1)
@@ -2695,6 +2766,7 @@ func TestGetTokenTransfersForTxHash(t *testing.T) {
 func setupSampleParamProposal() *model.ParameterProposal {
 	return model.NewParameterProposal(
 		&model.ParameterProposalParams{
+			ID:                "commitStageLen1800",
 			Name:              "commitStageLen",
 			Value:             big.NewInt(1800),
 			PropID:            [32]byte{0, 1},
@@ -2712,6 +2784,7 @@ func setupSampleParamProposal() *model.ParameterProposal {
 func setupSampleParamProposal2() *model.ParameterProposal {
 	return model.NewParameterProposal(
 		&model.ParameterProposalParams{
+			ID:                "commitStageLen1200",
 			Name:              "commitStageLen",
 			Value:             big.NewInt(1200),
 			PropID:            [32]byte{0, 3},
@@ -2766,7 +2839,7 @@ func TestParamProposalByPropID(t *testing.T) {
 
 	propID := paramProposal.PropID()
 
-	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, tableName)
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, true, tableName)
 	if err != nil {
 		t.Errorf("Error saving parameter proposal to db: %v", err)
 	}
@@ -2827,7 +2900,7 @@ func TestUpdateParamProposal(t *testing.T) {
 		t.Errorf("Error updating parameter proposal, %v", err)
 	}
 
-	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, tableName)
+	dbParamProposal, err := persister.paramProposalByPropIDFromTable(propID, false, tableName)
 	if err != nil {
 		t.Errorf("Error getting param proposal from db, err %v", err)
 	}
