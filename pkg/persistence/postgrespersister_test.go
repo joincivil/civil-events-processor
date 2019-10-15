@@ -351,6 +351,7 @@ func setupSampleListing() (*model.Listing, common.Address) {
 		AppExpiry:            appExpiry,
 		UnstakedDeposit:      unstakedDeposit,
 		ChallengeID:          challengeID,
+		CleanedURL:           "cleaned_url_string",
 	}
 	testListing := model.NewListing(testListingParams)
 	return testListing, contractAddress
@@ -401,6 +402,7 @@ func setupSampleListingUnchallenged() (*model.Listing, common.Address) {
 		LastUpdatedDateTs:    1257894000,
 		AppExpiry:            appExpiry,
 		UnstakedDeposit:      unstakedDeposit,
+		CleanedURL:           "cleaned_url_string",
 	}
 	testListing := model.NewListing(testListingParams)
 	return testListing, contractAddress
@@ -465,6 +467,33 @@ func TestListingByAddress(t *testing.T) {
 
 	// retrieve from test table
 	_, err = persister.listingByAddressFromTable(modelListingAddress, tableName)
+
+	if err != nil {
+		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
+	}
+
+}
+
+// TestListingByNewsroomURL tests that the query we are using to get Listing works
+func TestListingByNewsroomURL(t *testing.T) {
+
+	persister := setupTestTable(t, listingTestTableName)
+	defer persister.Close()
+	tableName := persister.GetTableName(listingTestTableName)
+
+	defer deleteTestTable(t, persister, tableName)
+
+	// create fake listing in listing_test
+	modelListing, _ := setupSampleListing()
+
+	// save to test table
+	err := persister.createListingForTable(modelListing, tableName)
+	if err != nil {
+		t.Errorf("error saving listing: %v", err)
+	}
+
+	// retrieve from test table
+	_, err = persister.listingByCleanedNewsroomURLFromTable(modelListing.CleanedURL(), tableName)
 
 	if err != nil {
 		t.Errorf("Wasn't able to get listing from postgres table: %v", err)
