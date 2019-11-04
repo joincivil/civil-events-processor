@@ -27,6 +27,7 @@ const (
 	listingNameFieldName    = "Name"
 	ownerAddressesFieldName = "OwnerAddresses"
 	urlFieldName            = "URL"
+	cleanedURLFieldName     = "CleanedURL"
 
 	defaultCharterContentID = 0
 	// approvalDateNoUpdate    = int64(-1)
@@ -260,7 +261,7 @@ func (n *NewsroomEventProcessor) updateListingCharterRevision(revision *model.Co
 				log.Errorf("Bad URL Found in Charter: %v", charterData.URI())
 			}
 			listing.SetCleanedURL(cleanURL)
-			updatedFields = append(updatedFields, urlFieldName)
+			updatedFields = append(updatedFields, urlFieldName, cleanedURLFieldName)
 		}
 	}
 
