@@ -48,8 +48,8 @@ const (
 	lastUpdatedDateDBModelName = "LastUpdatedDateTs"
 
 	// Could make this configurable later if needed
-	maxOpenConns    = 50
-	maxIdleConns    = 10
+	maxOpenConns    = 12
+	maxIdleConns    = 5
 	connMaxLifetime = time.Second * 1800 // 30 mins
 )
 
