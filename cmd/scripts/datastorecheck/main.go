@@ -79,6 +79,9 @@ func eventsPersister(config *Config) (*crawlpersist.PostgresPersister, error) {
 		config.PersisterPostgresUser,
 		config.PersisterPostgresPw,
 		config.PersisterPostgresDbname,
+		nil,
+		nil,
+		nil,
 	)
 }
 

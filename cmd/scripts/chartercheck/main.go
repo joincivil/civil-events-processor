@@ -214,6 +214,9 @@ func main() {
 		config.PersisterPostgresUser,
 		config.PersisterPostgresPw,
 		config.PersisterPostgresDbname,
+		nil,
+		nil,
+		nil,
 	)
 	if err != nil {
 		fmt.Printf("err db: %v", err)
