@@ -102,114 +102,114 @@ func setupTestTable(t *testing.T, tableName string) *PostgresPersister {
 
 func setupAllTestTables(t *testing.T, persister *PostgresPersister) {
 	queryString := postgres.CreateListingTableQuery(persister.GetTableName(listingTestTableName))
-	_, err := persister.db.Query(queryString)
+	_, err := persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", listingTestTableName, err)
 	}
 
 	queryString = postgres.CreateContentRevisionTableQuery(persister.GetTableName(contentRevisionTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", contentRevisionTestTableName, err)
 	}
 
 	queryString = postgres.CreateGovernanceEventTableQuery(persister.GetTableName(govTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", govTestTableName, err)
 	}
 
 	queryString = postgres.CreateCronTableQuery(persister.GetTableName(cronTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", cronTestTableName, err)
 	}
 
 	queryString = postgres.CreateChallengeTableQuery(persister.GetTableName(challengeTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", challengeTestTableName, err)
 	}
 
 	queryString = postgres.CreatePollTableQuery(persister.GetTableName(pollTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", pollTestTableName, err)
 	}
 
 	queryString = postgres.CreateAppealTableQuery(persister.GetTableName(appealTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", appealTestTableName, err)
 	}
 
 	queryString = postgres.CreateTokenTransferTableQuery(persister.GetTableName(tokenTransferTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", tokenTransferTestTableName, err)
 	}
 
 	queryString = postgres.CreateParameterProposalTableQuery(persister.GetTableName(parameterProposalTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", parameterProposalTestTableName, err)
 	}
 
 	queryString = postgres.CreateUserChallengeDataTableQuery(persister.GetTableName(userChallengeDataTestTableName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", userChallengeDataTestTableName, err)
 	}
 
 	queryString = postgres.CreateParameterTableQuery(persister.GetTableName(parameterTableTestName))
-	_, err = persister.db.Query(queryString)
+	_, err = persister.db.Exec(queryString)
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", parameterTableTestName, err)
 	}
 }
 
 func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
-	_, err := persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(listingTestTableName)))
+	_, err := persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(listingTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", listingTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(contentRevisionTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(contentRevisionTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", contentRevisionTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(govTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(govTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", govTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(cronTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(cronTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", cronTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(challengeTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(challengeTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", challengeTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(pollTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(pollTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", pollTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(appealTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(appealTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", appealTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(tokenTransferTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(tokenTransferTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tokenTransferTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterProposalTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterProposalTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", parameterProposalTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(userChallengeDataTestTableName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(userChallengeDataTestTableName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", userChallengeDataTestTableName, err)
 	}
-	_, err = persister.db.Query(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterTableTestName)))
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterTableTestName)))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", userChallengeDataTestTableName, err)
 	}
@@ -217,7 +217,7 @@ func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
 
 func deleteTestTable(t *testing.T, persister *PostgresPersister, tableName string) {
 	defer deleteTestVersionTable(t, persister)
-	_, err := persister.db.Query(fmt.Sprintf("DROP TABLE %v;", tableName))
+	_, err := persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", tableName))
 	if err != nil {
 		t.Errorf("Couldn't delete test table %s: %v", tableName, err)
 	}
