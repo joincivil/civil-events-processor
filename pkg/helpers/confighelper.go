@@ -29,11 +29,14 @@ func CronPersister(config cconfig.PersisterConfig, versionNumber string) (model.
 func EventPersister(config cconfig.PersisterConfig) (crawlermodel.EventDataPersister, error) {
 	if config.PersistType() == cconfig.PersisterTypePostgresql {
 		persister, err := crawlerpersist.NewPostgresPersister(
-			config.PostgresAddress(),
-			config.PostgresPort(),
-			config.PostgresUser(),
-			config.PostgresPw(),
-			config.PostgresDbname(),
+			config.Address(),
+			config.Port(),
+			config.User(),
+			config.Password(),
+			config.Dbname(),
+			config.PoolMaxConns(),
+			config.PoolMaxIdleConns(),
+			config.PoolConnLifetimeSecs(),
 		)
 		if err != nil {
 			return nil, err
@@ -159,11 +162,14 @@ func Persister(config cconfig.PersisterConfig, versionNumber string) (interface{
 
 func postgresPersister(config cconfig.PersisterConfig, versionNumber string) (*persistence.PostgresPersister, error) {
 	persister, err := persistence.NewPostgresPersister(
-		config.PostgresAddress(),
-		config.PostgresPort(),
-		config.PostgresUser(),
-		config.PostgresPw(),
-		config.PostgresDbname(),
+		config.Address(),
+		config.Port(),
+		config.User(),
+		config.Password(),
+		config.Dbname(),
+		config.PoolMaxConns(),
+		config.PoolMaxIdleConns(),
+		config.PoolConnLifetimeSecs(),
 	)
 	if err != nil {
 		// log.Errorf("Error connecting to Postgresql, stopping...; err: %v", err)

@@ -35,13 +35,16 @@ type ProcessorConfig struct {
 	PubSubCrawlTopicName  string `split_words:"true" desc:"Sets GPubSub topic name for crawler. Set if using pubsub to run the processor."`
 	PubSubCrawlSubName    string `split_words:"true" desc:"Sets GPubSub subscription name. Needs to be set to run processor using pubsub updates."`
 
-	PersisterType            cconfig.PersisterType `ignored:"true"`
-	PersisterTypeName        string                `split_words:"true" required:"true" desc:"Sets the persister type to use"`
-	PersisterPostgresAddress string                `split_words:"true" desc:"If persister type is Postgresql, sets the address"`
-	PersisterPostgresPort    int                   `split_words:"true" desc:"If persister type is Postgresql, sets the port"`
-	PersisterPostgresDbname  string                `split_words:"true" desc:"If persister type is Postgresql, sets the database name"`
-	PersisterPostgresUser    string                `split_words:"true" desc:"If persister type is Postgresql, sets the database user"`
-	PersisterPostgresPw      string                `split_words:"true" desc:"If persister type is Postgresql, sets the database password"`
+	PersisterType             cconfig.PersisterType `ignored:"true"`
+	PersisterTypeName         string                `split_words:"true" required:"true" desc:"Sets the persister type to use"`
+	PersisterPostgresAddress  string                `split_words:"true" desc:"If persister type is Postgresql, sets the address"`
+	PersisterPostgresPort     int                   `split_words:"true" desc:"If persister type is Postgresql, sets the port"`
+	PersisterPostgresDbname   string                `split_words:"true" desc:"If persister type is Postgresql, sets the database name"`
+	PersisterPostgresUser     string                `split_words:"true" desc:"If persister type is Postgresql, sets the database user"`
+	PersisterPostgresPw       string                `split_words:"true" desc:"If persister type is Postgresql, sets the database password"`
+	PersisterPostgresMaxConns *int                  `split_words:"true" desc:"If persister type is Postgresql, sets the max conns in pool"`
+	PersisterPostgresMaxIdle  *int                  `split_words:"true" desc:"If persister type is Postgresql, sets the max idle conns in pool"`
+	PersisterPostgresConnLife *int                  `split_words:"true" desc:"If persister type is Postgresql, sets the max conn lifetime in secs"`
 
 	VersionNumber string `split_words:"true" desc:"Sets the version to use for Postgres tables"`
 
@@ -58,28 +61,43 @@ func (c *ProcessorConfig) PersistType() cconfig.PersisterType {
 }
 
 // PostgresAddress returns the postgres persister address, implements PersisterConfig
-func (c *ProcessorConfig) PostgresAddress() string {
+func (c *ProcessorConfig) Address() string {
 	return c.PersisterPostgresAddress
 }
 
 // PostgresPort returns the postgres persister port, implements PersisterConfig
-func (c *ProcessorConfig) PostgresPort() int {
+func (c *ProcessorConfig) Port() int {
 	return c.PersisterPostgresPort
 }
 
 // PostgresDbname returns the postgres persister db name, implements PersisterConfig
-func (c *ProcessorConfig) PostgresDbname() string {
+func (c *ProcessorConfig) Dbname() string {
 	return c.PersisterPostgresDbname
 }
 
 // PostgresUser returns the postgres persister user, implements PersisterConfig
-func (c *ProcessorConfig) PostgresUser() string {
+func (c *ProcessorConfig) User() string {
 	return c.PersisterPostgresUser
 }
 
 // PostgresPw returns the postgres persister password, implements PersisterConfig
-func (c *ProcessorConfig) PostgresPw() string {
+func (c *ProcessorConfig) Password() string {
 	return c.PersisterPostgresPw
+}
+
+// PoolMaxConns returns the max conns for a pool, if configured, implements PersisterConfig
+func (c *ProcessorConfig) PoolMaxConns() *int {
+	return c.PersisterPostgresMaxConns
+}
+
+// PoolMaxIdleConns returns the max idleconns for a pool, if configured, implements PersisterConfig
+func (c *ProcessorConfig) PoolMaxIdleConns() *int {
+	return c.PersisterPostgresMaxIdle
+}
+
+// PoolConnLifetimeSecs returns the conn lifetime for a pool, if configured, implements PersisterConfig
+func (c *ProcessorConfig) PoolConnLifetimeSecs() *int {
+	return c.PersisterPostgresConnLife
 }
 
 // ParameterizerDefaults returns the parameterizer default values
