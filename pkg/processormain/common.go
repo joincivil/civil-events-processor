@@ -5,9 +5,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	log "github.com/golang/glog"
+	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 
+	crawlerhelpers "github.com/joincivil/civil-events-crawler/pkg/helpers"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
@@ -18,6 +22,12 @@ import (
 
 	cerrors "github.com/joincivil/go-common/pkg/errors"
 	cpubsub "github.com/joincivil/go-common/pkg/pubsub"
+)
+
+const (
+	maxOpenConns    = 5
+	maxIdleConns    = 5
+	connMaxLifetime = time.Second * 180 // 3 mins
 )
 
 // InitErrorReporter inits an error reporter struct
@@ -119,16 +129,59 @@ type InitializedPersisters struct {
 	UserChallengeData model.UserChallengeDataPersister
 }
 
+func initSqlxDB(config *utils.ProcessorConfig) (*sqlx.DB, error) {
+	psqlInfo := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		config.PersisterPostgresAddress,
+		config.PersisterPostgresPort,
+		config.PersisterPostgresUser,
+		config.PersisterPostgresPw,
+		config.PersisterPostgresDbname,
+	)
+	db, err := sqlx.Connect("postgres", psqlInfo)
+	if err != nil {
+		return nil, errors.Wrap(err, "error connecting to sqlx")
+	}
+
+	if config.PersisterPostgresMaxConns != nil {
+		db.SetMaxOpenConns(*config.PersisterPostgresMaxConns)
+	} else {
+		// Default value
+		db.SetMaxOpenConns(maxOpenConns)
+	}
+	if config.PersisterPostgresMaxIdle != nil {
+		db.SetMaxIdleConns(*config.PersisterPostgresMaxIdle)
+	} else {
+		// Default value
+		db.SetMaxIdleConns(maxIdleConns)
+	}
+	if config.PersisterPostgresConnLife != nil {
+		db.SetConnMaxLifetime(time.Second * time.Duration(*config.PersisterPostgresConnLife))
+	} else {
+		// Default value
+		db.SetConnMaxLifetime(connMaxLifetime)
+	}
+
+	return db, nil
+}
+
 // InitPersisters inits the persisters from the config file
 func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, error) {
-	persister, err := helpers.Persister(config, config.VersionNumber)
+	db, err := initSqlxDB(config)
 	if err != nil {
-		log.Errorf("Error getting the persister: %v", err)
+		log.Errorf("Error init sqlx db: %v", err)
 		return nil, err
 	}
-	eventPersister, err := helpers.EventPersister(config)
+
+	eventPersister, err := crawlerhelpers.EventPersisterFromSqlx(db)
 	if err != nil {
 		log.Errorf("Error getting the event persister: %v", err)
+		return nil, err
+	}
+
+	persister, err := helpers.PersisterFromSqlx(db, config.VersionNumber)
+	if err != nil {
+		log.Errorf("Error getting the persister: %v", err)
 		return nil, err
 	}
 
