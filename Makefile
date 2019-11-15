@@ -129,11 +129,11 @@ build: check-go-env ## Builds the main file
 
 .PHONY: test
 test: check-go-env ## Runs unit tests and tests code coverage
-	@echo 'mode: atomic' > coverage.txt && $(GOTEST) -covermode=atomic -coverprofile=coverage.txt -v -race -timeout=10m ./...
+	@echo 'mode: atomic' > coverage.txt && $(GOTEST) -covermode=atomic -coverprofile=coverage.txt -v -p 1 -race -timeout=10m ./...
 
 .PHONY: test-integration
 test-integration: check-go-env ## Runs tagged integration tests
-	@echo 'mode: atomic' > coverage.txt && PUBSUB_EMULATOR_HOST=localhost:8042 $(GOTEST) -covermode=atomic -coverprofile=coverage.txt -v -race -timeout=2m -tags=integration ./...
+	@echo 'mode: atomic' > coverage.txt && PUBSUB_EMULATOR_HOST=localhost:8042 $(GOTEST) -covermode=atomic -coverprofile=coverage.txt -v -p 1 -race -timeout=10m -tags=integration ./...
 
 .PHONY: cover
 cover: test ## Runs unit tests, code coverage, and runs HTML coverage tool.
