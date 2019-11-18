@@ -55,7 +55,8 @@ const (
 func setupDBConnection(t *testing.T) *PostgresPersister {
 	creds := testutils.GetTestDBCreds()
 
-	postgresPersister, err := NewPostgresPersister(creds.Host, creds.Port, creds.User, creds.Password, creds.Dbname)
+	postgresPersister, err := NewPostgresPersister(creds.Host, creds.Port, creds.User,
+		creds.Password, creds.Dbname, nil, nil, nil)
 	if err != nil {
 		t.Errorf("Error setting up new persister: err: %v", err)
 	}
