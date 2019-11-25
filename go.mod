@@ -10,7 +10,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/jmoiron/sqlx v0.0.0-20180614180643-0dae4fefe7c0
 	github.com/joincivil/civil-events-crawler v0.0.0-20191115212544-903a36715546
-	github.com/joincivil/go-common v0.0.0-20191115202858-d23287f7bcb4
+	github.com/joincivil/go-common v0.0.0-20191121182548-7994d712fce3
 	github.com/kelseyhightower/envconfig v1.3.0
 	github.com/lib/pq v0.0.0-20180523175426-90697d60dd84
 	github.com/pkg/errors v0.8.1
