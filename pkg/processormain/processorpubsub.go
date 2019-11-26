@@ -131,6 +131,14 @@ Loop:
 				}
 			}
 			log.Infof("Finished processing events from message\n")
+
+		case err := <-ps.SubscribeErrChan:
+			// Error from a subscriber even after retries, send to error reporting
+			// and will require manual intervention. Keep loop going in case
+			// there are multiple subscribers running
+			log.Errorf("Error with a pubsub subscriber, retries failed: err: %v", err)
+			errRep.Error(errors.WithMessage(err, "pubsub subscribers failed"), nil)
+
 		case <-quit:
 			log.Infof("Quitting")
 			break Loop
