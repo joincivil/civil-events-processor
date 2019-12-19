@@ -514,6 +514,8 @@ func (p *PostgresPersister) CreateTables() error {
 	parameterProposalQuery := postgres.CreateParameterProposalTableQuery(p.GetTableName(postgres.ParameterProposalTableBaseName))
 	userChallengeDataQuery := postgres.CreateUserChallengeDataTableQuery(p.GetTableName(postgres.UserChallengeDataTableBaseName))
 	parameterTableQuery := postgres.CreateParameterTableQuery(p.GetTableName(postgres.ParameterTableBaseName))
+	multiSigTableQuery := postgres.CreateMultiSigTableQuery(p.GetTableName(postgres.MultiSigTableBaseName))
+	multiSigOwnerTableQuery := postgres.CreateMultiSigTableQuery(p.GetTableName(postgres.MultiSigOwnerTableBaseName))
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -558,6 +560,14 @@ func (p *PostgresPersister) CreateTables() error {
 	_, err = p.db.Exec(parameterTableQuery)
 	if err != nil {
 		return fmt.Errorf("Error creating parameter table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(multiSigTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating multi sig table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(multiSigOwnerTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating multi sig owner table in postgres: %v", err)
 	}
 
 	return nil
@@ -645,6 +655,11 @@ func (p *PostgresPersister) CreateIndices() error {
 	_, err = p.db.Exec(indexQuery)
 	if err != nil {
 		return errors.Wrap(err, "error creating token_transfer table indices")
+	}
+	indexQuery = postgres.CreateMultiSigOwnerTableIndicesQuery(p.GetTableName(postgres.MultiSigOwnerTableBaseName))
+	_, err = p.db.Exec(indexQuery)
+	if err != nil {
+		return errors.Wrap(err, "error creating multi sig owner table indices")
 	}
 	return err
 }
