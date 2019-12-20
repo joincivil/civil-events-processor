@@ -4,8 +4,10 @@ import (
 	"strings"
 
 	log "github.com/golang/glog"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/joincivil/go-common/pkg/generated/contract"
 
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
@@ -15,7 +17,7 @@ import (
 
 // NewMultiSigEventProcessor is a convenience function to init an Event processor
 func NewMultiSigEventProcessor(client bind.ContractBackend,
-	multiSigPersister model.MultiSig, multiSigOwnerPersister model.MultiSigOwner) *MultiSigEventProcessor {
+	multiSigPersister model.MultiSigPersister, multiSigOwnerPersister model.MultiSigOwnerPersister) *MultiSigEventProcessor {
 	return &MultiSigEventProcessor{
 		client:                 client,
 		multiSigPersister:      multiSigPersister,
@@ -27,8 +29,8 @@ func NewMultiSigEventProcessor(client bind.ContractBackend,
 // for use via the API.
 type MultiSigEventProcessor struct {
 	client                 bind.ContractBackend
-	multiSigPersister      model.MultiSig
-	multiSigOwnerPersister model.MultiSigOwner
+	multiSigPersister      model.MultiSigPersister
+	multiSigOwnerPersister model.MultiSigOwnerPersister
 }
 
 // Process processes Newsroom Events into aggregated data
@@ -57,8 +59,12 @@ func (c *MultiSigEventProcessor) Process(event *crawlermodel.Event) (bool, error
 func (c *MultiSigEventProcessor) processMultiSigWalletContractInstantiation(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	multiSigAddr, ok := payload["Instantiation"]
+	if !ok {
+		return errors.New("could not get instantiated address from event payload")
+	}
+	multiSigAddress := (multiSigAddr).(common.Address)
 
-	multiSigWalletContract, err := contract.NewMultiSigWalletContract(multiSigAddr, c.client)
+	multiSigWalletContract, err := contract.NewMultiSigWalletContract(multiSigAddress, c.client)
 	if err != nil {
 		return errors.WithMessage(err, "error getting multi sig wallet contract")
 	}
@@ -69,7 +75,7 @@ func (c *MultiSigEventProcessor) processMultiSigWalletContractInstantiation(even
 	}
 
 	multiSig := model.NewMultiSig(&model.NewMultiSigParams{
-		ContractAddress: multiSigAddr,
+		ContractAddress: multiSigAddress,
 		OwnerAddresses:  owners,
 	})
 

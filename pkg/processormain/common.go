@@ -127,6 +127,8 @@ type InitializedPersisters struct {
 	ParameterProposal model.ParamProposalPersister
 	Parameter         model.ParameterPersister
 	UserChallengeData model.UserChallengeDataPersister
+	MultiSig          model.MultiSigPersister
+	MultiSigOwner     model.MultiSigOwnerPersister
 }
 
 func initSqlxDB(config *utils.ProcessorConfig) (*sqlx.DB, error) {

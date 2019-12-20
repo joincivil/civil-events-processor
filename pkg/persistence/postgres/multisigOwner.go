@@ -18,7 +18,7 @@ func CreateMultiSigOwnerTableQuery(tableName string) string {
 	queryString := fmt.Sprintf(`
         CREATE TABLE IF NOT EXISTS %s(
             owner_address TEXT PRIMARY KEY,
-            multi_sig_address TEXT,
+            multi_sig_address TEXT
         );
     `, tableName)
 	return queryString

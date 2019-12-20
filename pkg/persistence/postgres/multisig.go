@@ -19,7 +19,7 @@ func CreateMultiSigTableQuery(tableName string) string {
 	queryString := fmt.Sprintf(`
         CREATE TABLE IF NOT EXISTS %s(
             contract_address TEXT PRIMARY KEY,
-            owner_addresses TEXT,
+            owner_addresses TEXT
         );
     `, tableName)
 	return queryString

@@ -401,6 +401,12 @@ func (p *PostgresPersister) UpdateParameter(parameter *model.Parameter, updatedF
 	return p.updateParameterInTable(parameter, updatedFields, parameterTableName)
 }
 
+// CreateMultiSig creates a new multi sig
+func (p *PostgresPersister) CreateMultiSig(multiSig *model.MultiSig) error {
+	multiSigTableName := p.GetTableName(postgres.MultiSigTableBaseName)
+	return p.createMultiSigInTable(multiSig, multiSigTableName)
+}
+
 // SaveVersion saves the version for this persistence
 func (p *PostgresPersister) SaveVersion(versionNumber *string) error {
 	if versionNumber == nil || *versionNumber == "" {
@@ -515,7 +521,7 @@ func (p *PostgresPersister) CreateTables() error {
 	userChallengeDataQuery := postgres.CreateUserChallengeDataTableQuery(p.GetTableName(postgres.UserChallengeDataTableBaseName))
 	parameterTableQuery := postgres.CreateParameterTableQuery(p.GetTableName(postgres.ParameterTableBaseName))
 	multiSigTableQuery := postgres.CreateMultiSigTableQuery(p.GetTableName(postgres.MultiSigTableBaseName))
-	multiSigOwnerTableQuery := postgres.CreateMultiSigTableQuery(p.GetTableName(postgres.MultiSigOwnerTableBaseName))
+	multiSigOwnerTableQuery := postgres.CreateMultiSigOwnerTableQuery(p.GetTableName(postgres.MultiSigOwnerTableBaseName))
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -2349,6 +2355,17 @@ func (p *PostgresPersister) updateUserChallengeDataQuery(updatedFields []string,
 		queryString.WriteString(" AND latest_vote=true;") //nolint: gosec
 	}
 	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) createMultiSigInTable(multiSig *model.MultiSig,
+	tableName string) error {
+	dbMultiSig := postgres.NewMultiSig(multiSig)
+	queryString := p.insertIntoDBQueryString(tableName, postgres.MultiSig{})
+	_, err := p.db.NamedExec(queryString, dbMultiSig)
+	if err != nil {
+		return errors.Wrap(err, "error saving multi sig to table")
+	}
+	return nil
 }
 
 func (p *PostgresPersister) typeExistsInCronTable(tableName string, dataType string) (string, error) {

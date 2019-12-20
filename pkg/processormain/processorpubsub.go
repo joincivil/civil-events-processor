@@ -227,6 +227,8 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		ParameterProposalPersister: persisters.ParameterProposal,
 		ParameterPersister:         persisters.Parameter,
 		UserChallengeDataPersister: persisters.UserChallengeData,
+		MultiSigPersister:          persisters.MultiSig,
+		MultiSigOwnerPersister:     persisters.MultiSigOwner,
 		GooglePubSub:               eventsPs,
 		PubSubEventsTopicName:      config.PubSubEventsTopicName,
 		PubSubTokenTopicName:       config.PubSubTokenTopicName,

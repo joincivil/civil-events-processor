@@ -296,3 +296,13 @@ func (n *NullPersister) UserChallengeDataByCriteria(criteria *model.UserChalleng
 func (n *NullPersister) UpdateUserChallengeData(userChallengeData *model.UserChallengeData, updatedFields []string, updateWithUserAddress bool) error {
 	return nil
 }
+
+// CreateMultiSig creates a new multi sig
+func (n *NullPersister) CreateMultiSig(multiSig *model.MultiSig) error {
+	return nil
+}
+
+// CreateMultiSigOwner creates a new multi sig owner
+func (n *NullPersister) CreateMultiSigOwner(multiSigOwner *model.MultiSigOwner) error {
+	return nil
+}
