@@ -201,6 +201,8 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		ParameterProposal: persister.(model.ParamProposalPersister),
 		Parameter:         persister.(model.ParameterPersister),
 		UserChallengeData: persister.(model.UserChallengeDataPersister),
+		MultiSig:          persister.(model.MultiSigPersister),
+		MultiSigOwner:     persister.(model.MultiSigOwnerPersister),
 	}, nil
 }
 

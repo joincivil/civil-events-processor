@@ -17,7 +17,8 @@ const (
 func CreateMultiSigOwnerTableQuery(tableName string) string {
 	queryString := fmt.Sprintf(`
         CREATE TABLE IF NOT EXISTS %s(
-            owner_address TEXT PRIMARY KEY,
+			key TEXT PRIMARY KEY,
+            owner_address TEXT,
             multi_sig_address TEXT
         );
     `, tableName)
@@ -27,13 +28,16 @@ func CreateMultiSigOwnerTableQuery(tableName string) string {
 // CreateMultiSigOwnerTableIndicesQuery returns the query to create indices for this table
 func CreateMultiSigOwnerTableIndicesQuery(tableName string) string {
 	queryString := fmt.Sprintf(`
+        CREATE INDEX IF NOT EXISTS owner_address_idx ON %s (owner_address);
         CREATE INDEX IF NOT EXISTS multi_sig_address_idx ON %s (multi_sig_address);
-    `, tableName)
+    `, tableName, tableName)
 	return queryString
 }
 
 // MultiSigOwner is the model definition for multisig owner table in crawler db
 type MultiSigOwner struct {
+	Key string `db:"key"`
+
 	OwnerAddress string `db:"owner_address"`
 
 	MultiSigAddress string `db:"multi_sig_address"`
@@ -41,10 +45,12 @@ type MultiSigOwner struct {
 
 // NewMultiSigOwner constructs a multisig owner for DB from a model.MultiSigOwner
 func NewMultiSigOwner(multiSigOwner *model.MultiSigOwner) *MultiSigOwner {
+	key := multiSigOwner.Key()
 	ownerAddress := multiSigOwner.OwnerAddress().Hex()
 	multiSigAddress := multiSigOwner.MultiSigAddress().Hex()
 
 	return &MultiSigOwner{
+		Key:             key,
 		OwnerAddress:    ownerAddress,
 		MultiSigAddress: multiSigAddress,
 	}
@@ -52,10 +58,12 @@ func NewMultiSigOwner(multiSigOwner *model.MultiSigOwner) *MultiSigOwner {
 
 // DbToMultiSigOwnerData creates a model.MultiSig from postgres MultiSig
 func (m *MultiSigOwner) DbToMultiSigOwnerData() *model.MultiSigOwner {
+	key := m.Key
 	ownerAddress := common.HexToAddress(m.OwnerAddress)
 	multiSigAddress := common.HexToAddress(m.MultiSigAddress)
 
 	multiSigOwnerParams := &model.NewMultiSigOwnerParams{
+		Key:             key,
 		OwnerAddress:    ownerAddress,
 		MultiSigAddress: multiSigAddress,
 	}

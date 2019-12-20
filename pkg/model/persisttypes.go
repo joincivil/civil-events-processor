@@ -122,6 +122,8 @@ type MultiSigPersister interface {
 type MultiSigOwnerPersister interface {
 	// CreateMultiSig creates a new MultiSigOwner
 	CreateMultiSigOwner(multiSigOwner *MultiSigOwner) error
+	// DeleteMultiSigOwners deletes multi sig owners associated with a multi sig
+	DeleteMultiSigOwners(multiSigAddress common.Address) error
 	// Close shuts down the persister
 	Close() error
 }

@@ -306,3 +306,8 @@ func (n *NullPersister) CreateMultiSig(multiSig *model.MultiSig) error {
 func (n *NullPersister) CreateMultiSigOwner(multiSigOwner *model.MultiSigOwner) error {
 	return nil
 }
+
+// DeleteMultiSigOwners deletes multi sig owners associated with a multi sig
+func (n *NullPersister) DeleteMultiSigOwners(multiSigAddress common.Address) error {
+	return nil
+}

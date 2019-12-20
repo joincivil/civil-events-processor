@@ -407,6 +407,18 @@ func (p *PostgresPersister) CreateMultiSig(multiSig *model.MultiSig) error {
 	return p.createMultiSigInTable(multiSig, multiSigTableName)
 }
 
+// CreateMultiSigOwner creates a new multi sig owner
+func (p *PostgresPersister) CreateMultiSigOwner(multiSigOwner *model.MultiSigOwner) error {
+	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
+	return p.createMultiSigOwnerInTable(multiSigOwner, multiSigOwnerTableName)
+}
+
+// DeleteMultiSigOwners deletes multi sig owners associated with a multi sig
+func (p *PostgresPersister) DeleteMultiSigOwners(multiSigAddress common.Address) error {
+	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
+	return p.deleteMultiSigOwnersInTable(multiSigAddress, multiSigOwnerTableName)
+}
+
 // SaveVersion saves the version for this persistence
 func (p *PostgresPersister) SaveVersion(versionNumber *string) error {
 	if versionNumber == nil || *versionNumber == "" {
@@ -2366,6 +2378,32 @@ func (p *PostgresPersister) createMultiSigInTable(multiSig *model.MultiSig,
 		return errors.Wrap(err, "error saving multi sig to table")
 	}
 	return nil
+}
+
+func (p *PostgresPersister) createMultiSigOwnerInTable(multiSigOwner *model.MultiSigOwner,
+	tableName string) error {
+	dbMultiSigOwner := postgres.NewMultiSigOwner(multiSigOwner)
+	queryString := p.insertIntoDBQueryString(tableName, postgres.MultiSigOwner{})
+	_, err := p.db.NamedExec(queryString, dbMultiSigOwner)
+	if err != nil {
+		return errors.Wrap(err, "error saving multi sig owner to table")
+	}
+	return nil
+}
+
+func (p *PostgresPersister) deleteMultiSigOwnersInTable(multiSigAddress common.Address,
+	tableName string) error {
+	queryString := p.deleteMultiSigOwnersQuery(tableName, multiSigAddress)
+	_, err := p.db.Exec(queryString)
+	if err != nil {
+		return errors.Wrap(err, "error deleting multi sig owners in db")
+	}
+	return nil
+}
+
+func (p *PostgresPersister) deleteMultiSigOwnersQuery(tableName string, multiSigAddress common.Address) string {
+	queryString := fmt.Sprintf("DELETE FROM %s WHERE multi_sig_address=%s", tableName, multiSigAddress) // nolint: gosec
+	return queryString
 }
 
 func (p *PostgresPersister) typeExistsInCronTable(tableName string, dataType string) (string, error) {

@@ -8,6 +8,7 @@ import (
 // NewMultiSigOwnerParams represents all the necessary data to create a new multiSig owner
 // using NewMultiSig
 type NewMultiSigOwnerParams struct {
+	Key             string
 	OwnerAddress    common.Address
 	MultiSigAddress common.Address
 }
@@ -15,6 +16,7 @@ type NewMultiSigOwnerParams struct {
 // NewMultiSigOwner is a convenience function to initialize a new Listing struct
 func NewMultiSigOwner(params *NewMultiSigOwnerParams) *MultiSigOwner {
 	return &MultiSigOwner{
+		key:             params.Key,
 		ownerAddress:    params.OwnerAddress,
 		multiSigAddress: params.MultiSigAddress,
 	}
@@ -22,8 +24,14 @@ func NewMultiSigOwner(params *NewMultiSigOwnerParams) *MultiSigOwner {
 
 // MultiSigOwner represents a gnosis multisig owneer
 type MultiSigOwner struct {
+	key             string
 	ownerAddress    common.Address
 	multiSigAddress common.Address
+}
+
+// Key returns the key
+func (m *MultiSigOwner) Key() string {
+	return m.key
 }
 
 // OwnerAddress returns the owner address

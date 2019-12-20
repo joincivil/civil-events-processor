@@ -176,6 +176,8 @@ github.com/joincivil/civil-events-crawler v0.0.0-20191115212544-903a36715546 h1:
 github.com/joincivil/civil-events-crawler v0.0.0-20191115212544-903a36715546/go.mod h1:azq97zs+ihe41AWvjY3qyC7421K5yFLmcwc5yen6Ybk=
 github.com/joincivil/civil-events-crawler v0.0.0-20191217192138-a3c45f6b0d41 h1:G/CBnmHdXWN2IeGf1XN27rksXRmOxLlMcaRbUJV/OSQ=
 github.com/joincivil/civil-events-crawler v0.0.0-20191217192138-a3c45f6b0d41/go.mod h1:QTWC+IrfVNdu5ceqfThxQ77wSCpiriQegv/qrTcFIS4=
+github.com/joincivil/civil-events-crawler v0.0.0-20191219215955-252fe895cfee h1:cO2W/R+50NfAeBwz6hJpRATrdUPi7Fpw5Xdh072fSfs=
+github.com/joincivil/civil-events-crawler v0.0.0-20191219215955-252fe895cfee/go.mod h1:QTWC+IrfVNdu5ceqfThxQ77wSCpiriQegv/qrTcFIS4=
 github.com/joincivil/go-common v0.0.0-20191115202858-d23287f7bcb4 h1:jsegSa1eGkUPWzbuzf9kJk8U+pw5mpBrT52s9mG/jKo=
 github.com/joincivil/go-common v0.0.0-20191115202858-d23287f7bcb4/go.mod h1:rsFDwXyDKsUrm4pgE10z7AAaAuvFZ4NtN0ghSF3OwL8=
 github.com/joincivil/go-common v0.0.0-20191121182548-7994d712fce3 h1:/87mIuvsTmvEeVFcKRc7H7QftjWajxysS8O4mREVzsI=

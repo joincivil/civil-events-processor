@@ -1043,7 +1043,6 @@ func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddre
 	existingListing.SetWhitelisted(false)
 	existingListing.SetChallengeID(big.NewInt(0))
 	existingListing.SetLastGovernanceState(govState)
-	existingListing.ResetOwnerAddresses()
 	existingListing.ResetContributorAddresses()
 	updatedFields := []string{
 		unstakedDepositFieldName,
@@ -1052,8 +1051,6 @@ func (t *TcrEventProcessor) resetListing(event *crawlermodel.Event, listingAddre
 		whitelistedFieldName,
 		challengeIDFieldName,
 		lastGovStateFieldName,
-		ownerAddressesFieldName,
-		ownerAddressFieldName,
 		contributorAddressesFieldName}
 	return t.listingPersister.UpdateListing(existingListing, updatedFields)
 }
