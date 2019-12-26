@@ -407,16 +407,34 @@ func (p *PostgresPersister) CreateMultiSig(multiSig *model.MultiSig) error {
 	return p.createMultiSigInTable(multiSig, multiSigTableName)
 }
 
+// UpdateMultiSig updates fields on an existing multi sig
+func (p *PostgresPersister) UpdateMultiSig(multiSig *model.MultiSig, updatedFields []string) error {
+	multiSigTableName := p.GetTableName(postgres.MultiSigTableBaseName)
+	return p.updateMultiSigInTable(multiSig, updatedFields, multiSigTableName)
+}
+
 // CreateMultiSigOwner creates a new multi sig owner
 func (p *PostgresPersister) CreateMultiSigOwner(multiSigOwner *model.MultiSigOwner) error {
 	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
 	return p.createMultiSigOwnerInTable(multiSigOwner, multiSigOwnerTableName)
 }
 
-// DeleteMultiSigOwners deletes multi sig owners associated with a multi sig
-func (p *PostgresPersister) DeleteMultiSigOwners(multiSigAddress common.Address) error {
+// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
+func (p *PostgresPersister) DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error {
 	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
-	return p.deleteMultiSigOwnersInTable(multiSigAddress, multiSigOwnerTableName)
+	return p.deleteMultiSigOwnerInTable(multiSigAddress, ownerAddress, multiSigOwnerTableName)
+}
+
+// MultiSigOwners gets the owners of a multi sig
+func (p *PostgresPersister) MultiSigOwners(multiSigAddress common.Address) ([]*model.MultiSigOwner, error) {
+	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
+	return p.getMultiSigOwners(multiSigAddress, multiSigOwnerTableName)
+}
+
+// MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
+func (p *PostgresPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
+	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
+	return p.getMultiSigOwnersByOwnerAddr(ownerAddress, multiSigOwnerTableName)
 }
 
 // SaveVersion saves the version for this persistence
@@ -2380,6 +2398,98 @@ func (p *PostgresPersister) createMultiSigInTable(multiSig *model.MultiSig,
 	return nil
 }
 
+func (p *PostgresPersister) updateMultiSigInTable(multiSig *model.MultiSig, updatedFields []string, tableName string) error {
+	queryString, err := p.updateMultiSigQuery(updatedFields, tableName)
+	if err != nil {
+		return errors.Wrap(err, "error creating query string for update")
+	}
+	dbMultiSig := postgres.NewMultiSig(multiSig)
+	result, err := p.db.NamedExec(queryString, dbMultiSig)
+	if err != nil {
+		return errors.Wrap(err, "error updating fields in db")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateMultiSigQuery(updatedFields []string, tableName string) (string, error) {
+	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.MultiSig{})
+	if err != nil {
+		return "", err
+	}
+	queryString.WriteString(" WHERE lower(contract_address)=:contract_address;") // nolint: gosec
+	return queryString.String(), nil
+}
+
+// getMultiSigOwners gets the owners of a multi sig
+func (p *PostgresPersister) getMultiSigOwners(multiSigAddress common.Address, tableName string) ([]*model.MultiSigOwner, error) {
+	multiSigOwners := []*model.MultiSigOwner{}
+	queryString := p.multiSigOwnersByMultiSigAddressQuery(tableName)
+
+	dbMultiSigOwners := []*postgres.MultiSigOwner{}
+	err := p.db.Select(&dbMultiSigOwners, queryString, multiSigAddress.Hex())
+	if err != nil {
+		return multiSigOwners, errors.Wrap(err, "error retrieving multi sig owners from table")
+	}
+
+	if len(dbMultiSigOwners) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	for _, dbMultiSigOwner := range dbMultiSigOwners {
+		multiSigOwners = append(multiSigOwners, dbMultiSigOwner.DbToMultiSigOwnerData())
+	}
+
+	return multiSigOwners, nil
+}
+
+// multiSigOwnersByMultiSigAddressQuery returns the multi sig owners associated with a multi sig
+func (p *PostgresPersister) multiSigOwnersByMultiSigAddressQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.MultiSigOwner{}, false, "")
+	queryString := fmt.Sprintf( // nolint: gosec
+		"SELECT %s FROM %s WHERE lower(multi_sig_address) = lower($1);",
+		fieldNames,
+		tableName,
+	)
+	return queryString
+}
+
+// getMultiSigOwnersByOwnerAddr gets the multi sig owners of an owner
+func (p *PostgresPersister) getMultiSigOwnersByOwnerAddr(ownerAddress common.Address, tableName string) ([]*model.MultiSigOwner, error) {
+	multiSigOwners := []*model.MultiSigOwner{}
+	queryString := p.multiSigOwnersByOwnerAddressQuery(tableName)
+
+	dbMultiSigOwners := []*postgres.MultiSigOwner{}
+	err := p.db.Select(&dbMultiSigOwners, queryString, ownerAddress.Hex())
+	if err != nil {
+		return multiSigOwners, errors.Wrap(err, "error retrieving multi sig owners from table")
+	}
+
+	if len(dbMultiSigOwners) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	for _, dbMultiSigOwner := range dbMultiSigOwners {
+		multiSigOwners = append(multiSigOwners, dbMultiSigOwner.DbToMultiSigOwnerData())
+	}
+
+	return multiSigOwners, nil
+}
+
+// multiSigOwnersByMultiSigAddressQuery returns the multi sig owners associated with a multi sig
+func (p *PostgresPersister) multiSigOwnersByOwnerAddressQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.MultiSigOwner{}, false, "")
+	queryString := fmt.Sprintf( // nolint: gosec
+		"SELECT %s FROM %s WHERE lower(owner_address) = lower($1);",
+		fieldNames,
+		tableName,
+	)
+	return queryString
+}
+
 func (p *PostgresPersister) createMultiSigOwnerInTable(multiSigOwner *model.MultiSigOwner,
 	tableName string) error {
 	dbMultiSigOwner := postgres.NewMultiSigOwner(multiSigOwner)
@@ -2391,18 +2501,20 @@ func (p *PostgresPersister) createMultiSigOwnerInTable(multiSigOwner *model.Mult
 	return nil
 }
 
-func (p *PostgresPersister) deleteMultiSigOwnersInTable(multiSigAddress common.Address,
+func (p *PostgresPersister) deleteMultiSigOwnerInTable(
+	multiSigAddress common.Address,
+	ownerAddress common.Address,
 	tableName string) error {
-	queryString := p.deleteMultiSigOwnersQuery(tableName, multiSigAddress)
+	queryString := p.deleteMultiSigOwnerQuery(tableName, multiSigAddress, ownerAddress)
 	_, err := p.db.Exec(queryString)
 	if err != nil {
-		return errors.Wrap(err, "error deleting multi sig owners in db")
+		return errors.Wrap(err, "error deleting multi sig owner in db")
 	}
 	return nil
 }
 
-func (p *PostgresPersister) deleteMultiSigOwnersQuery(tableName string, multiSigAddress common.Address) string {
-	queryString := fmt.Sprintf("DELETE FROM %s WHERE multi_sig_address=%s", tableName, multiSigAddress) // nolint: gosec
+func (p *PostgresPersister) deleteMultiSigOwnerQuery(tableName string, multiSigAddress common.Address, ownerAddress common.Address) string {
+	queryString := fmt.Sprintf("DELETE FROM %s WHERE multi_sig_address=%s AND owner_address=%s", tableName, multiSigAddress, ownerAddress) // nolint: gosec
 	return queryString
 }
 

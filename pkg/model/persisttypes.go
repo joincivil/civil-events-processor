@@ -114,6 +114,10 @@ type ListingPersister interface {
 type MultiSigPersister interface {
 	// CreateMultiSig creates a new MultiSig
 	CreateMultiSig(multiSig *MultiSig) error
+	// UpdateMultiSig updates fields on an existing multi sig
+	UpdateMultiSig(multiSig *MultiSig, updatedFields []string) error
+	// MultiSigOwners gets the owners of a multi sig
+	MultiSigOwners(multiSigAddress common.Address) ([]*MultiSigOwner, error)
 	// Close shuts down the persister
 	Close() error
 }
@@ -122,8 +126,10 @@ type MultiSigPersister interface {
 type MultiSigOwnerPersister interface {
 	// CreateMultiSig creates a new MultiSigOwner
 	CreateMultiSigOwner(multiSigOwner *MultiSigOwner) error
-	// DeleteMultiSigOwners deletes multi sig owners associated with a multi sig
-	DeleteMultiSigOwners(multiSigAddress common.Address) error
+	// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
+	DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error
+	// MultiSigAddrsByOwner gets multi sig owners of multi sigs owned by address
+	MultiSigOwnersByOwner(ownerAddress common.Address) ([]*MultiSigOwner, error)
 	// Close shuts down the persister
 	Close() error
 }

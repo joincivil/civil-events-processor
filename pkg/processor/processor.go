@@ -204,9 +204,12 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			continue
 		}
 
-		_, err = e.parameterizerProcessor.Process(event)
+		ran, err = e.parameterizerProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing parameterizer event: err: %v\n", err)
+		}
+		if ran {
+			continue
 		}
 
 		_, err = e.multiSigProcessor.Process(event)

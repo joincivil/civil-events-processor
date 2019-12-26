@@ -51,10 +51,10 @@ func (c *MultiSigEventProcessor) Process(event *crawlermodel.Event) (bool, error
 		err = c.processMultiSigWalletContractInstantiation(event)
 	case "OwnerAddition":
 		log.Infof("Handling Multi Sig Wallet Owner Addition for %v\n", event.ContractAddress().Hex())
-		err = c.processMultiSigWalletOwnerAddedOrRemoved(event)
+		err = c.processMultiSigWalletOwnerAdded(event)
 	case "OwnerRemoval":
 		log.Infof("Handling Multi Sig Wallet Owner Removal for %v\n", event.ContractAddress().Hex())
-		err = c.processMultiSigWalletOwnerAddedOrRemoved(event)
+		err = c.processMultiSigWalletOwnerRemoved(event)
 	default:
 		ran = false
 	}
@@ -92,15 +92,115 @@ func (c *MultiSigEventProcessor) processMultiSigWalletContractInstantiation(even
 	return c.updateMultiSigOwners(multiSigAddress)
 }
 
-func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAddedOrRemoved(event *crawlermodel.Event) error {
+func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlermodel.Event) error {
 	multiSigAddr := event.ContractAddress()
-
-	err := c.multiSigOwnerPersister.DeleteMultiSigOwners(multiSigAddr)
-	if err != nil {
-		return errors.WithMessage(err, "error deleting multi sig owner")
+	payload := event.EventPayload()
+	newOwnerAddr, ok := payload["Owner"]
+	if !ok {
+		return errors.Errorf("error getting Owner from multi sig contract event")
 	}
 
-	return c.updateMultiSigOwners(multiSigAddr)
+	multiSigWalletContract, err := contract.NewMultiSigWalletContract(multiSigAddr, c.client)
+	if err != nil {
+		return errors.WithMessage(err, "error getting multi sig wallet contract")
+	}
+
+	contractOwners, err := multiSigWalletContract.GetOwners(&bind.CallOpts{})
+	if err != nil {
+		return errors.WithMessage(err, "error getting owners from multi sig wallet contract")
+	}
+
+	isNewOwnerStillOwner := false
+
+	for _, owner := range contractOwners {
+		if strings.ToLower(owner.String()) == strings.ToLower(newOwnerAddr.(common.Address).String()) {
+			isNewOwnerStillOwner = true
+		}
+	}
+
+	dbOwners, err := c.multiSigPersister.MultiSigOwners(multiSigAddr)
+
+	isNewOwnerDbOwner := false
+	for _, dbOwner := range dbOwners {
+		if strings.ToLower(dbOwner.OwnerAddress().String()) == strings.ToLower(newOwnerAddr.(common.Address).String()) {
+			isNewOwnerDbOwner = true
+		}
+	}
+
+	if isNewOwnerStillOwner && !isNewOwnerDbOwner {
+		ownerKey := newOwnerAddr.(common.Address).String()
+		multiSigAddressKey := multiSigAddr.String()
+		multiSigOwner := model.NewMultiSigOwner(&model.NewMultiSigOwnerParams{
+			Key:             ownerKey + "-" + multiSigAddressKey,
+			OwnerAddress:    newOwnerAddr.(common.Address),
+			MultiSigAddress: multiSigAddr,
+		})
+		err = c.multiSigOwnerPersister.CreateMultiSigOwner(multiSigOwner)
+		if err != nil {
+			return errors.WithMessage(err, "error creating multi sig owner")
+		}
+		multiSig := model.NewMultiSig(&model.NewMultiSigParams{
+			ContractAddress: multiSigAddr,
+			OwnerAddresses:  contractOwners,
+		})
+		err = c.multiSigPersister.UpdateMultiSig(multiSig, []string{"owner_addresses"})
+		if err != nil {
+			return errors.WithMessage(err, "error updating multi sig")
+		}
+	}
+	return nil
+}
+
+func (c *MultiSigEventProcessor) processMultiSigWalletOwnerRemoved(event *crawlermodel.Event) error {
+	multiSigAddr := event.ContractAddress()
+	payload := event.EventPayload()
+	newOwnerAddr, ok := payload["Owner"]
+	if !ok {
+		return errors.Errorf("error getting Owner from multi sig contract event")
+	}
+
+	multiSigWalletContract, err := contract.NewMultiSigWalletContract(multiSigAddr, c.client)
+	if err != nil {
+		return errors.WithMessage(err, "error getting multi sig wallet contract")
+	}
+
+	contractOwners, err := multiSigWalletContract.GetOwners(&bind.CallOpts{})
+	if err != nil {
+		return errors.WithMessage(err, "error getting owners from multi sig wallet contract")
+	}
+
+	isNewOwnerStillOwner := false
+
+	for _, owner := range contractOwners {
+		if strings.ToLower(owner.String()) == strings.ToLower(newOwnerAddr.(common.Address).String()) {
+			isNewOwnerStillOwner = true
+		}
+	}
+
+	dbOwners, err := c.multiSigPersister.MultiSigOwners(multiSigAddr)
+
+	isNewOwnerDbOwner := false
+	for _, dbOwner := range dbOwners {
+		if strings.ToLower(dbOwner.OwnerAddress().String()) == strings.ToLower(newOwnerAddr.(common.Address).String()) {
+			isNewOwnerDbOwner = true
+		}
+	}
+
+	if !isNewOwnerStillOwner && isNewOwnerDbOwner {
+		err = c.multiSigOwnerPersister.DeleteMultiSigOwner(multiSigAddr, newOwnerAddr.(common.Address))
+		if err != nil {
+			return errors.WithMessage(err, "error deleting multi sig owner")
+		}
+		multiSig := model.NewMultiSig(&model.NewMultiSigParams{
+			ContractAddress: multiSigAddr,
+			OwnerAddresses:  contractOwners,
+		})
+		err = c.multiSigPersister.UpdateMultiSig(multiSig, []string{"owner_addresses"})
+		if err != nil {
+			return errors.WithMessage(err, "error updating multi sig")
+		}
+	}
+	return nil
 }
 
 func (c *MultiSigEventProcessor) updateMultiSigOwners(multiSigAddress common.Address) error {
