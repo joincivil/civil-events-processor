@@ -43,7 +43,7 @@ func (ep *TestEventPersister) RetrieveEvents(criteria *crawlermodel.RetrieveEven
 	return ep.events, nil
 }
 
-func (ep *TestEventPersister) SaveEvents(events []*crawlermodel.Event) error {
+func (ep *TestEventPersister) SaveEvents(events []*crawlermodel.Event) []error {
 	ep.events = append(ep.events, events...)
 	return nil
 }
