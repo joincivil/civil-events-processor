@@ -297,17 +297,32 @@ func (n *NullPersister) UpdateUserChallengeData(userChallengeData *model.UserCha
 	return nil
 }
 
-// CreateMultiSig creates a new multi sig
+// CreateMultiSig creates a new MultiSig
 func (n *NullPersister) CreateMultiSig(multiSig *model.MultiSig) error {
 	return nil
 }
 
-// CreateMultiSigOwner creates a new multi sig owner
+// UpdateMultiSig updates fields on an existing multi sig
+func (n *NullPersister) UpdateMultiSig(multiSig *model.MultiSig, updatedFields []string) error {
+	return nil
+}
+
+// MultiSigOwners gets the owners of a multi sig
+func (n *NullPersister) MultiSigOwners(multiSigAddress common.Address) ([]*model.MultiSigOwner, error) {
+	return []*model.MultiSigOwner{}, nil
+}
+
+// CreateMultiSigOwner creates a new MultiSigOwner
 func (n *NullPersister) CreateMultiSigOwner(multiSigOwner *model.MultiSigOwner) error {
 	return nil
 }
 
-// DeleteMultiSigOwners deletes multi sig owners associated with a multi sig
-func (n *NullPersister) DeleteMultiSigOwners(multiSigAddress common.Address) error {
+// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
+func (n *NullPersister) DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error {
 	return nil
+}
+
+// MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
+func (n *NullPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
+	return []*model.MultiSigOwner{}, nil
 }

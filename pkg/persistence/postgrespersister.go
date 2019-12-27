@@ -2505,12 +2505,7 @@ func (p *PostgresPersister) deleteMultiSigOwnerInTable(
 	multiSigAddress common.Address,
 	ownerAddress common.Address,
 	tableName string) error {
-	log.Infof("deleteMultiSigOwnerInTable: multiSigAddress: %s", multiSigAddress)
-	log.Infof("deleteMultiSigOwnerInTable: multiSigAddress.String(): %s", multiSigAddress.String())
-	log.Infof("deleteMultiSigOwnerInTable: ownerAddress: %s", ownerAddress)
-	log.Infof("deleteMultiSigOwnerInTable: ownerAddress.String(): %s", ownerAddress.String())
 	queryString := p.deleteMultiSigOwnerQuery(tableName, multiSigAddress, ownerAddress)
-	log.Infof("queryString: %s", queryString)
 	_, err := p.db.Exec(queryString)
 	if err != nil {
 		return errors.Wrap(err, "error deleting multi sig owner in db")

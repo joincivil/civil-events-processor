@@ -124,11 +124,11 @@ type MultiSigPersister interface {
 
 // MultiSigOwnerPersister is the interface to store the multi sig owner data related to the processor
 type MultiSigOwnerPersister interface {
-	// CreateMultiSig creates a new MultiSigOwner
+	// CreateMultiSigOwner creates a new MultiSigOwner
 	CreateMultiSigOwner(multiSigOwner *MultiSigOwner) error
 	// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
 	DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error
-	// MultiSigAddrsByOwner gets multi sig owners of multi sigs owned by address
+	// MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
 	MultiSigOwnersByOwner(ownerAddress common.Address) ([]*MultiSigOwner, error)
 	// Close shuts down the persister
 	Close() error

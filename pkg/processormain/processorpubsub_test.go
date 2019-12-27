@@ -239,13 +239,15 @@ func TestProcessorPubSub(t *testing.T) {
 	watchedEvent2 := returnContractApplicationWatchedEvent(t, contracts.NewsroomAddr)
 
 	proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-		Client:             contracts.Client,
-		ListingPersister:   testPersister,
-		RevisionPersister:  testPersister,
-		GovEventPersister:  testPersister,
-		ChallengePersister: testPersister,
-		PollPersister:      testPersister,
-		AppealPersister:    testPersister,
+		Client:                 contracts.Client,
+		ListingPersister:       testPersister,
+		RevisionPersister:      testPersister,
+		GovEventPersister:      testPersister,
+		ChallengePersister:     testPersister,
+		PollPersister:          testPersister,
+		AppealPersister:        testPersister,
+		MultiSigPersister:      persister,
+		MultiSigOwnerPersister: persister,
 	})
 	var wg sync.WaitGroup
 	wg.Add(2)

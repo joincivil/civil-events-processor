@@ -722,6 +722,36 @@ func (t *TestPersister) UpdateUserChallengeData(userChallengeData *model.UserCha
 	return nil
 }
 
+// CreateMultiSig creates a new MultiSig
+func (t *TestPersister) CreateMultiSig(multiSig *model.MultiSig) error {
+	return nil
+}
+
+// UpdateMultiSig updates fields on an existing multi sig
+func (t *TestPersister) UpdateMultiSig(multiSig *model.MultiSig, updatedFields []string) error {
+	return nil
+}
+
+// MultiSigOwners gets the owners of a multi sig
+func (t *TestPersister) MultiSigOwners(multiSigAddress common.Address) ([]*model.MultiSigOwner, error) {
+	return []*model.MultiSigOwner{}, nil
+}
+
+// CreateMultiSigOwner creates a new MultiSigOwner
+func (t *TestPersister) CreateMultiSigOwner(multiSigOwner *model.MultiSigOwner) error {
+	return nil
+}
+
+// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
+func (t *TestPersister) DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error {
+	return nil
+}
+
+// MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
+func (t *TestPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
+	return []*model.MultiSigOwner{}, nil
+}
+
 // TestScraper is a testscraper
 type TestScraper struct{}
 
