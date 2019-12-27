@@ -84,7 +84,6 @@ func (c *MultiSigEventProcessor) processMultiSigWalletContractInstantiation(even
 		OwnerAddresses:  owners,
 	})
 
-	log.Infof("multiSigPersister %v: ", c.multiSigPersister)
 	err = c.multiSigPersister.CreateMultiSig(multiSig)
 	if err != nil {
 		return errors.WithMessage(err, "error creating multi sig")
@@ -143,7 +142,7 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlerm
 			ContractAddress: multiSigAddr,
 			OwnerAddresses:  contractOwners,
 		})
-		err = c.multiSigPersister.UpdateMultiSig(multiSig, []string{"owner_addresses"})
+		err = c.multiSigPersister.UpdateMultiSig(multiSig, []string{"OwnerAddresses"})
 		if err != nil {
 			return errors.WithMessage(err, "error updating multi sig")
 		}
@@ -195,7 +194,7 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerRemoved(event *crawle
 			ContractAddress: multiSigAddr,
 			OwnerAddresses:  contractOwners,
 		})
-		err = c.multiSigPersister.UpdateMultiSig(multiSig, []string{"owner_addresses"})
+		err = c.multiSigPersister.UpdateMultiSig(multiSig, []string{"OwnerAddresses"})
 		if err != nil {
 			return errors.WithMessage(err, "error updating multi sig")
 		}

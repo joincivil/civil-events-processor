@@ -2420,7 +2420,7 @@ func (p *PostgresPersister) updateMultiSigQuery(updatedFields []string, tableNam
 	if err != nil {
 		return "", err
 	}
-	queryString.WriteString(" WHERE lower(contract_address)=:contract_address;") // nolint: gosec
+	queryString.WriteString(" WHERE lower(contract_address)=lower(:contract_address);") // nolint: gosec
 	return queryString.String(), nil
 }
 
@@ -2505,7 +2505,12 @@ func (p *PostgresPersister) deleteMultiSigOwnerInTable(
 	multiSigAddress common.Address,
 	ownerAddress common.Address,
 	tableName string) error {
+	log.Infof("deleteMultiSigOwnerInTable: multiSigAddress: %s", multiSigAddress)
+	log.Infof("deleteMultiSigOwnerInTable: multiSigAddress.String(): %s", multiSigAddress.String())
+	log.Infof("deleteMultiSigOwnerInTable: ownerAddress: %s", ownerAddress)
+	log.Infof("deleteMultiSigOwnerInTable: ownerAddress.String(): %s", ownerAddress.String())
 	queryString := p.deleteMultiSigOwnerQuery(tableName, multiSigAddress, ownerAddress)
+	log.Infof("queryString: %s", queryString)
 	_, err := p.db.Exec(queryString)
 	if err != nil {
 		return errors.Wrap(err, "error deleting multi sig owner in db")
@@ -2514,7 +2519,7 @@ func (p *PostgresPersister) deleteMultiSigOwnerInTable(
 }
 
 func (p *PostgresPersister) deleteMultiSigOwnerQuery(tableName string, multiSigAddress common.Address, ownerAddress common.Address) string {
-	queryString := fmt.Sprintf("DELETE FROM %s WHERE multi_sig_address=%s AND owner_address=%s", tableName, multiSigAddress, ownerAddress) // nolint: gosec
+	queryString := fmt.Sprintf("DELETE FROM %s WHERE lower(multi_sig_address) = lower('%s') AND lower(owner_address) = lower('%s')", tableName, multiSigAddress.String(), ownerAddress.String()) // nolint: gosec
 	return queryString
 }
 
