@@ -1688,7 +1688,7 @@ func (p *PostgresPersister) govtParametersByName(paramNames []string, tableName 
 }
 
 func (p *PostgresPersister) govtParameterByName(paramName string, tableName string) (*model.GovernmentParameter, error) {
-	queryString := p.parameterByNameQuery(tableName)
+	queryString := p.govtParameterByNameQuery(tableName)
 	query, args, err := sqlx.In(queryString, paramName)
 	if err != nil {
 		return nil, errors.Wrap(err, "error preparing 'IN' statement")

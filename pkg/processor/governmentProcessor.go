@@ -25,9 +25,9 @@ import (
 const (
 	govtProposalAcceptedFieldName = "Accepted"
 	govtProposalExpiredFieldName  = "Expired"
-	govtPollIsPassedFieldName     = "PollIsPassed"
-	govtParameterValueFieldName   = "Value"
-	govtProcessByDuration         = 604800
+	// govtPollIsPassedFieldName     = "PollIsPassed"
+	govtParameterValueFieldName = "Value"
+	govtProcessByDuration       = 604800
 )
 
 // NewGovernmentEventProcessor is a convenience function to init a government parameter processor
@@ -116,12 +116,12 @@ func (p *GovernmentEventProcessor) processProposalPassed(event *crawlermodel.Eve
 	govtParameter.SetValue(govtParamProposal.Value())
 	govtParamProposal.SetAccepted(true)
 	govtParamProposal.SetExpired(true)
-	err = p.govtParameterPersister.UpdateGovernmentParameter(govtParameter, []string{valueFieldName})
+	err = p.govtParameterPersister.UpdateGovernmentParameter(govtParameter, []string{govtParameterValueFieldName})
 	if err != nil {
 		return err
 	}
 
-	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{proposalAcceptedFieldName, proposalExpiredFieldName})
+	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{govtProposalAcceptedFieldName, govtProposalExpiredFieldName})
 }
 
 func (p *GovernmentEventProcessor) processProposalFailed(event *crawlermodel.Event) error {
@@ -130,7 +130,7 @@ func (p *GovernmentEventProcessor) processProposalFailed(event *crawlermodel.Eve
 		return err
 	}
 	govtParamProposal.SetExpired(true)
-	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{proposalExpiredFieldName})
+	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{govtProposalExpiredFieldName})
 }
 
 func (p *GovernmentEventProcessor) processProposalExpired(event *crawlermodel.Event) error {
@@ -139,7 +139,7 @@ func (p *GovernmentEventProcessor) processProposalExpired(event *crawlermodel.Ev
 		return err
 	}
 	govtParamProposal.SetExpired(true)
-	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{proposalExpiredFieldName})
+	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{govtProposalExpiredFieldName})
 }
 
 func (p *GovernmentEventProcessor) getExistingGovernmentParameterProposal(event *crawlermodel.Event) (*model.GovernmentParameterProposal, error) {
@@ -217,7 +217,7 @@ func (p *GovernmentEventProcessor) newGovtParameterizationFromProposal(event *cr
 	appExpiry := *(big.NewInt(0))
 	appExpiry.Add(govtPCommitStageLen, govtPRevealStageLen)
 	appExpiry.Add(&appExpiry, big.NewInt(event.Timestamp()))
-	appExpiry.Add(&appExpiry, big.NewInt(604800))
+	appExpiry.Add(&appExpiry, big.NewInt(govtProcessByDuration))
 
 	nameString := name.(string)
 	valueString := (value.(*big.Int)).String()
@@ -282,20 +282,20 @@ func (p *GovernmentEventProcessor) newGovtParameterizationFromContract(event *cr
 	return paramProposal, nil
 }
 
-func (p *GovernmentEventProcessor) setPollIsPassedInPoll(pollID *big.Int, isPassed bool) error {
-	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
-	if err != nil {
-		return fmt.Errorf("Error getting poll from persistence: %v", err)
-	}
-	// TODO(IS): Shouldn't happen if all events are processed and in order, but create new poll if DNE
-	poll.SetIsPassed(isPassed)
-	updatedFields := []string{isPassedFieldName}
+// func (p *GovernmentEventProcessor) setPollIsPassedInPoll(pollID *big.Int, isPassed bool) error {
+// 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
+// 	if err != nil {
+// 		return fmt.Errorf("Error getting poll from persistence: %v", err)
+// 	}
+// 	// TODO(IS): Shouldn't happen if all events are processed and in order, but create new poll if DNE
+// 	poll.SetIsPassed(isPassed)
+// 	updatedFields := []string{isPassedFieldName}
 
-	err = p.pollPersister.UpdatePoll(poll, updatedFields)
-	if err != nil {
-		return fmt.Errorf("Error updating poll in persistence: %v", err)
-	}
+// 	err = p.pollPersister.UpdatePoll(poll, updatedFields)
+// 	if err != nil {
+// 		return fmt.Errorf("Error updating poll in persistence: %v", err)
+// 	}
 
-	return nil
+// 	return nil
 
-}
+// }
