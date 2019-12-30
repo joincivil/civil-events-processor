@@ -96,7 +96,10 @@ func (p *GovernmentEventProcessor) getPropIDFromEvent(event *crawlermodel.Event)
 	payload := event.EventPayload()
 	propID, ok := payload["PropID"]
 	if !ok {
-		return [32]byte{}, errors.New("Unable to get PropID in the payload")
+		propID, ok = payload["PropId"]
+		if !ok {
+			return [32]byte{}, errors.New("Unable to get PropID in the payload")
+		}
 	}
 	return propID.([32]byte), nil
 }
@@ -193,7 +196,7 @@ func (p *GovernmentEventProcessor) newGovtParameterizationFromProposal(event *cr
 	}
 	pollID, ok := payload["PollID"]
 	if !ok {
-		return errors.New("No Proposer found")
+		return errors.New("No PollID found")
 	}
 	// IF events are out of order this could be true
 	accepted := false

@@ -44,7 +44,7 @@ type GovernmentParameterProposal struct {
 
 	AppExpiry int64 `db:"app_expiry"`
 
-	PollID int64 `db:"challenge_id"`
+	PollID int64 `db:"poll_id"`
 
 	Accepted bool `db:"accepted"`
 
