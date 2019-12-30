@@ -48,7 +48,7 @@ const (
 	parameterTableTestName                   = "parameter_table_test"
 	userChallengeDataTestTableName           = "user_challenge_data_test"
 	governmentParameterTableTestName         = "government_parameter_test"
-	governmentParameterProposalTableTestName = "government_parameter_proposal_test"
+	governmentParameterProposalTestTableName = "government_parameter_proposal_test"
 	testAddress                              = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
 	testAddress2                             = "0x22e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d331d"
 	testAddress3                             = "0x11e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d371d"
