@@ -118,6 +118,9 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlerm
 	}
 
 	dbOwners, err := c.multiSigPersister.MultiSigOwners(multiSigAddr)
+	if err != nil {
+		return errors.WithMessage(err, "error getting owners from db")
+	}
 
 	isNewOwnerDbOwner := false
 	for _, dbOwner := range dbOwners {
@@ -177,6 +180,9 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerRemoved(event *crawle
 	}
 
 	dbOwners, err := c.multiSigPersister.MultiSigOwners(multiSigAddr)
+	if err != nil {
+		return errors.WithMessage(err, "error getting owners from db")
+	}
 
 	isNewOwnerDbOwner := false
 	for _, dbOwner := range dbOwners {
