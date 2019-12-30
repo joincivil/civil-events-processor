@@ -552,6 +552,8 @@ func (p *PostgresPersister) CreateTables() error {
 	parameterTableQuery := postgres.CreateParameterTableQuery(p.GetTableName(postgres.ParameterTableBaseName))
 	multiSigTableQuery := postgres.CreateMultiSigTableQuery(p.GetTableName(postgres.MultiSigTableBaseName))
 	multiSigOwnerTableQuery := postgres.CreateMultiSigOwnerTableQuery(p.GetTableName(postgres.MultiSigOwnerTableBaseName))
+	governmentParameterTableQuery := postgres.CreateGovernmentParameterTableQuery(p.GetTableName(postgres.GovernmentParameterTableBaseName))
+	governmentParameterProposalQuery := postgres.CreateGovernmentParameterProposalTableQuery(p.GetTableName(postgres.GovernmentParameterProposalTableBaseName))
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -605,34 +607,45 @@ func (p *PostgresPersister) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Error creating multi sig owner table in postgres: %v", err)
 	}
+	_, err = p.db.Exec(governmentParameterTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating government parameter table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(governmentParameterProposalQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating government parameter proposal table in postgres: %v", err)
+	}
 
 	return nil
 }
 
-	// CreateDefaultValues creates default values for tables that need them
-	func (p *PostgresPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
-		return p.createDefaultParameterizerValues(config.ParameterizerDefaults())
+// CreateDefaultValues creates default values for tables that need them
+func (p *PostgresPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
+	err := p.createDefaultParameterizerValues(config.ParameterizerDefaults(), p.GetTableName(postgres.ParameterTableBaseName))
+	if err != nil {
+		return err
 	}
+	return p.createDefaultParameterizerValues(config.GovernmentParameterDefaults(), p.GetTableName(postgres.GovernmentParameterTableBaseName))
+}
 
-	func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string) error {
-		parameterTableCountQuery := postgres.CheckTableCount(p.GetTableName(postgres.ParameterTableBaseName))
-		var numRowsb int
-		err := p.db.QueryRow(parameterTableCountQuery).Scan(&numRowsb)
+func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string, tableName string) error {
+	parameterTableCountQuery := postgres.CheckTableCount(tableName)
+	var numRowsb int
+	err := p.db.QueryRow(parameterTableCountQuery).Scan(&numRowsb)
+	if err != nil {
+		return fmt.Errorf("Error checking parameter table count: %v", err)
+	}
+	if numRowsb == 0 {
+		err = p.createDefaultParameterValues(parameterizerDefaults, tableName)
 		if err != nil {
-			return fmt.Errorf("Error checking parameter table count: %v", err)
+			return err
 		}
-		if numRowsb == 0 {
-			err = p.createDefaultParameterValues(parameterizerDefaults)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
 	}
+	return nil
+}
 
-func (p *PostgresPersister) insertParameter(paramName string, value string) error {
-	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
-	addParameterValue := fmt.Sprintf(`INSERT INTO %s ("param_name", "value") VALUES ('%s', '%s')`, parameterTableName, paramName, value) // nolint: gosec
+func (p *PostgresPersister) insertParameter(paramName string, value string, tableName string) error {
+	addParameterValue := fmt.Sprintf(`INSERT INTO %s ("param_name", "value") VALUES ('%s', '%s')`, tableName, paramName, value) // nolint: gosec
 	_, err := p.db.Exec(addParameterValue)
 	if err != nil {
 		return fmt.Errorf("Error inserting default parameter value: %v", err)
@@ -640,9 +653,9 @@ func (p *PostgresPersister) insertParameter(paramName string, value string) erro
 	return nil
 }
 
-func (p *PostgresPersister) createDefaultParameterValues(parameterizerDefaults map[string]string) error {
+func (p *PostgresPersister) createDefaultParameterValues(parameterizerDefaults map[string]string, tableName string) error {
 	for paramName, value := range parameterizerDefaults {
-		err := p.insertParameter(paramName, value)
+		err := p.insertParameter(paramName, value, tableName)
 		if err != nil {
 			return fmt.Errorf("Errors inserting parameter: %s value: %s - err: %v", paramName, value, err)
 		}

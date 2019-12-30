@@ -52,7 +52,8 @@ type ProcessorConfig struct {
 	SentryDsn            string `split_words:"true" desc:"Sets the Sentry DSN"`
 	SentryEnv            string `split_words:"true" desc:"Sets the Sentry environment"`
 
-	ParameterizerDefaultValues map[string]string `split_words:"true" required:"true" desc:"<parameter name>:<parameter value>. Delimit contract address with '|' for multiple addresses"`
+	ParameterizerDefaultValues       map[string]string `split_words:"true" required:"true" desc:"<parameter name>:<parameter value>. Delimit contract address with '|' for multiple addresses"`
+	GovernmentParameterDefaultValues map[string]string `split_words:"true" required:"true" desc:"<parameter name>:<parameter value>. Delimit contract address with '|' for multiple addresses"`
 }
 
 // PersistType returns the persister type, implements PersisterConfig
@@ -105,6 +106,11 @@ func (c *ProcessorConfig) ParameterizerDefaults() map[string]string {
 	return c.ParameterizerDefaultValues
 }
 
+// GovernmentParameterDefaults returns the government parameter default values
+func (c *ProcessorConfig) GovernmentParameterDefaults() map[string]string {
+	return c.GovernmentParameterDefaultValues
+}
+
 // OutputUsage prints the usage string to os.Stdout
 func (c *ProcessorConfig) OutputUsage() {
 	cconfig.OutputUsage(c, envVarPrefixProcessor, envVarPrefixProcessor)
@@ -145,6 +151,11 @@ func (c *ProcessorConfig) PopulateFromEnv() error {
 		return err
 	}
 
+	err = c.validateGovernmentParameterDefaultValues()
+	if err != nil {
+		return err
+	}
+
 	return c.validatePersister()
 }
 
@@ -181,6 +192,18 @@ func (c *ProcessorConfig) validatePersister() error {
 
 func (c *ProcessorConfig) validateParameterizerDefaultValues() error {
 	for paramName, paramValue := range c.ParameterizerDefaultValues {
+		if paramName == "" {
+			return fmt.Errorf("Invalid parameter name: '%v'", paramName)
+		}
+		if paramValue == "" {
+			return fmt.Errorf("Invalid parameter value: '%v'", paramValue)
+		}
+	}
+	return nil
+}
+
+func (c *ProcessorConfig) validateGovernmentParameterDefaultValues() error {
+	for paramName, paramValue := range c.GovernmentParameterDefaultValues {
 		if paramName == "" {
 			return fmt.Errorf("Invalid parameter name: '%v'", paramName)
 		}

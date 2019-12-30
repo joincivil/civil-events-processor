@@ -306,11 +306,11 @@ type ParamProposalPersister interface {
 // GovernmentParameterPersister is the interface to store ParameterData
 type GovernmentParameterPersister interface {
 	// ParameterByName gets a parameter by name
-	ParameterByName(paramName string) (*Parameter, error)
+	ParameterByName(paramName string) (*GovernmentParameter, error)
 	// ParametersByName gets a slice of parameter by name
-	ParametersByName(paramName []string) ([]*Parameter, error)
+	ParametersByName(paramName []string) ([]*GovernmentParameter, error)
 	// UpdateParameter updates a parameter value
-	UpdateParameter(parameter *Parameter, updatedFields []string) error
+	UpdateParameter(parameter *GovernmentParameter, updatedFields []string) error
 	// CreateDefaultValues creates Parameter default values
 	CreateDefaultValues(config *utils.ProcessorConfig) error
 	// Close shuts down the persister
@@ -324,7 +324,7 @@ type GovernmentParamProposalPersister interface {
 	// ParamProposalByPropID gets a parameter proposal from persistence using propID
 	ParamProposalByPropID(propID [32]byte, active bool) (*GovernmentParameterProposal, error)
 	// ParamProposalByName gets parameter proposals by name from persistence
-	ParamProposalByName(name string, active bool) ([]*vParameterProposal, error)
+	ParamProposalByName(name string, active bool) ([]*GovernmentParameterProposal, error)
 	// UpdateParamProposal updates parameter propsal in table
 	UpdateParamProposal(paramProposal *GovernmentParameterProposal, updatedFields []string) error
 	// Close shuts down the persister

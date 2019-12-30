@@ -10,7 +10,6 @@ import (
 	log "github.com/golang/glog"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 
 	commongen "github.com/joincivil/civil-events-crawler/pkg/generated/common"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
@@ -33,12 +32,12 @@ const (
 
 // NewGovernmentEventProcessor is a convenience function to init a government parameter processor
 func NewGovernmentEventProcessor(client bind.ContractBackend,
-	govtParamProposalPersister model.GovernmentParamProposalPersister, governmentParameterPersister model.GovernmentParameterPersister, pollPersister model.PollPersister,
-	errRep cerrors.ErrorReporter) *ParameterizerEventProcessor {
-	return &ParameterizerEventProcessor{
+	govtParamProposalPersister model.GovernmentParamProposalPersister, govtParameterPersister model.GovernmentParameterPersister, pollPersister model.PollPersister,
+	errRep cerrors.ErrorReporter) *GovernmentEventProcessor {
+	return &GovernmentEventProcessor{
 		client:                     client,
 		govtParamProposalPersister: govtParamProposalPersister,
-		parameterPersister:         parameterPersister,
+		govtParameterPersister:     govtParameterPersister,
 		pollPersister:              pollPersister,
 		errRep:                     errRep,
 	}
@@ -53,24 +52,14 @@ type GovernmentEventProcessor struct {
 	errRep                     cerrors.ErrorReporter
 }
 
-func (p *GovernmentParameterEventProcessor) isValidParameterizerContractEventName(name string) bool {
+func (p *GovernmentEventProcessor) isValidParameterizerContractEventName(name string) bool {
 	name = strings.Trim(name, " _")
 	eventNames := commongen.EventTypesGovernmentContract()
 	return isStringInSlice(eventNames, name)
 }
 
-// TODO: Move to go-common?
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
 // Process processes Parameterizer Events into aggregated data
-func (p *ParameterizerEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
+func (p *GovernmentEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 	if !p.isValidParameterizerContractEventName(event.EventType()) {
 		return false, nil
 	}
@@ -79,31 +68,16 @@ func (p *ParameterizerEventProcessor) Process(event *crawlermodel.Event) (bool, 
 	ran := true
 	eventName := strings.Trim(event.EventType(), " _")
 
-	var challengeID *big.Int
-	if stringInSlice(eventName, paramChallengeEventNames) {
-		challengeID, err = p.challengeIDFromEvent(event)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	// NOTE(IS): Only tracking challenge related data for Parameterizer contract for now.
 	switch eventName {
-	case "NewChallenge":
-		log.Infof("Handling challenge %v\n", *challengeID)
-		err = p.processParameterizerChallenge(event, challengeID)
-	case "ChallengeFailed":
-		log.Infof("Handling challenge %v\n", *challengeID)
-		err = p.processChallengeFailed(event, challengeID)
-	case "ChallengeSucceeded":
-		log.Infof("Handling challenge %v\n", *challengeID)
-		err = p.processChallengeSucceeded(event, challengeID)
-	case "ReparameterizationProposal":
+	case "GovtReparameterizationProposal":
 		log.Infof("Handling %v\n", eventName)
-		err = p.processReparameterizationProposal(event)
-	case "ProposalAccepted":
+		err = p.processGovtReparameterizationProposal(event)
+	case "ProposalPassed":
 		log.Infof("Handling %v\n", eventName)
-		err = p.processProposalAccepted(event)
+		err = p.processProposalPassed(event)
+	case "ProposalFailed":
+		log.Infof("Handling %v\n", eventName)
+		err = p.processProposalFailed(event)
 	case "ProposalExpired":
 		log.Infof("Handling %v\n", eventName)
 		err = p.processProposalExpired(event)
@@ -113,12 +87,12 @@ func (p *ParameterizerEventProcessor) Process(event *crawlermodel.Event) (bool, 
 	return ran, err
 }
 
-func (p *ParameterizerEventProcessor) processReparameterizationProposal(event *crawlermodel.Event) error {
-	return p.newParameterizationFromProposal(event)
+func (p *GovernmentEventProcessor) processGovtReparameterizationProposal(event *crawlermodel.Event) error {
+	return p.newGovtParameterizationFromProposal(event)
 
 }
 
-func (p *ParameterizerEventProcessor) getPropIDFromEvent(event *crawlermodel.Event) ([32]byte, error) {
+func (p *GovernmentEventProcessor) getPropIDFromEvent(event *crawlermodel.Event) ([32]byte, error) {
 	payload := event.EventPayload()
 	propID, ok := payload["PropID"]
 	if !ok {
@@ -127,101 +101,56 @@ func (p *ParameterizerEventProcessor) getPropIDFromEvent(event *crawlermodel.Eve
 	return propID.([32]byte), nil
 }
 
-func (p *ParameterizerEventProcessor) processProposalAccepted(event *crawlermodel.Event) error {
-	paramProposal, err := p.getExistingParameterProposal(event)
+func (p *GovernmentEventProcessor) processProposalPassed(event *crawlermodel.Event) error {
+	govtParamProposal, err := p.getExistingGovernmentParameterProposal(event)
 	if err != nil {
 		return err
 	}
-	parameter, err := p.getExistingParameter(event)
+	govtParameter, err := p.getExistingGovernmentParameter(event)
 	if err != nil {
 		return err
 	}
-	parameter.SetValue(paramProposal.Value())
-	paramProposal.SetAccepted(true)
-	paramProposal.SetExpired(true)
-	err = p.parameterPersister.UpdateParameter(parameter, []string{valueFieldName})
+	govtParameter.SetValue(govtParamProposal.Value())
+	govtParamProposal.SetAccepted(true)
+	govtParamProposal.SetExpired(true)
+	err = p.govtParameterPersister.UpdateParameter(govtParameter, []string{valueFieldName})
 	if err != nil {
 		return err
 	}
 
-	return p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalAcceptedFieldName, proposalExpiredFieldName})
+	return p.govtParamProposalPersister.UpdateParamProposal(govtParamProposal, []string{proposalAcceptedFieldName, proposalExpiredFieldName})
 }
 
-func (p *ParameterizerEventProcessor) processProposalExpired(event *crawlermodel.Event) error {
-	paramProposal, err := p.getExistingParameterProposal(event)
+func (p *GovernmentEventProcessor) processProposalFailed(event *crawlermodel.Event) error {
+	govtParamProposal, err := p.getExistingGovernmentParameterProposal(event)
 	if err != nil {
 		return err
 	}
-	paramProposal.SetExpired(true)
-	return p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalExpiredFieldName})
+	govtParamProposal.SetExpired(true)
+	return p.govtParamProposalPersister.UpdateParamProposal(govtParamProposal, []string{proposalExpiredFieldName})
 }
 
-func (p *ParameterizerEventProcessor) processChallengeFailed(event *crawlermodel.Event,
-	challengeID *big.Int) error {
-
-	pollIsPassed := true
-	err := p.setPollIsPassedInPoll(challengeID, pollIsPassed)
-	if err != nil {
-		return fmt.Errorf("Error setting isPassed field in poll, err: %v", err)
-	}
-	paramProposal, err := p.getExistingParameterProposal(event)
+func (p *GovernmentEventProcessor) processProposalExpired(event *crawlermodel.Event) error {
+	govtParamProposal, err := p.getExistingGovernmentParameterProposal(event)
 	if err != nil {
 		return err
 	}
-	processBy := paramProposal.AppExpiry().Int64() + processByDuration
-	if event.Timestamp() < processBy {
-		parameter, err := p.getExistingParameter(event)
-		if err != nil {
-			return err
-		}
-		parameter.SetValue(paramProposal.Value())
-		err = p.parameterPersister.UpdateParameter(parameter, []string{valueFieldName})
-		if err != nil {
-			return err
-		}
-	}
-
-	paramProposal.SetAccepted(true)
-	paramProposal.SetExpired(true)
-	err = p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalAcceptedFieldName, proposalExpiredFieldName})
-	if err != nil {
-		return err
-	}
-	return p.processChallengeResolution(event, challengeID, pollIsPassed)
+	govtParamProposal.SetExpired(true)
+	return p.govtParamProposalPersister.UpdateParamProposal(govtParamProposal, []string{proposalExpiredFieldName})
 }
 
-func (p *ParameterizerEventProcessor) processChallengeSucceeded(event *crawlermodel.Event,
-	challengeID *big.Int) error {
-
-	pollIsPassed := false
-	err := p.setPollIsPassedInPoll(challengeID, pollIsPassed)
-	if err != nil {
-		return fmt.Errorf("Error setting isPassed field in poll, err: %v", err)
-	}
-	paramProposal, err := p.getExistingParameterProposal(event)
-	if err != nil {
-		return err
-	}
-	paramProposal.SetExpired(true)
-	err = p.paramProposalPersister.UpdateParamProposal(paramProposal, []string{proposalExpiredFieldName})
-	if err != nil {
-		return err
-	}
-	return p.processChallengeResolution(event, challengeID, pollIsPassed)
-}
-
-func (p *ParameterizerEventProcessor) getExistingParameterProposal(event *crawlermodel.Event) (*model.ParameterProposal, error) {
+func (p *GovernmentEventProcessor) getExistingGovernmentParameterProposal(event *crawlermodel.Event) (*model.GovernmentParameterProposal, error) {
 	propID, err := p.getPropIDFromEvent(event)
 	if err != nil {
 		return nil, err
 	}
 	// get parameterization from db
-	paramProposal, err := p.paramProposalPersister.ParamProposalByPropID(propID, true)
+	paramProposal, err := p.govtParamProposalPersister.ParamProposalByPropID(propID, true)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
 	if err == cpersist.ErrPersisterNoResults {
-		paramProposal, err = p.newParameterizationFromContract(event)
+		paramProposal, err = p.newGovtParameterizationFromContract(event)
 		if err != nil {
 			return nil, err
 		}
@@ -229,26 +158,26 @@ func (p *ParameterizerEventProcessor) getExistingParameterProposal(event *crawle
 	return paramProposal, nil
 }
 
-func (p *ParameterizerEventProcessor) getExistingParameter(event *crawlermodel.Event) (*model.Parameter, error) {
+func (p *GovernmentEventProcessor) getExistingGovernmentParameter(event *crawlermodel.Event) (*model.GovernmentParameter, error) {
 	propID, err := p.getPropIDFromEvent(event)
 	if err != nil {
 		return nil, err
 	}
 	// get parameterization from db, use its `name` value to get parameter
-	paramProposal, err := p.paramProposalPersister.ParamProposalByPropID(propID, true)
+	govtParamProposal, err := p.govtParamProposalPersister.ParamProposalByPropID(propID, true)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
 	// get parameter from db
-	parameter, err := p.parameterPersister.ParameterByName(paramProposal.Name())
+	govtParameter, err := p.govtParameterPersister.ParameterByName(govtParamProposal.Name())
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
 
-	return parameter, nil
+	return govtParameter, nil
 }
 
-func (p *ParameterizerEventProcessor) newParameterizationFromProposal(event *crawlermodel.Event) error {
+func (p *GovernmentEventProcessor) newGovtParameterizationFromProposal(event *crawlermodel.Event) error {
 	payload := event.EventPayload()
 	name, ok := payload["Name"]
 	if !ok {
@@ -262,15 +191,7 @@ func (p *ParameterizerEventProcessor) newParameterizationFromProposal(event *cra
 	if !ok {
 		return errors.New("No PropID found")
 	}
-	deposit, ok := payload["Deposit"]
-	if !ok {
-		return errors.New("No Deposit found")
-	}
-	appExpiry, ok := payload["AppEndDate"]
-	if !ok {
-		return errors.New("No AppEndDate found")
-	}
-	proposer, ok := payload["Proposer"]
+	pollID, ok := payload["PollID"]
 	if !ok {
 		return errors.New("No Proposer found")
 	}
@@ -278,38 +199,53 @@ func (p *ParameterizerEventProcessor) newParameterizationFromProposal(event *cra
 	accepted := false
 	currentTime := ctime.CurrentEpochSecsInInt64()
 
+	govtPCommitStageLenParam, err := p.govtParameterPersister.ParameterByName("govtPCommitStageLen")
+	if err != nil {
+		return err
+	}
+	govtPCommitStageLen := govtPCommitStageLenParam.Value()
+
+	govtPRevealStageLenParam, err := p.govtParameterPersister.ParameterByName("govtPRevealStageLen")
+	if err != nil {
+		return err
+	}
+	govtPRevealStageLen := govtPRevealStageLenParam.Value()
+
+	appExpiry := *(big.NewInt(0))
+	appExpiry.Add(govtPCommitStageLen, govtPRevealStageLen)
+	appExpiry.Add(&appExpiry, big.NewInt(event.Timestamp()))
+	appExpiry.Add(&appExpiry, big.NewInt(604800))
+
 	nameString := name.(string)
 	valueString := (value.(*big.Int)).String()
-	appExpiryString := (appExpiry.(*big.Int)).String()
+	appExpiryString := (appExpiry).String()
 
 	id := nameString + valueString + appExpiryString
 
-	paramProposal := model.NewParameterProposal(&model.ParameterProposalParams{
+	govtParamProposal := model.NewGovernmentParameterProposal(&model.GovernmentParameterProposalParams{
 		ID:                id,
 		Name:              name.(string),
 		Value:             value.(*big.Int),
 		PropID:            propID.([32]byte),
-		Deposit:           deposit.(*big.Int),
-		AppExpiry:         appExpiry.(*big.Int),
-		ChallengeID:       big.NewInt(0),
-		Proposer:          proposer.(common.Address),
+		AppExpiry:         &appExpiry,
+		PollID:            pollID.(*big.Int),
 		Accepted:          accepted,
 		Expired:           false,
 		LastUpdatedDateTs: currentTime,
 	})
 
 	// newParamProposal
-	err := p.paramProposalPersister.CreateParameterProposal(paramProposal)
+	err = p.govtParamProposalPersister.CreateParameterProposal(govtParamProposal)
 	return err
 }
 
-func (p *ParameterizerEventProcessor) newParameterizationFromContract(event *crawlermodel.Event) (*model.ParameterProposal, error) {
+func (p *GovernmentEventProcessor) newGovtParameterizationFromContract(event *crawlermodel.Event) (*model.GovernmentParameterProposal, error) {
 	payload := event.EventPayload()
 	propID, ok := payload["PropID"]
 	if !ok {
 		return nil, errors.New("No PropID field found")
 	}
-	paramContract, err := contract.NewParameterizerContract(event.ContractAddress(), p.client)
+	paramContract, err := contract.NewGovernmentContract(event.ContractAddress(), p.client)
 	if err != nil {
 		return nil, fmt.Errorf("Error calling parameterizer contract: %v", err)
 	}
@@ -322,7 +258,7 @@ func (p *ParameterizerEventProcessor) newParameterizationFromContract(event *cra
 
 	// calculate if expired
 	var expired bool
-	if currentTime < prop.AppExpiry.Int64() {
+	if currentTime < prop.ProcessBy.Int64() {
 		expired = false
 	} else {
 		expired = true
@@ -330,14 +266,12 @@ func (p *ParameterizerEventProcessor) newParameterizationFromContract(event *cra
 	// setting accepted to false for now
 	accepted := false
 
-	paramProposal := model.NewParameterProposal(&model.ParameterProposalParams{
+	paramProposal := model.NewGovernmentParameterProposal(&model.GovernmentParameterProposalParams{
 		Name:              prop.Name,
 		Value:             prop.Value,
 		PropID:            propID.([32]byte),
-		Deposit:           prop.Deposit,
-		AppExpiry:         prop.AppExpiry,
-		ChallengeID:       prop.ChallengeID,
-		Proposer:          prop.Owner,
+		AppExpiry:         prop.ProcessBy,
+		PollID:            prop.PollID,
 		Accepted:          accepted,
 		Expired:           expired,
 		LastUpdatedDateTs: currentTime,
@@ -345,7 +279,7 @@ func (p *ParameterizerEventProcessor) newParameterizationFromContract(event *cra
 	return paramProposal, nil
 }
 
-func (p *ParameterizerEventProcessor) setPollIsPassedInPoll(pollID *big.Int, isPassed bool) error {
+func (p *GovernmentEventProcessor) setPollIsPassedInPoll(pollID *big.Int, isPassed bool) error {
 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
 	if err != nil {
 		return fmt.Errorf("Error getting poll from persistence: %v", err)
