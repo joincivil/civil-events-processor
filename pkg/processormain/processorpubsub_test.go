@@ -246,8 +246,8 @@ func TestProcessorPubSub(t *testing.T) {
 		ChallengePersister:     testPersister,
 		PollPersister:          testPersister,
 		AppealPersister:        testPersister,
-		MultiSigPersister:      persister,
-		MultiSigOwnerPersister: persister,
+		MultiSigPersister:      testPersister,
+		MultiSigOwnerPersister: testPersister,
 	})
 	var wg sync.WaitGroup
 	wg.Add(2)
