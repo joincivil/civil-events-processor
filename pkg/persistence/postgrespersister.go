@@ -609,26 +609,26 @@ func (p *PostgresPersister) CreateTables() error {
 	return nil
 }
 
-// CreateDefaultValues creates default values for tables that need them
-func (p *PostgresPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
-	return p.createDefaultParameterizerValues(config.ParameterizerDefaults())
-}
+	// CreateDefaultValues creates default values for tables that need them
+	func (p *PostgresPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
+		return p.createDefaultParameterizerValues(config.ParameterizerDefaults())
+	}
 
-func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string) error {
-	parameterTableCountQuery := postgres.CheckTableCount(p.GetTableName(postgres.ParameterTableBaseName))
-	var numRowsb int
-	err := p.db.QueryRow(parameterTableCountQuery).Scan(&numRowsb)
-	if err != nil {
-		return fmt.Errorf("Error checking parameter table count: %v", err)
-	}
-	if numRowsb == 0 {
-		err = p.createDefaultParameterValues(parameterizerDefaults)
+	func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string) error {
+		parameterTableCountQuery := postgres.CheckTableCount(p.GetTableName(postgres.ParameterTableBaseName))
+		var numRowsb int
+		err := p.db.QueryRow(parameterTableCountQuery).Scan(&numRowsb)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error checking parameter table count: %v", err)
 		}
+		if numRowsb == 0 {
+			err = p.createDefaultParameterValues(parameterizerDefaults)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	}
-	return nil
-}
 
 func (p *PostgresPersister) insertParameter(paramName string, value string) error {
 	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
