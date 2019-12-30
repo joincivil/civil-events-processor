@@ -76,6 +76,13 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.Client,
 		params.MultiSigPersister,
 		params.MultiSigOwnerPersister,
+	}
+	govtParameterizerProcessor := NewGovernmentEventProcessor(
+		params.Client,
+		params.GovernmentParameterProposalPersister,
+		params.GovernmentParameterPersister,
+		params.PollPersister,
+		params.ErrRep,
 	)
 	return &EventProcessor{
 		tcrEventProcessor:      tcrEventProcessor,
@@ -84,6 +91,7 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		cvlTokenProcessor:      cvlTokenProcessor,
 		parameterizerProcessor: parameterizerProcessor,
 		multiSigProcessor:      multiSigProcessor,
+		governmentProcessor:    govtParameterizerProcessor,
 		googlePubSub:           params.GooglePubSub,
 		pubSubEventsTopicName:  params.PubSubEventsTopicName,
 		pubSubTokenTopicName:   params.PubSubTokenTopicName,
@@ -106,6 +114,8 @@ type NewEventProcessorParams struct {
 	UserChallengeDataPersister model.UserChallengeDataPersister
 	MultiSigPersister          model.MultiSigPersister
 	MultiSigOwnerPersister     model.MultiSigOwnerPersister
+	GovernmentParameterProposalPersister model.GovernmentParamProposalPersister
+	GovernmentParameterPersister         model.GovernmentParameterPersister
 	GooglePubSub               *pubsub.GooglePubSub
 	PubSubEventsTopicName      string
 	PubSubTokenTopicName       string
@@ -121,6 +131,7 @@ type EventProcessor struct {
 	cvlTokenProcessor      *CvlTokenEventProcessor
 	parameterizerProcessor *ParameterizerEventProcessor
 	multiSigProcessor      *MultiSigEventProcessor
+	governmentProcessor    *GovernmentEventProcessor
 	googlePubSub           *pubsub.GooglePubSub
 	pubSubEventsTopicName  string
 	pubSubTokenTopicName   string
@@ -212,9 +223,17 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			continue
 		}
 
-		_, err = e.multiSigProcessor.Process(event)
+		ran, err = e.multiSigProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing multi sig event: err: %v\n", err)
+		}
+		if ran {
+			continue
+		}
+
+		_, err = e.governmentProcessor.Process(event)
+		if err != nil {
+			log.Errorf("Error processing government event: err: %v\n", err)
 		}
 	}
 	log.Info("Finished Processing")

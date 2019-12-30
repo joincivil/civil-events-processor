@@ -305,13 +305,13 @@ type ParamProposalPersister interface {
 
 // GovernmentParameterPersister is the interface to store ParameterData
 type GovernmentParameterPersister interface {
-	// ParameterByName gets a parameter by name
-	ParameterByName(paramName string) (*GovernmentParameter, error)
-	// ParametersByName gets a slice of parameter by name
-	ParametersByName(paramName []string) ([]*GovernmentParameter, error)
-	// UpdateParameter updates a parameter value
-	UpdateParameter(parameter *GovernmentParameter, updatedFields []string) error
-	// CreateDefaultValues creates Parameter default values
+	// GovernmentParameterByName gets a parameter by name
+	GovernmentParameterByName(paramName string) (*GovernmentParameter, error)
+	// GovernmentParametersByName gets a slice of parameter by name
+	GovernmentParametersByName(paramName []string) ([]*GovernmentParameter, error)
+	// UpdateGovernmentParameter updates a parameter value
+	UpdateGovernmentParameter(parameter *GovernmentParameter, updatedFields []string) error
+	// CreateDefaultValues creates Government Parameter default values
 	CreateDefaultValues(config *utils.ProcessorConfig) error
 	// Close shuts down the persister
 	Close() error
@@ -319,14 +319,14 @@ type GovernmentParameterPersister interface {
 
 // GovernmentParamProposalPersister is the persister interface to store ParameterProposal
 type GovernmentParamProposalPersister interface {
-	// CreateParameterProposal creates a new parameter proposal
-	CreateParameterProposal(paramProposal *GovernmentParameterProposal) error
-	// ParamProposalByPropID gets a parameter proposal from persistence using propID
-	ParamProposalByPropID(propID [32]byte, active bool) (*GovernmentParameterProposal, error)
-	// ParamProposalByName gets parameter proposals by name from persistence
-	ParamProposalByName(name string, active bool) ([]*GovernmentParameterProposal, error)
-	// UpdateParamProposal updates parameter propsal in table
-	UpdateParamProposal(paramProposal *GovernmentParameterProposal, updatedFields []string) error
+	// CreateGovernmentParameterProposal creates a new parameter proposal
+	CreateGovernmentParameterProposal(paramProposal *GovernmentParameterProposal) error
+	// GovernmentParamProposalByPropID gets a parameter proposal from persistence using propID
+	GovernmentParamProposalByPropID(propID [32]byte, active bool) (*GovernmentParameterProposal, error)
+	// GovernmentParamProposalByName gets parameter proposals by name from persistence
+	GovernmentParamProposalByName(name string, active bool) ([]*GovernmentParameterProposal, error)
+	// UpdateGovernmentParamProposal updates parameter propsal in table
+	UpdateGovernmentParamProposal(paramProposal *GovernmentParameterProposal, updatedFields []string) error
 	// Close shuts down the persister
 	Close() error
 }

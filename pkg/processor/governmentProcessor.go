@@ -113,12 +113,12 @@ func (p *GovernmentEventProcessor) processProposalPassed(event *crawlermodel.Eve
 	govtParameter.SetValue(govtParamProposal.Value())
 	govtParamProposal.SetAccepted(true)
 	govtParamProposal.SetExpired(true)
-	err = p.govtParameterPersister.UpdateParameter(govtParameter, []string{valueFieldName})
+	err = p.govtParameterPersister.UpdateGovernmentParameter(govtParameter, []string{valueFieldName})
 	if err != nil {
 		return err
 	}
 
-	return p.govtParamProposalPersister.UpdateParamProposal(govtParamProposal, []string{proposalAcceptedFieldName, proposalExpiredFieldName})
+	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{proposalAcceptedFieldName, proposalExpiredFieldName})
 }
 
 func (p *GovernmentEventProcessor) processProposalFailed(event *crawlermodel.Event) error {
@@ -127,7 +127,7 @@ func (p *GovernmentEventProcessor) processProposalFailed(event *crawlermodel.Eve
 		return err
 	}
 	govtParamProposal.SetExpired(true)
-	return p.govtParamProposalPersister.UpdateParamProposal(govtParamProposal, []string{proposalExpiredFieldName})
+	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{proposalExpiredFieldName})
 }
 
 func (p *GovernmentEventProcessor) processProposalExpired(event *crawlermodel.Event) error {
@@ -136,7 +136,7 @@ func (p *GovernmentEventProcessor) processProposalExpired(event *crawlermodel.Ev
 		return err
 	}
 	govtParamProposal.SetExpired(true)
-	return p.govtParamProposalPersister.UpdateParamProposal(govtParamProposal, []string{proposalExpiredFieldName})
+	return p.govtParamProposalPersister.UpdateGovernmentParamProposal(govtParamProposal, []string{proposalExpiredFieldName})
 }
 
 func (p *GovernmentEventProcessor) getExistingGovernmentParameterProposal(event *crawlermodel.Event) (*model.GovernmentParameterProposal, error) {
@@ -145,7 +145,7 @@ func (p *GovernmentEventProcessor) getExistingGovernmentParameterProposal(event 
 		return nil, err
 	}
 	// get parameterization from db
-	paramProposal, err := p.govtParamProposalPersister.ParamProposalByPropID(propID, true)
+	paramProposal, err := p.govtParamProposalPersister.GovernmentParamProposalByPropID(propID, true)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
@@ -164,12 +164,12 @@ func (p *GovernmentEventProcessor) getExistingGovernmentParameter(event *crawler
 		return nil, err
 	}
 	// get parameterization from db, use its `name` value to get parameter
-	govtParamProposal, err := p.govtParamProposalPersister.ParamProposalByPropID(propID, true)
+	govtParamProposal, err := p.govtParamProposalPersister.GovernmentParamProposalByPropID(propID, true)
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
 	// get parameter from db
-	govtParameter, err := p.govtParameterPersister.ParameterByName(govtParamProposal.Name())
+	govtParameter, err := p.govtParameterPersister.GovernmentParameterByName(govtParamProposal.Name())
 	if err != nil && err != cpersist.ErrPersisterNoResults {
 		return nil, err
 	}
@@ -199,13 +199,13 @@ func (p *GovernmentEventProcessor) newGovtParameterizationFromProposal(event *cr
 	accepted := false
 	currentTime := ctime.CurrentEpochSecsInInt64()
 
-	govtPCommitStageLenParam, err := p.govtParameterPersister.ParameterByName("govtPCommitStageLen")
+	govtPCommitStageLenParam, err := p.govtParameterPersister.GovernmentParameterByName("govtPCommitStageLen")
 	if err != nil {
 		return err
 	}
 	govtPCommitStageLen := govtPCommitStageLenParam.Value()
 
-	govtPRevealStageLenParam, err := p.govtParameterPersister.ParameterByName("govtPRevealStageLen")
+	govtPRevealStageLenParam, err := p.govtParameterPersister.GovernmentParameterByName("govtPRevealStageLen")
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func (p *GovernmentEventProcessor) newGovtParameterizationFromProposal(event *cr
 	})
 
 	// newParamProposal
-	err = p.govtParamProposalPersister.CreateParameterProposal(govtParamProposal)
+	err = p.govtParamProposalPersister.CreateGovernmentParameterProposal(govtParamProposal)
 	return err
 }
 
