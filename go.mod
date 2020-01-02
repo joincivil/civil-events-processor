@@ -13,8 +13,8 @@ require (
 	github.com/howeyc/fsnotify v0.9.0 // indirect
 	github.com/influxdata/influxdb v1.7.7 // indirect
 	github.com/jmoiron/sqlx v0.0.0-20180614180643-0dae4fefe7c0
-	github.com/joincivil/civil-events-crawler v0.0.0-20191219215955-252fe895cfee
-	github.com/joincivil/go-common v0.0.0-20191217061814-5632d3b02d15
+	github.com/joincivil/civil-events-crawler v0.0.0-20200102204429-5e951e46939f
+	github.com/joincivil/go-common v0.0.0-20200102202009-410bce4f4336
 	github.com/karalabe/hid v1.0.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v0.0.0-20180523175426-90697d60dd84

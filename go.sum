@@ -189,12 +189,15 @@ github.com/joincivil/civil-events-crawler v0.0.0-20191217192138-a3c45f6b0d41 h1:
 github.com/joincivil/civil-events-crawler v0.0.0-20191217192138-a3c45f6b0d41/go.mod h1:QTWC+IrfVNdu5ceqfThxQ77wSCpiriQegv/qrTcFIS4=
 github.com/joincivil/civil-events-crawler v0.0.0-20191219215955-252fe895cfee h1:cO2W/R+50NfAeBwz6hJpRATrdUPi7Fpw5Xdh072fSfs=
 github.com/joincivil/civil-events-crawler v0.0.0-20191219215955-252fe895cfee/go.mod h1:QTWC+IrfVNdu5ceqfThxQ77wSCpiriQegv/qrTcFIS4=
+github.com/joincivil/civil-events-crawler v0.0.0-20200102204429-5e951e46939f h1:mfpn4oNfPbKJBLYkXe8h1c35yo+MMvUQ6W2LgjR2cMA=
+github.com/joincivil/civil-events-crawler v0.0.0-20200102204429-5e951e46939f/go.mod h1:ykah7lMHJOMPS3EkVe7LvXCvEl+EamyuN6K/udWKR2U=
 github.com/joincivil/go-common v0.0.0-20191115202858-d23287f7bcb4 h1:jsegSa1eGkUPWzbuzf9kJk8U+pw5mpBrT52s9mG/jKo=
 github.com/joincivil/go-common v0.0.0-20191115202858-d23287f7bcb4/go.mod h1:rsFDwXyDKsUrm4pgE10z7AAaAuvFZ4NtN0ghSF3OwL8=
 github.com/joincivil/go-common v0.0.0-20191121182548-7994d712fce3 h1:/87mIuvsTmvEeVFcKRc7H7QftjWajxysS8O4mREVzsI=
 github.com/joincivil/go-common v0.0.0-20191121182548-7994d712fce3/go.mod h1:rsFDwXyDKsUrm4pgE10z7AAaAuvFZ4NtN0ghSF3OwL8=
 github.com/joincivil/go-common v0.0.0-20191217061814-5632d3b02d15 h1:qpq0bCY3iJUZof8xBivnOWecPo+X/hgWWVqtVEJd/5I=
 github.com/joincivil/go-common v0.0.0-20191217061814-5632d3b02d15/go.mod h1:DLOAgbEO4tqeSa1OFrHC36O+gc5WCctdVVXSHZVIRg0=
+github.com/joincivil/go-common v0.0.0-20200102202009-410bce4f4336/go.mod h1:DLOAgbEO4tqeSa1OFrHC36O+gc5WCctdVVXSHZVIRg0=
 github.com/jrick/logrotate v1.0.0 h1:lQ1bL/n9mBNeIXoTUoYRlK4dHuNJVofX9oWqBtPnSzI=
 github.com/jrick/logrotate v1.0.0/go.mod h1:LNinyqDIJnpAur+b8yyulnQw/wDuN1+BYKlTRt3OuAQ=
 github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
@@ -239,9 +242,11 @@ github.com/libp2p/go-libp2p-peer v0.2.0/go.mod h1:RCffaCvUyW2CJmG2gAWVqwePwW7JMg
 github.com/libp2p/go-libp2p-protocol v0.0.1/go.mod h1:Af9n4PiruirSDjHycM1QuiMi/1VZNHYcK8cLgFJLZ4s=
 github.com/mattn/go-colorable v0.1.2 h1:/bC9yWikZXAL9uJdulbSfyVNIR3n3trXl+v8+1sx8mU=
 github.com/mattn/go-colorable v0.1.2/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
+github.com/mattn/go-colorable v0.1.4 h1:snbPLB8fVfU9iwbbo30TPtbLRzwWu6aJS6Xh4eaaviA=
 github.com/mattn/go-colorable v0.1.4/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
 github.com/mattn/go-isatty v0.0.8 h1:HLtExJ+uU2HOZ+wI0Tt5DtUDrx8yhUqDcp7fYERX4CE=
 github.com/mattn/go-isatty v0.0.8/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
+github.com/mattn/go-isatty v0.0.10 h1:qxFzApOv4WsAL965uUPIsXzAKCZxN2p9UqdhFS4ZW10=
 github.com/mattn/go-isatty v0.0.10/go.mod h1:qgIWMr58cqv1PHHyhnkY9lrL7etaEgOFcMEpPG5Rm84=
 github.com/mattn/go-runewidth v0.0.4 h1:2BvfKmzob6Bmd4YsL0zygOqfdFnK7GR4QL06Do4/p7Y=
 github.com/mattn/go-runewidth v0.0.4/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
