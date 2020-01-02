@@ -76,7 +76,7 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.Client,
 		params.MultiSigPersister,
 		params.MultiSigOwnerPersister,
-	}
+	)
 	govtParameterizerProcessor := NewGovernmentEventProcessor(
 		params.Client,
 		params.GovernmentParameterProposalPersister,
@@ -101,25 +101,25 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 
 // NewEventProcessorParams defines the params needed to be passed to the processor
 type NewEventProcessorParams struct {
-	Client                     bind.ContractBackend
-	ListingPersister           model.ListingPersister
-	RevisionPersister          model.ContentRevisionPersister
-	GovEventPersister          model.GovernanceEventPersister
-	ChallengePersister         model.ChallengePersister
-	PollPersister              model.PollPersister
-	AppealPersister            model.AppealPersister
-	TokenTransferPersister     model.TokenTransferPersister
-	ParameterProposalPersister model.ParamProposalPersister
-	ParameterPersister         model.ParameterPersister
-	UserChallengeDataPersister model.UserChallengeDataPersister
-	MultiSigPersister          model.MultiSigPersister
-	MultiSigOwnerPersister     model.MultiSigOwnerPersister
+	Client                               bind.ContractBackend
+	ListingPersister                     model.ListingPersister
+	RevisionPersister                    model.ContentRevisionPersister
+	GovEventPersister                    model.GovernanceEventPersister
+	ChallengePersister                   model.ChallengePersister
+	PollPersister                        model.PollPersister
+	AppealPersister                      model.AppealPersister
+	TokenTransferPersister               model.TokenTransferPersister
+	ParameterProposalPersister           model.ParamProposalPersister
+	ParameterPersister                   model.ParameterPersister
+	UserChallengeDataPersister           model.UserChallengeDataPersister
+	MultiSigPersister                    model.MultiSigPersister
+	MultiSigOwnerPersister               model.MultiSigOwnerPersister
 	GovernmentParameterProposalPersister model.GovernmentParamProposalPersister
 	GovernmentParameterPersister         model.GovernmentParameterPersister
-	GooglePubSub               *pubsub.GooglePubSub
-	PubSubEventsTopicName      string
-	PubSubTokenTopicName       string
-	ErrRep                     cerrors.ErrorReporter
+	GooglePubSub                         *pubsub.GooglePubSub
+	PubSubEventsTopicName                string
+	PubSubTokenTopicName                 string
+	ErrRep                               cerrors.ErrorReporter
 }
 
 // EventProcessor handles the processing of raw events into aggregated data

@@ -435,6 +435,7 @@ func (p *PostgresPersister) MultiSigOwners(multiSigAddress common.Address) ([]*m
 func (p *PostgresPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
 	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
 	return p.getMultiSigOwnersByOwnerAddr(ownerAddress, multiSigOwnerTableName)
+}
 
 // GovernmentParametersByName gets the parameter with given name
 func (p *PostgresPersister) GovernmentParametersByName(paramNames []string) ([]*model.GovernmentParameter, error) {
