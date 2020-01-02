@@ -88,6 +88,8 @@ func TestPubsubEventsBuildPayload(t *testing.T) {
 		PollPersister:          persister,
 		AppealPersister:        persister,
 		TokenTransferPersister: persister,
+		MultiSigPersister:      persister,
+		MultiSigOwnerPersister: persister,
 		GooglePubSub:           pubsub,
 		PubSubEventsTopicName:  topicName,
 	}
@@ -204,6 +206,8 @@ func TestPubsubTokensBuildPayload(t *testing.T) {
 		PollPersister:          persister,
 		AppealPersister:        persister,
 		TokenTransferPersister: persister,
+		MultiSigPersister:      persister,
+		MultiSigOwnerPersister: persister,
 		GooglePubSub:           pubsub,
 		PubSubTokenTopicName:   topicName,
 	}

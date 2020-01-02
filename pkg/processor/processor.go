@@ -72,12 +72,18 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.UserChallengeDataPersister,
 		params.ErrRep,
 	)
+	multiSigProcessor := NewMultiSigEventProcessor(
+		params.Client,
+		params.MultiSigPersister,
+		params.MultiSigOwnerPersister,
+	)
 	return &EventProcessor{
 		tcrEventProcessor:      tcrEventProcessor,
 		plcrEventProcessor:     plcrEventProcessor,
 		newsroomEventProcessor: newsroomEventProcessor,
 		cvlTokenProcessor:      cvlTokenProcessor,
 		parameterizerProcessor: parameterizerProcessor,
+		multiSigProcessor:      multiSigProcessor,
 		googlePubSub:           params.GooglePubSub,
 		pubSubEventsTopicName:  params.PubSubEventsTopicName,
 		pubSubTokenTopicName:   params.PubSubTokenTopicName,
@@ -98,6 +104,8 @@ type NewEventProcessorParams struct {
 	ParameterProposalPersister model.ParamProposalPersister
 	ParameterPersister         model.ParameterPersister
 	UserChallengeDataPersister model.UserChallengeDataPersister
+	MultiSigPersister          model.MultiSigPersister
+	MultiSigOwnerPersister     model.MultiSigOwnerPersister
 	GooglePubSub               *pubsub.GooglePubSub
 	PubSubEventsTopicName      string
 	PubSubTokenTopicName       string
@@ -112,6 +120,7 @@ type EventProcessor struct {
 	newsroomEventProcessor *NewsroomEventProcessor
 	cvlTokenProcessor      *CvlTokenEventProcessor
 	parameterizerProcessor *ParameterizerEventProcessor
+	multiSigProcessor      *MultiSigEventProcessor
 	googlePubSub           *pubsub.GooglePubSub
 	pubSubEventsTopicName  string
 	pubSubTokenTopicName   string
@@ -195,9 +204,17 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			continue
 		}
 
-		_, err = e.parameterizerProcessor.Process(event)
+		ran, err = e.parameterizerProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing parameterizer event: err: %v\n", err)
+		}
+		if ran {
+			continue
+		}
+
+		_, err = e.multiSigProcessor.Process(event)
+		if err != nil {
+			log.Errorf("Error processing multi sig event: err: %v\n", err)
 		}
 	}
 	log.Info("Finished Processing")

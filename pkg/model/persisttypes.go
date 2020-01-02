@@ -110,6 +110,30 @@ type ListingPersister interface {
 	Close() error
 }
 
+// MultiSigPersister is the interface to store the multisig data related to the processor
+type MultiSigPersister interface {
+	// CreateMultiSig creates a new MultiSig
+	CreateMultiSig(multiSig *MultiSig) error
+	// UpdateMultiSig updates fields on an existing multi sig
+	UpdateMultiSig(multiSig *MultiSig, updatedFields []string) error
+	// MultiSigOwners gets the owners of a multi sig
+	MultiSigOwners(multiSigAddress common.Address) ([]*MultiSigOwner, error)
+	// Close shuts down the persister
+	Close() error
+}
+
+// MultiSigOwnerPersister is the interface to store the multi sig owner data related to the processor
+type MultiSigOwnerPersister interface {
+	// CreateMultiSigOwner creates a new MultiSigOwner
+	CreateMultiSigOwner(multiSigOwner *MultiSigOwner) error
+	// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
+	DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error
+	// MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
+	MultiSigOwnersByOwner(ownerAddress common.Address) ([]*MultiSigOwner, error)
+	// Close shuts down the persister
+	Close() error
+}
+
 // ContentRevisionCriteria contains the retrieval criteria for a ContentRevisionsByCriteria
 // query.
 type ContentRevisionCriteria struct {
