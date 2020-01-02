@@ -282,6 +282,7 @@ func (p *GovernmentEventProcessor) newGovtParameterizationFromContract(event *cr
 	return paramProposal, nil
 }
 
+// TODO: implement this function so user challenge data can be checked (must also create challenge data)
 // func (p *GovernmentEventProcessor) setPollIsPassedInPoll(pollID *big.Int, isPassed bool) error {
 // 	poll, err := p.pollPersister.PollByPollID(int(pollID.Int64()))
 // 	if err != nil {
