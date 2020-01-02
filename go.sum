@@ -197,6 +197,7 @@ github.com/joincivil/go-common v0.0.0-20191121182548-7994d712fce3 h1:/87mIuvsTmv
 github.com/joincivil/go-common v0.0.0-20191121182548-7994d712fce3/go.mod h1:rsFDwXyDKsUrm4pgE10z7AAaAuvFZ4NtN0ghSF3OwL8=
 github.com/joincivil/go-common v0.0.0-20191217061814-5632d3b02d15 h1:qpq0bCY3iJUZof8xBivnOWecPo+X/hgWWVqtVEJd/5I=
 github.com/joincivil/go-common v0.0.0-20191217061814-5632d3b02d15/go.mod h1:DLOAgbEO4tqeSa1OFrHC36O+gc5WCctdVVXSHZVIRg0=
+github.com/joincivil/go-common v0.0.0-20200102202009-410bce4f4336 h1:a3H8nRpj4mvJA8OGcMmAk6gi9GFGwZoj1p168X9hnMQ=
 github.com/joincivil/go-common v0.0.0-20200102202009-410bce4f4336/go.mod h1:DLOAgbEO4tqeSa1OFrHC36O+gc5WCctdVVXSHZVIRg0=
 github.com/jrick/logrotate v1.0.0 h1:lQ1bL/n9mBNeIXoTUoYRlK4dHuNJVofX9oWqBtPnSzI=
 github.com/jrick/logrotate v1.0.0/go.mod h1:LNinyqDIJnpAur+b8yyulnQw/wDuN1+BYKlTRt3OuAQ=

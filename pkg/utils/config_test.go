@@ -37,6 +37,10 @@ func TestCrawlerConfig(t *testing.T) {
 		"PROCESSOR_PARAMETERIZER_DEFAULT_VALUES",
 		"minDeposit:50",
 	)
+	os.Setenv(
+		"PROCESSOR_GOVERNMENT_PARAMETER_DEFAULT_VALUES",
+		"appealFee:500",
+	)
 	config := &utils.ProcessorConfig{}
 	err := config.PopulateFromEnv()
 	if err != nil {

@@ -303,6 +303,34 @@ type ParamProposalPersister interface {
 	Close() error
 }
 
+// GovernmentParameterPersister is the interface to store ParameterData
+type GovernmentParameterPersister interface {
+	// GovernmentParameterByName gets a parameter by name
+	GovernmentParameterByName(paramName string) (*GovernmentParameter, error)
+	// GovernmentParametersByName gets a slice of parameter by name
+	GovernmentParametersByName(paramName []string) ([]*GovernmentParameter, error)
+	// UpdateGovernmentParameter updates a parameter value
+	UpdateGovernmentParameter(parameter *GovernmentParameter, updatedFields []string) error
+	// CreateDefaultValues creates Government Parameter default values
+	CreateDefaultValues(config *utils.ProcessorConfig) error
+	// Close shuts down the persister
+	Close() error
+}
+
+// GovernmentParamProposalPersister is the persister interface to store ParameterProposal
+type GovernmentParamProposalPersister interface {
+	// CreateGovernmentParameterProposal creates a new parameter proposal
+	CreateGovernmentParameterProposal(paramProposal *GovernmentParameterProposal) error
+	// GovernmentParamProposalByPropID gets a parameter proposal from persistence using propID
+	GovernmentParamProposalByPropID(propID [32]byte, active bool) (*GovernmentParameterProposal, error)
+	// GovernmentParamProposalByName gets parameter proposals by name from persistence
+	GovernmentParamProposalByName(name string, active bool) ([]*GovernmentParameterProposal, error)
+	// UpdateGovernmentParamProposal updates parameter propsal in table
+	UpdateGovernmentParamProposal(paramProposal *GovernmentParameterProposal, updatedFields []string) error
+	// Close shuts down the persister
+	Close() error
+}
+
 // UserChallengeDataCriteria contains the retrieval criteria for the UserChallengeDataByCriteria
 // query
 type UserChallengeDataCriteria struct {

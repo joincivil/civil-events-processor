@@ -261,8 +261,28 @@ func (n *NullPersister) CreateDefaultValues(config *utils.ProcessorConfig) error
 	return nil
 }
 
+// GovernmentParameterByName gets a parameter from persistence using paramName
+func (n *NullPersister) GovernmentParameterByName(paramName string) (*model.GovernmentParameter, error) {
+	return &model.GovernmentParameter{}, nil
+}
+
+// GovernmentParametersByName gets a slice of parameters by name
+func (n *NullPersister) GovernmentParametersByName(paramName []string) ([]*model.GovernmentParameter, error) {
+	return []*model.GovernmentParameter{}, nil
+}
+
+// UpdateGovernmentParameter updates the value of a parameter in table
+func (n *NullPersister) UpdateGovernmentParameter(parameter *model.GovernmentParameter, updatedFields []string) error {
+	return nil
+}
+
 // CreateParameterProposal creates a new parameter proposal
 func (n *NullPersister) CreateParameterProposal(paramProposal *model.ParameterProposal) error {
+	return nil
+}
+
+// CreateGovernmentParameterProposal creates a new government parameter proposal
+func (n *NullPersister) CreateGovernmentParameterProposal(paramProposal *model.GovernmentParameterProposal) error {
 	return nil
 }
 
@@ -278,6 +298,21 @@ func (n *NullPersister) ParamProposalByName(name string, active bool) ([]*model.
 
 // UpdateParamProposal updates parameter propsal in table
 func (n *NullPersister) UpdateParamProposal(paramProposal *model.ParameterProposal, updatedFields []string) error {
+	return nil
+}
+
+// GovernmentParamProposalByPropID gets a parameter proposal from persistence using propID
+func (n *NullPersister) GovernmentParamProposalByPropID(propID [32]byte, active bool) (*model.GovernmentParameterProposal, error) {
+	return &model.GovernmentParameterProposal{}, nil
+}
+
+// GovernmentParamProposalByName gets parameter proposals by name from persistence
+func (n *NullPersister) GovernmentParamProposalByName(name string, active bool) ([]*model.GovernmentParameterProposal, error) {
+	return []*model.GovernmentParameterProposal{}, nil
+}
+
+// UpdateGovernmentParamProposal updates parameter propsal in table
+func (n *NullPersister) UpdateGovernmentParamProposal(paramProposal *model.GovernmentParameterProposal, updatedFields []string) error {
 	return nil
 }
 

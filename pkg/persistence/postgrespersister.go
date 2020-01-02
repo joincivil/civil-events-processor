@@ -437,6 +437,24 @@ func (p *PostgresPersister) MultiSigOwnersByOwner(ownerAddress common.Address) (
 	return p.getMultiSigOwnersByOwnerAddr(ownerAddress, multiSigOwnerTableName)
 }
 
+// GovernmentParametersByName gets the parameter with given name
+func (p *PostgresPersister) GovernmentParametersByName(paramNames []string) ([]*model.GovernmentParameter, error) {
+	parameterTableName := p.GetTableName(postgres.GovernmentParameterTableBaseName)
+	return p.govtParametersByName(paramNames, parameterTableName)
+}
+
+// GovernmentParameterByName gets the parameter with given name
+func (p *PostgresPersister) GovernmentParameterByName(paramName string) (*model.GovernmentParameter, error) {
+	parameterTableName := p.GetTableName(postgres.GovernmentParameterTableBaseName)
+	return p.govtParameterByName(paramName, parameterTableName)
+}
+
+// UpdateGovernmentParameter updates a parameter
+func (p *PostgresPersister) UpdateGovernmentParameter(parameter *model.GovernmentParameter, updatedFields []string) error {
+	parameterTableName := p.GetTableName(postgres.GovernmentParameterTableBaseName)
+	return p.updateGovernmentParameterInTable(parameter, updatedFields, parameterTableName)
+}
+
 // SaveVersion saves the version for this persistence
 func (p *PostgresPersister) SaveVersion(versionNumber *string) error {
 	if versionNumber == nil || *versionNumber == "" {
@@ -515,6 +533,31 @@ func (p *PostgresPersister) UpdateParamProposal(paramProposal *model.ParameterPr
 	return p.updateParamProposalInTable(paramProposal, updatedFields, paramProposalTableName)
 }
 
+// CreateGovernmentParameterProposal creates a new parameter proposal
+func (p *PostgresPersister) CreateGovernmentParameterProposal(paramProposal *model.GovernmentParameterProposal) error {
+	paramProposalTableName := p.GetTableName(postgres.GovernmentParameterProposalTableBaseName)
+	return p.createGovernmentParameterProposalInTable(paramProposal, paramProposalTableName)
+}
+
+// GovernmentParamProposalByPropID gets parameter proposal by propID
+func (p *PostgresPersister) GovernmentParamProposalByPropID(propID [32]byte, active bool) (*model.GovernmentParameterProposal, error) {
+	paramProposalTableName := p.GetTableName(postgres.GovernmentParameterProposalTableBaseName)
+	return p.govtParamProposalByPropIDFromTable(propID, active, paramProposalTableName)
+}
+
+// GovernmentParamProposalByName gets parameter proposals by name. active=true will get only active
+func (p *PostgresPersister) GovernmentParamProposalByName(name string, active bool) ([]*model.GovernmentParameterProposal, error) {
+	paramProposalTableName := p.GetTableName(postgres.GovernmentParameterProposalTableBaseName)
+	return p.govtParamProposalByNameFromTable(name, active, paramProposalTableName)
+}
+
+// UpdateGovernmentParamProposal updates a parameter proposal
+func (p *PostgresPersister) UpdateGovernmentParamProposal(paramProposal *model.GovernmentParameterProposal,
+	updatedFields []string) error {
+	paramProposalTableName := p.GetTableName(postgres.GovernmentParameterProposalTableBaseName)
+	return p.updateGovernmentParamProposalInTable(paramProposal, updatedFields, paramProposalTableName)
+}
+
 // CreateUserChallengeData creates a new UserChallengeData
 func (p *PostgresPersister) CreateUserChallengeData(userChallengeData *model.UserChallengeData) error {
 	userChallengeDataTableName := p.GetTableName(postgres.UserChallengeDataTableBaseName)
@@ -552,6 +595,8 @@ func (p *PostgresPersister) CreateTables() error {
 	parameterTableQuery := postgres.CreateParameterTableQuery(p.GetTableName(postgres.ParameterTableBaseName))
 	multiSigTableQuery := postgres.CreateMultiSigTableQuery(p.GetTableName(postgres.MultiSigTableBaseName))
 	multiSigOwnerTableQuery := postgres.CreateMultiSigOwnerTableQuery(p.GetTableName(postgres.MultiSigOwnerTableBaseName))
+	governmentParameterTableQuery := postgres.CreateGovernmentParameterTableQuery(p.GetTableName(postgres.GovernmentParameterTableBaseName))
+	governmentParameterProposalQuery := postgres.CreateGovernmentParameterProposalTableQuery(p.GetTableName(postgres.GovernmentParameterProposalTableBaseName))
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -605,24 +650,36 @@ func (p *PostgresPersister) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Error creating multi sig owner table in postgres: %v", err)
 	}
+	_, err = p.db.Exec(governmentParameterTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating government parameter table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(governmentParameterProposalQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating government parameter proposal table in postgres: %v", err)
+	}
 
 	return nil
 }
 
 // CreateDefaultValues creates default values for tables that need them
 func (p *PostgresPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
-	return p.createDefaultParameterizerValues(config.ParameterizerDefaults())
+	err := p.createDefaultParameterizerValues(config.ParameterizerDefaults(), p.GetTableName(postgres.ParameterTableBaseName))
+	if err != nil {
+		return err
+	}
+	return p.createDefaultParameterizerValues(config.GovernmentParameterDefaults(), p.GetTableName(postgres.GovernmentParameterTableBaseName))
 }
 
-func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string) error {
-	parameterTableCountQuery := postgres.CheckTableCount(p.GetTableName(postgres.ParameterTableBaseName))
+func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string, tableName string) error {
+	parameterTableCountQuery := postgres.CheckTableCount(tableName)
 	var numRowsb int
 	err := p.db.QueryRow(parameterTableCountQuery).Scan(&numRowsb)
 	if err != nil {
 		return fmt.Errorf("Error checking parameter table count: %v", err)
 	}
 	if numRowsb == 0 {
-		err = p.createDefaultParameterValues(parameterizerDefaults)
+		err = p.createDefaultParameterValues(parameterizerDefaults, tableName)
 		if err != nil {
 			return err
 		}
@@ -630,9 +687,8 @@ func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaul
 	return nil
 }
 
-func (p *PostgresPersister) insertParameter(paramName string, value string) error {
-	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
-	addParameterValue := fmt.Sprintf(`INSERT INTO %s ("param_name", "value") VALUES ('%s', '%s')`, parameterTableName, paramName, value) // nolint: gosec
+func (p *PostgresPersister) insertParameter(paramName string, value string, tableName string) error {
+	addParameterValue := fmt.Sprintf(`INSERT INTO %s ("param_name", "value") VALUES ('%s', '%s')`, tableName, paramName, value) // nolint: gosec
 	_, err := p.db.Exec(addParameterValue)
 	if err != nil {
 		return fmt.Errorf("Error inserting default parameter value: %v", err)
@@ -640,9 +696,9 @@ func (p *PostgresPersister) insertParameter(paramName string, value string) erro
 	return nil
 }
 
-func (p *PostgresPersister) createDefaultParameterValues(parameterizerDefaults map[string]string) error {
+func (p *PostgresPersister) createDefaultParameterValues(parameterizerDefaults map[string]string, tableName string) error {
 	for paramName, value := range parameterizerDefaults {
-		err := p.insertParameter(paramName, value)
+		err := p.insertParameter(paramName, value, tableName)
 		if err != nil {
 			return fmt.Errorf("Errors inserting parameter: %s value: %s - err: %v", paramName, value, err)
 		}
@@ -1588,6 +1644,82 @@ func (p *PostgresPersister) parameterByNameQuery(tableName string) string {
 	return queryString
 }
 
+func (p *PostgresPersister) govtParametersByName(paramNames []string, tableName string) ([]*model.GovernmentParameter, error) {
+	if len(paramNames) <= 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	queryString := p.parameterByNameQuery(tableName)
+	query, args, err := sqlx.In(queryString, paramNames)
+	if err != nil {
+		return nil, errors.Wrap(err, "error preparing 'IN' statement")
+	}
+	query = p.db.Rebind(query)
+
+	rows, err := p.db.Queryx(query, args...)
+
+	defer p.closeRows(rows)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving parameters from table")
+	}
+
+	parametersMap := map[string]*model.GovernmentParameter{}
+	for rows.Next() {
+		var dbParameter postgres.GovernmentParameter
+		err = rows.StructScan(&dbParameter)
+		if err != nil {
+			return nil, errors.Wrap(err, "error scanning row from IN query")
+		}
+
+		modelParameter := dbParameter.DbToGovernmentParameterData()
+		parametersMap[modelParameter.ParamName()] = modelParameter
+	}
+
+	parameters := make([]*model.GovernmentParameter, len(paramNames))
+	for i, paramName := range paramNames {
+		retrievedParameter, ok := parametersMap[paramName]
+		if ok {
+			parameters[i] = retrievedParameter
+		} else {
+			parameters[i] = nil
+		}
+	}
+
+	return parameters, nil
+}
+
+func (p *PostgresPersister) govtParameterByName(paramName string, tableName string) (*model.GovernmentParameter, error) {
+	queryString := p.govtParameterByNameQuery(tableName)
+	query, args, err := sqlx.In(queryString, paramName)
+	if err != nil {
+		return nil, errors.Wrap(err, "error preparing 'IN' statement")
+	}
+	query = p.db.Rebind(query)
+	rows, err := p.db.Queryx(query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "error querying database")
+	}
+	defer p.closeRows(rows)
+
+	parameter := &model.GovernmentParameter{}
+	for rows.Next() {
+		var dbParameter postgres.GovernmentParameter
+		err = rows.StructScan(&dbParameter)
+		if err != nil {
+			return nil, errors.Wrap(err, "error scanning row from IN query")
+		}
+		parameter = dbParameter.DbToGovernmentParameterData()
+	}
+
+	return parameter, nil
+}
+
+func (p *PostgresPersister) govtParameterByNameQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.GovernmentParameter{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE param_name IN (?);", fieldNames, tableName) // nolint: gosec
+	return queryString
+}
+
 func (p *PostgresPersister) challengesByChallengeIDsQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE challenge_id IN (?);", fieldNames, tableName) // nolint: gosec
@@ -1790,6 +1922,32 @@ func (p *PostgresPersister) updateParameterInTable(parameter *model.Parameter, u
 
 func (p *PostgresPersister) updateParameterQuery(updatedFields []string, tableName string) (string, error) {
 	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.Parameter{})
+	if err != nil {
+		return "", err
+	}
+	queryString.WriteString(" WHERE param_name=:param_name;") // nolint: gosec
+	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) updateGovernmentParameterInTable(parameter *model.GovernmentParameter, updatedFields []string, tableName string) error {
+	queryString, err := p.updateGovernmentParameterQuery(updatedFields, tableName)
+	if err != nil {
+		return errors.Wrap(err, "error creating query string for update")
+	}
+	dbParameter := postgres.NewGovernmentParameter(parameter)
+	result, err := p.db.NamedExec(queryString, dbParameter)
+	if err != nil {
+		return errors.Wrap(err, "error updating fields in poll table")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateGovernmentParameterQuery(updatedFields []string, tableName string) (string, error) {
+	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.GovernmentParameter{})
 	if err != nil {
 		return "", err
 	}
@@ -2237,6 +2395,117 @@ func (p *PostgresPersister) paramProposalQuery(tableName string, active bool) st
 
 func (p *PostgresPersister) paramProposalQueryByName(tableName string, active bool) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.ParameterProposal{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE name=$1", fieldNames, tableName) // nolint: gosec
+	if active {
+		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
+	}
+	return queryString
+}
+
+func (p *PostgresPersister) createGovernmentParameterProposalInTable(paramProposal *model.GovernmentParameterProposal,
+	tableName string) error {
+	dbParamProposal := postgres.NewGovernmentParameterProposal(paramProposal)
+	queryString := p.insertIntoDBQueryString(tableName, postgres.GovernmentParameterProposal{})
+	_, err := p.db.NamedExec(queryString, dbParamProposal)
+	if err != nil {
+		return fmt.Errorf("Error saving government parameter proposal to table: %v", err)
+	}
+	return nil
+}
+
+func (p *PostgresPersister) govtParamProposalByPropIDFromTable(
+	propID [32]byte,
+	active bool,
+	tableName string,
+) (*model.GovernmentParameterProposal, error) {
+
+	paramProposalData := []postgres.GovernmentParameterProposal{}
+	queryString := p.govtParamProposalQuery(tableName, active)
+	propIDString := cbytes.Byte32ToHexString(propID)
+	err := p.db.Select(&paramProposalData, queryString, propIDString)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving government parameter proposal from table: %v", err)
+	}
+	if len(paramProposalData) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	paramProposal, err := paramProposalData[0].DbToGovernmentParameterProposalData()
+	if err != nil {
+		return nil, err
+	}
+	return paramProposal, nil
+}
+
+func (p *PostgresPersister) govtParamProposalByNameFromTable(name string,
+	active bool, tableName string) ([]*model.GovernmentParameterProposal, error) {
+
+	paramProposalData := []postgres.GovernmentParameterProposal{}
+	queryString := p.govtParamProposalQueryByName(tableName, active)
+	err := p.db.Select(&paramProposalData, queryString, name)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving parameter proposals from table: %v", err)
+	}
+
+	if len(paramProposalData) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	paramProposals := make([]*model.GovernmentParameterProposal, len(paramProposalData))
+
+	for index, dbProp := range paramProposalData {
+		modelProp, err := dbProp.DbToGovernmentParameterProposalData()
+		if err != nil {
+			return nil, err
+		}
+		paramProposals[index] = modelProp
+	}
+
+	return paramProposals, nil
+}
+
+func (p *PostgresPersister) updateGovernmentParamProposalInTable(paramProposal *model.GovernmentParameterProposal,
+	updatedFields []string, tableName string) error {
+
+	paramProposal.SetLastUpdatedDateTs(ctime.CurrentEpochSecsInInt64())
+	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
+
+	queryString, err := p.updateGovernmentParamProposalQuery(updatedFields, tableName)
+	if err != nil {
+		return fmt.Errorf("Error creating query string for update: %v ", err)
+	}
+	dbParamProposal := postgres.NewGovernmentParameterProposal(paramProposal)
+
+	result, err := p.db.NamedExec(queryString, dbParamProposal)
+	if err != nil {
+		return fmt.Errorf("Error updating fields in db: %v", err)
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateGovernmentParamProposalQuery(updatedFields []string, tableName string) (string, error) {
+	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.GovernmentParameterProposal{})
+	if err != nil {
+		return "", err
+	}
+	queryString.WriteString(" WHERE prop_id=:prop_id;") // nolint: gosec
+	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) govtParamProposalQuery(tableName string, active bool) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.GovernmentParameterProposal{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE prop_id=$1", fieldNames, tableName) // nolint: gosec
+	if active {
+		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
+	}
+	return queryString
+}
+
+func (p *PostgresPersister) govtParamProposalQueryByName(tableName string, active bool) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.GovernmentParameterProposal{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE name=$1", fieldNames, tableName) // nolint: gosec
 	if active {
 		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
