@@ -19,20 +19,21 @@ const (
 
 //TestPersister is a test persister
 type TestPersister struct {
-	Listings             map[string]*model.Listing
-	ListingsByURL        map[string]*model.Listing
-	Revisions            map[string][]*model.ContentRevision
-	GovEvents            map[string][]*model.GovernanceEvent
-	Challenges           map[int]*model.Challenge
-	Appeals              map[int]*model.Appeal
-	Polls                map[int]*model.Poll
-	TokenTransfers       map[string][]*model.TokenTransfer
-	TokenTransfersTxHash map[string][]*model.TokenTransfer
-	ParameterProposal    map[[32]byte]*model.ParameterProposal
-	Parameter            map[string]*model.Parameter
-	UserChallengeData    map[int]map[string]*model.UserChallengeData
-	Timestamp            int64
-	EventHashes          []string
+	Listings               map[string]*model.Listing
+	ListingsByURL          map[string]*model.Listing
+	ListingsByOwnerAddress map[string][]*model.Listing
+	Revisions              map[string][]*model.ContentRevision
+	GovEvents              map[string][]*model.GovernanceEvent
+	Challenges             map[int]*model.Challenge
+	Appeals                map[int]*model.Appeal
+	Polls                  map[int]*model.Poll
+	TokenTransfers         map[string][]*model.TokenTransfer
+	TokenTransfersTxHash   map[string][]*model.TokenTransfer
+	ParameterProposal      map[[32]byte]*model.ParameterProposal
+	Parameter              map[string]*model.Parameter
+	UserChallengeData      map[int]map[string]*model.UserChallengeData
+	Timestamp              int64
+	EventHashes            []string
 }
 
 func indexAddressInSlice(slice []common.Address, target common.Address) int {
@@ -73,6 +74,18 @@ func (t *TestPersister) ListingsByAddresses(addresses []common.Address) ([]*mode
 	return results, nil
 }
 
+// ListingsByAddresses returns a slice of Listings based on owner addresses
+func (t *TestPersister) ListingsByOwnerAddress(addresses common.Address) ([]*model.Listing, error) {
+	results := []*model.Listing{}
+	for _, address := range addresses {
+		listing, err := t.ListingByAddress(address)
+		if err == nil {
+			results = append(results, listing)
+		}
+	}
+	return results, nil
+}
+
 // ListingByAddress retrieves a listing based on address
 func (t *TestPersister) ListingByAddress(address common.Address) (*model.Listing, error) {
 	listing := t.Listings[address.Hex()]
@@ -100,8 +113,15 @@ func (t *TestPersister) CreateListing(listing *model.Listing) error {
 	if t.ListingsByURL == nil {
 		t.ListingsByURL = map[string]*model.Listing{}
 	}
+	if t.ListingsByOwnerAddress == nil {
+		t.ListingsByOwnerAddress = map[string][]*model.Listing{}
+	}
 	t.Listings[addressHex] = listing
 	t.ListingsByURL[listing.CleanedURL()] = listing
+	if t.ListingsByOwnerAddress[listing.Owner().Hex()] == nil {
+		t.ListingsByOwnerAddress[listing.Owner().Hex()] = make([]*model.Listing, 0)
+	}
+	t.ListingsByOwnerAddress[listing.Owner().Hex()] = append(t.ListingsByOwnerAddress[listing.Owner().Hex()], listing)
 	return nil
 }
 

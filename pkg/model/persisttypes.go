@@ -98,6 +98,8 @@ type ListingPersister interface {
 	ListingsByAddresses(addresses []common.Address) ([]*Listing, error)
 	// ListingByAddress retrieves listings based on addresses
 	ListingByAddress(address common.Address) (*Listing, error)
+	// ListingsByOwnerAddress retrieves listings based on owner address
+	ListingsByOwnerAddress(address common.Address) ([]*Listing, error)
 	// CreateListing creates a new listing
 	CreateListing(listing *Listing) error
 	// UpdateListing updates fields on an existing listing
