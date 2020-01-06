@@ -929,13 +929,11 @@ func (p *PostgresPersister) listingsByOwnerAddressFromTable(ownerAddress common.
 	listings := []*model.Listing{}
 	dbListings := []*postgres.Listing{}
 	stringAddress := ownerAddress.String()
-	queryString := p.listingByOwnerAddressQuery(tableName)
-	err := p.db.Select(&dbListings, queryString, stringAddress)
+	queryString := p.listingByOwnerAddressQuery(tableName, stringAddress)
+	err := p.db.Select(&dbListings, queryString)
 	if err != nil {
 		return listings, errors.Wrap(err, "error retrieving listings from table")
 	}
-
-	listingsMap := map[common.Address]*model.Listing{}
 
 	if len(dbListings) == 0 {
 		return nil, cpersist.ErrPersisterNoResults
@@ -1109,9 +1107,9 @@ func (p *PostgresPersister) listingByAddressesQuery(tableName string) string {
 	return queryString
 }
 
-func (p *PostgresPersister) listingByOwnerAddressQuery(tableName string) string {
+func (p *PostgresPersister) listingByOwnerAddressQuery(tableName string, ownerAddress string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
-	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE LOWER(owner) = LOWER(?);", fieldNames, tableName) // nolint: gosec
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE LOWER(owner) = LOWER('%s');", fieldNames, tableName, ownerAddress) // nolint: gosec
 	return queryString
 }
 

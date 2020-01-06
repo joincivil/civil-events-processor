@@ -35,7 +35,7 @@ func (n *NullPersister) ListingByAddress(address common.Address) (*model.Listing
 }
 
 // ListingsByOwnerAddress retrieves listings based on owner address
-func (n *NullPersister) ListingsByOwnerAddress(address common.Address) ([]*Listing, error) {
+func (n *NullPersister) ListingsByOwnerAddress(address common.Address) ([]*model.Listing, error) {
 	return []*model.Listing{}, nil
 }
 
