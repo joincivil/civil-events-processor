@@ -13,6 +13,7 @@ import (
 
 	crawlerhelpers "github.com/joincivil/civil-events-crawler/pkg/helpers"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/model"
@@ -187,7 +188,9 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		return nil, err
 	}
 
-	eventPersister, err := crawlerhelpers.EventPersisterFromSqlx(db)
+	// Empty config here will set this to latest version of event tables
+	crawlerConfig := &crawlerutils.CrawlerConfig{}
+	eventPersister, err := crawlerhelpers.EventPersisterFromSqlx(db, crawlerConfig)
 	if err != nil {
 		log.Errorf("Error getting the event persister: %v", err)
 		return nil, err
