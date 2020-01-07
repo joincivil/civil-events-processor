@@ -29,11 +29,12 @@ type ProcessorConfig struct {
 	CronConfig string `envconfig:"cron_config" desc:"Cron config string * * * * *"`
 	EthAPIURL  string `envconfig:"eth_api_url" required:"true" desc:"Ethereum API address"`
 
-	PubSubProjectID       string `split_words:"true" desc:"Sets GPubSub project ID. If not set, will not push or pull events."`
-	PubSubEventsTopicName string `split_words:"true" desc:"Sets GPubSub topic name for governance events. If not set, will not push events."`
-	PubSubTokenTopicName  string `split_words:"true" desc:"Sets GPubSub topic name for cvltoken events. If not set, will not push events."`
-	PubSubCrawlTopicName  string `split_words:"true" desc:"Sets GPubSub topic name for crawler. Set if using pubsub to run the processor."`
-	PubSubCrawlSubName    string `split_words:"true" desc:"Sets GPubSub subscription name. Needs to be set to run processor using pubsub updates."`
+	PubSubProjectID         string `split_words:"true" desc:"Sets GPubSub project ID. If not set, will not push or pull events."`
+	PubSubEventsTopicName   string `split_words:"true" desc:"Sets GPubSub topic name for governance events. If not set, will not push events."`
+	PubSubTokenTopicName    string `split_words:"true" desc:"Sets GPubSub topic name for cvltoken events. If not set, will not push events."`
+	PubSubMultiSigTopicName string `split_words:"true" desc:"Sets GPubSub topic name for multi sig events. If not set, will not push events."`
+	PubSubCrawlTopicName    string `split_words:"true" desc:"Sets GPubSub topic name for crawler. Set if using pubsub to run the processor."`
+	PubSubCrawlSubName      string `split_words:"true" desc:"Sets GPubSub subscription name. Needs to be set to run processor using pubsub updates."`
 
 	PersisterType             cconfig.PersisterType `ignored:"true"`
 	PersisterTypeName         string                `split_words:"true" required:"true" desc:"Sets the persister type to use"`

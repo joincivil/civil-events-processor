@@ -134,6 +134,7 @@ func runProcessorCron(config *utils.ProcessorConfig, persisters *InitializedPers
 			GooglePubSub:                         pubsub,
 			PubSubEventsTopicName:                config.PubSubEventsTopicName,
 			PubSubTokenTopicName:                 config.PubSubTokenTopicName,
+			PubSubMultiSigTopicName:              config.PubSubMultiSigTopicName,
 			ErrRep:                               errRep,
 		})
 

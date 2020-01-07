@@ -232,6 +232,7 @@ func ProcessorPubSubMain(config *utils.ProcessorConfig, persisters *InitializedP
 		GooglePubSub:               eventsPs,
 		PubSubEventsTopicName:      config.PubSubEventsTopicName,
 		PubSubTokenTopicName:       config.PubSubTokenTopicName,
+		PubSubMultiSigTopicName:    config.PubSubMultiSigTopicName,
 		ErrRep:                     errRep,
 	})
 

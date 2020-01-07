@@ -13,24 +13,37 @@ import (
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	"github.com/joincivil/go-common/pkg/pubsub"
+)
+
+const (
+	// MultiSigOwnerAdded is an action type published to pubsub when an owner is added to a multi sig
+	MultiSigOwnerAdded = "added"
+
+	// MultiSigOwnerRemoved is an action type published to pubsub when an owner is removed from a multi sig
+	MultiSigOwnerRemoved = "removed"
 )
 
 // NewMultiSigEventProcessor is a convenience function to init an Event processor
 func NewMultiSigEventProcessor(client bind.ContractBackend,
-	multiSigPersister model.MultiSigPersister, multiSigOwnerPersister model.MultiSigOwnerPersister) *MultiSigEventProcessor {
+	multiSigPersister model.MultiSigPersister, multiSigOwnerPersister model.MultiSigOwnerPersister, googlePubSub *pubsub.GooglePubSub, pubSubMultiSigTopicName string) *MultiSigEventProcessor {
 	return &MultiSigEventProcessor{
-		client:                 client,
-		multiSigPersister:      multiSigPersister,
-		multiSigOwnerPersister: multiSigOwnerPersister,
+		client:                  client,
+		multiSigPersister:       multiSigPersister,
+		multiSigOwnerPersister:  multiSigOwnerPersister,
+		googlePubSub:            googlePubSub,
+		pubSubMultiSigTopicName: pubSubMultiSigTopicName,
 	}
 }
 
 // MultiSigEventProcessor handles the processing of raw Multi Sig events into aggregated data
 // for use via the API.
 type MultiSigEventProcessor struct {
-	client                 bind.ContractBackend
-	multiSigPersister      model.MultiSigPersister
-	multiSigOwnerPersister model.MultiSigOwnerPersister
+	client                  bind.ContractBackend
+	multiSigPersister       model.MultiSigPersister
+	multiSigOwnerPersister  model.MultiSigOwnerPersister
+	googlePubSub            *pubsub.GooglePubSub
+	pubSubMultiSigTopicName string
 }
 
 // Process processes Newsroom Events into aggregated data
@@ -149,6 +162,12 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlerm
 		if err != nil {
 			return errors.WithMessage(err, "error updating multi sig")
 		}
+
+		if !c.pubsubEnabled(c.pubSubMultiSigTopicName) {
+			log.Errorf("pub sub not enabled for multi sig topic")
+			return nil
+		}
+		return c.pubSubMultiSig(MultiSigOwnerAdded, ownerKey, multiSigAddressKey, c.pubSubMultiSigTopicName)
 	}
 	return nil
 }
@@ -156,7 +175,7 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlerm
 func (c *MultiSigEventProcessor) processMultiSigWalletOwnerRemoved(event *crawlermodel.Event) error {
 	multiSigAddr := event.ContractAddress()
 	payload := event.EventPayload()
-	newOwnerAddr, ok := payload["Owner"]
+	oldOwnerAddr, ok := payload["Owner"]
 	if !ok {
 		return errors.Errorf("error getting Owner from multi sig contract event")
 	}
@@ -171,11 +190,11 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerRemoved(event *crawle
 		return errors.WithMessage(err, "error getting owners from multi sig wallet contract")
 	}
 
-	isNewOwnerStillOwner := false
+	isOldOwnerStillOwner := false
 
 	for _, owner := range contractOwners {
-		if strings.ToLower(owner.String()) == strings.ToLower(newOwnerAddr.(common.Address).String()) {
-			isNewOwnerStillOwner = true
+		if strings.ToLower(owner.String()) == strings.ToLower(oldOwnerAddr.(common.Address).String()) {
+			isOldOwnerStillOwner = true
 		}
 	}
 
@@ -184,15 +203,15 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerRemoved(event *crawle
 		return errors.WithMessage(err, "error getting owners from db")
 	}
 
-	isNewOwnerDbOwner := false
+	isOldOwnerDbOwner := false
 	for _, dbOwner := range dbOwners {
-		if strings.ToLower(dbOwner.OwnerAddress().String()) == strings.ToLower(newOwnerAddr.(common.Address).String()) {
-			isNewOwnerDbOwner = true
+		if strings.ToLower(dbOwner.OwnerAddress().String()) == strings.ToLower(oldOwnerAddr.(common.Address).String()) {
+			isOldOwnerDbOwner = true
 		}
 	}
 
-	if !isNewOwnerStillOwner && isNewOwnerDbOwner {
-		err = c.multiSigOwnerPersister.DeleteMultiSigOwner(multiSigAddr, newOwnerAddr.(common.Address))
+	if !isOldOwnerStillOwner && isOldOwnerDbOwner {
+		err = c.multiSigOwnerPersister.DeleteMultiSigOwner(multiSigAddr, oldOwnerAddr.(common.Address))
 		if err != nil {
 			return errors.WithMessage(err, "error deleting multi sig owner")
 		}
@@ -204,6 +223,11 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerRemoved(event *crawle
 		if err != nil {
 			return errors.WithMessage(err, "error updating multi sig")
 		}
+		if !c.pubsubEnabled(c.pubSubMultiSigTopicName) {
+			log.Errorf("pub sub not enabled for multi sig topic")
+			return nil
+		}
+		return c.pubSubMultiSig(MultiSigOwnerRemoved, oldOwnerAddr.(common.Address).String(), multiSigAddr.String(), c.pubSubMultiSigTopicName)
 	}
 	return nil
 }
@@ -230,6 +254,14 @@ func (c *MultiSigEventProcessor) updateMultiSigOwners(multiSigAddress common.Add
 		err = c.multiSigOwnerPersister.CreateMultiSigOwner(multiSigOwner)
 		if err != nil {
 			return errors.WithMessage(err, "error creating multi sig owner")
+		}
+		if !c.pubsubEnabled(c.pubSubMultiSigTopicName) {
+			return errors.WithMessage(err, "pub sub not enabled for multi sig topic")
+		}
+		err = c.pubSubMultiSig(MultiSigOwnerAdded, ownerKey, multiSigAddressKey, c.pubSubMultiSigTopicName)
+		if err != nil {
+			log.Errorf("pub sub not enabled for multi sig topic")
+			return nil
 		}
 	}
 	return nil

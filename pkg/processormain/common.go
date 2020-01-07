@@ -106,8 +106,18 @@ func SetupKillNotify(persisters *InitializedPersisters) {
 func initPubSubEvents(config *utils.ProcessorConfig, ps *cpubsub.GooglePubSub) (*cpubsub.GooglePubSub, error) {
 	// If no events topic name, disable
 	if config.PubSubEventsTopicName == "" {
+		log.Infof("no pub sub events topic name")
 		return nil, nil
 	}
+	if config.PubSubTokenTopicName == "" {
+		log.Infof("no pub sub token topic name")
+		return nil, nil
+	}
+	if config.PubSubMultiSigTopicName == "" {
+		log.Infof("no pub sub multi sig topic name")
+		return nil, nil
+	}
+
 	err := ps.StartPublishers()
 	return ps, err
 }

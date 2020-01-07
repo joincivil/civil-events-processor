@@ -139,6 +139,12 @@ func (p *PostgresPersister) ListingsByAddresses(addresses []common.Address) ([]*
 	return p.listingsByAddressesFromTableInOrder(addresses, listingTableName)
 }
 
+// ListingsByOwnerAddress returns a slice of Listings based on owner address
+func (p *PostgresPersister) ListingsByOwnerAddress(ownerAddress common.Address) ([]*model.Listing, error) {
+	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
+	return p.listingsByOwnerAddressFromTable(ownerAddress, listingTableName)
+}
+
 // ListingByAddress retrieves listings based on addresses
 func (p *PostgresPersister) ListingByAddress(address common.Address) (*model.Listing, error) {
 	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
@@ -917,6 +923,28 @@ func (p *PostgresPersister) listingsByAddressesFromTableInOrder(addresses []comm
 	return listings, nil
 }
 
+func (p *PostgresPersister) listingsByOwnerAddressFromTable(ownerAddress common.Address,
+	tableName string) ([]*model.Listing, error) {
+
+	listings := []*model.Listing{}
+	dbListings := []*postgres.Listing{}
+	stringAddress := ownerAddress.String()
+	queryString := p.listingByOwnerAddressQuery(tableName, stringAddress)
+	err := p.db.Select(&dbListings, queryString)
+	if err != nil {
+		return listings, errors.Wrap(err, "error retrieving listings from table")
+	}
+
+	if len(dbListings) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	for _, dbListing := range dbListings {
+		listings = append(listings, dbListing.DbToListingData())
+	}
+	return listings, nil
+}
+
 func (p *PostgresPersister) listingsByCleanedNewsroomURLsFromTableInOrder(newsroomURLs []string,
 	tableName string) ([]*model.Listing, error) {
 	if len(newsroomURLs) == 0 {
@@ -1076,6 +1104,12 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 func (p *PostgresPersister) listingByAddressesQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE contract_address IN (?);", fieldNames, tableName) // nolint: gosec
+	return queryString
+}
+
+func (p *PostgresPersister) listingByOwnerAddressQuery(tableName string, ownerAddress string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE LOWER(owner) = LOWER('%s');", fieldNames, tableName, ownerAddress) // nolint: gosec
 	return queryString
 }
 

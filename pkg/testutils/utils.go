@@ -21,6 +21,7 @@ const (
 type TestPersister struct {
 	Listings             map[string]*model.Listing
 	ListingsByURL        map[string]*model.Listing
+	ListingsByOwnerAddr  map[string][]*model.Listing
 	Revisions            map[string][]*model.ContentRevision
 	GovEvents            map[string][]*model.GovernanceEvent
 	Challenges           map[int]*model.Challenge
@@ -73,6 +74,11 @@ func (t *TestPersister) ListingsByAddresses(addresses []common.Address) ([]*mode
 	return results, nil
 }
 
+// ListingsByOwnerAddress returns a slice of Listings based on owner addresses
+func (t *TestPersister) ListingsByOwnerAddress(address common.Address) ([]*model.Listing, error) {
+	return t.ListingsByOwnerAddr[address.String()], nil
+}
+
 // ListingByAddress retrieves a listing based on address
 func (t *TestPersister) ListingByAddress(address common.Address) (*model.Listing, error) {
 	listing := t.Listings[address.Hex()]
@@ -100,8 +106,15 @@ func (t *TestPersister) CreateListing(listing *model.Listing) error {
 	if t.ListingsByURL == nil {
 		t.ListingsByURL = map[string]*model.Listing{}
 	}
+	if t.ListingsByOwnerAddr == nil {
+		t.ListingsByOwnerAddr = map[string][]*model.Listing{}
+	}
 	t.Listings[addressHex] = listing
 	t.ListingsByURL[listing.CleanedURL()] = listing
+	if t.ListingsByOwnerAddr[listing.Owner().Hex()] == nil {
+		t.ListingsByOwnerAddr[listing.Owner().Hex()] = make([]*model.Listing, 0)
+	}
+	t.ListingsByOwnerAddr[listing.Owner().Hex()] = append(t.ListingsByOwnerAddr[listing.Owner().Hex()], listing)
 	return nil
 }
 
