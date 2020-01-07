@@ -138,7 +138,7 @@ func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
 
 	listingAddress, listingErr := t.listingAddressFromEvent(event)
 	if listingErr != nil {
-		log.Infof("Error retrieving listingAddress: %v", listingErr)
+		log.Infof("Error retrieving listingAddress: %v - eventName: %s", listingErr, eventName)
 		ran = false
 		return ran, listingErr
 	}
