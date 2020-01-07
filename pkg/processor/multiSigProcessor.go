@@ -16,6 +16,14 @@ import (
 	"github.com/joincivil/go-common/pkg/pubsub"
 )
 
+const (
+	// MultiSigOwnerAdded is an action type published to pubsub when an owner is added to a multi sig
+	MultiSigOwnerAdded = "added"
+
+	// MultiSigOwnerRemoved is an action type published to pubsub when an owner is removed from a multi sig
+	MultiSigOwnerRemoved = "removed"
+)
+
 // NewMultiSigEventProcessor is a convenience function to init an Event processor
 func NewMultiSigEventProcessor(client bind.ContractBackend,
 	multiSigPersister model.MultiSigPersister, multiSigOwnerPersister model.MultiSigOwnerPersister, googlePubSub *pubsub.GooglePubSub, pubSubMultiSigTopicName string) *MultiSigEventProcessor {
@@ -156,9 +164,10 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlerm
 		}
 
 		if !c.pubsubEnabled(c.pubSubMultiSigTopicName) {
-			return errors.WithMessage(err, "pub sub not enabled for multi sig topic")
+			log.Errorf("pub sub not enabled for multi sig topic")
+			return nil
 		}
-		return c.pubSubMultiSig("added", ownerKey, multiSigAddressKey, c.pubSubMultiSigTopicName)
+		return c.pubSubMultiSig(MultiSigOwnerAdded, ownerKey, multiSigAddressKey, c.pubSubMultiSigTopicName)
 	}
 	return nil
 }
@@ -215,9 +224,10 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerRemoved(event *crawle
 			return errors.WithMessage(err, "error updating multi sig")
 		}
 		if !c.pubsubEnabled(c.pubSubMultiSigTopicName) {
-			return errors.WithMessage(err, "pub sub not enabled for multi sig topic")
+			log.Errorf("pub sub not enabled for multi sig topic")
+			return nil
 		}
-		return c.pubSubMultiSig("removed", oldOwnerAddr.(common.Address).String(), multiSigAddr.String(), c.pubSubMultiSigTopicName)
+		return c.pubSubMultiSig(MultiSigOwnerRemoved, oldOwnerAddr.(common.Address).String(), multiSigAddr.String(), c.pubSubMultiSigTopicName)
 	}
 	return nil
 }
@@ -248,9 +258,10 @@ func (c *MultiSigEventProcessor) updateMultiSigOwners(multiSigAddress common.Add
 		if !c.pubsubEnabled(c.pubSubMultiSigTopicName) {
 			return errors.WithMessage(err, "pub sub not enabled for multi sig topic")
 		}
-		err = c.pubSubMultiSig("added", ownerKey, multiSigAddressKey, c.pubSubMultiSigTopicName)
+		err = c.pubSubMultiSig(MultiSigOwnerAdded, ownerKey, multiSigAddressKey, c.pubSubMultiSigTopicName)
 		if err != nil {
-			return errors.WithMessage(err, "pub sub not enabled for multi sig topic")
+			log.Errorf("pub sub not enabled for multi sig topic")
+			return nil
 		}
 	}
 	return nil

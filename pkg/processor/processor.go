@@ -155,7 +155,7 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 		log.Info("CvlToken events pubsub is disabled, set the project ID and topic in the config.")
 	}
 	if !e.pubsubEnabled(e.pubSubMultiSigTopicName) {
-		log.Info("CvlToken events pubsub is disabled, set the project ID and topic in the config.")
+		log.Info("MultiSig events pubsub is disabled, set the project ID and topic in the config.")
 	}
 
 	for _, event := range events {
