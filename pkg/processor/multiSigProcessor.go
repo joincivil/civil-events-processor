@@ -106,12 +106,6 @@ func (c *MultiSigEventProcessor) processMultiSigWalletContractInstantiation(even
 
 func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlermodel.Event) error {
 	multiSigAddr := event.ContractAddress()
-	payload := event.EventPayload()
-	newOwnerAddr, ok := payload["Owner"]
-	if !ok {
-		return errors.Errorf("error getting Owner from multi sig contract event")
-	}
-
 	multiSigWalletContract, err := contract.NewMultiSigWalletContract(multiSigAddr, c.client)
 	if err != nil {
 		return errors.WithMessage(err, "error getting multi sig wallet contract")
@@ -121,6 +115,28 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlerm
 	if err != nil {
 		return errors.WithMessage(err, "error getting owners from multi sig wallet contract")
 	}
+	dbOwners, err := c.multiSigPersister.MultiSigOwners(multiSigAddr)
+
+	// if this returns an error, it means we're processing an "owner added" without a "contract instantiation"
+	// this would occur if a newsroom is created using something other than our latest factory (e.g. First Fleet newsrooms)
+	if err != nil {
+		multiSig := model.NewMultiSig(&model.NewMultiSigParams{
+			ContractAddress: multiSigAddr,
+			OwnerAddresses:  contractOwners,
+		})
+
+		err = c.multiSigPersister.CreateMultiSig(multiSig)
+		if err != nil {
+			return errors.WithMessage(err, "error creating multi sig")
+		}
+		return c.updateMultiSigOwners(multiSigAddr)
+	}
+
+	payload := event.EventPayload()
+	newOwnerAddr, ok := payload["Owner"]
+	if !ok {
+		return errors.Errorf("error getting Owner from multi sig contract event")
+	}
 
 	isNewOwnerStillOwner := false
 
@@ -128,11 +144,6 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlerm
 		if strings.ToLower(owner.String()) == strings.ToLower(newOwnerAddr.(common.Address).String()) {
 			isNewOwnerStillOwner = true
 		}
-	}
-
-	dbOwners, err := c.multiSigPersister.MultiSigOwners(multiSigAddr)
-	if err != nil {
-		return errors.WithMessage(err, "error getting owners from db")
 	}
 
 	isNewOwnerDbOwner := false
