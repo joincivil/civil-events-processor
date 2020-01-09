@@ -54,6 +54,8 @@ const (
 	isVoterWinnerFieldName    = "IsVoterWinner"
 
 	challengeIDResetValue = 0
+
+	civilTCRContractName = "CivilTCRContract"
 )
 
 // NewTcrEventProcessor is a convenience function to init an EventProcessor
@@ -113,6 +115,9 @@ func (t *TcrEventProcessor) challengeIDFromEvent(event *crawlermodel.Event) (*bi
 
 // Process processes TcrEvents into aggregated data
 func (t *TcrEventProcessor) Process(event *crawlermodel.Event) (bool, error) {
+	if event.ContractName() != civilTCRContractName {
+		return false, nil
+	}
 	if !t.isValidCivilTCRContractEventName(event.EventType()) {
 		return false, nil
 	}
