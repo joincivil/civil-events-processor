@@ -13,6 +13,7 @@ import (
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
 
 	"github.com/joincivil/civil-events-processor/pkg/model"
+	cpersist "github.com/joincivil/go-common/pkg/persistence"
 	"github.com/joincivil/go-common/pkg/pubsub"
 )
 
@@ -120,16 +121,21 @@ func (c *MultiSigEventProcessor) processMultiSigWalletOwnerAdded(event *crawlerm
 	// if this returns an error, it means we're processing an "owner added" without a "contract instantiation"
 	// this would occur if a newsroom is created using something other than our latest factory (e.g. First Fleet newsrooms)
 	if err != nil {
-		multiSig := model.NewMultiSig(&model.NewMultiSigParams{
-			ContractAddress: multiSigAddr,
-			OwnerAddresses:  contractOwners,
-		})
+		if err == cpersist.ErrPersisterNoResults {
+			multiSig := model.NewMultiSig(&model.NewMultiSigParams{
+				ContractAddress: multiSigAddr,
+				OwnerAddresses:  contractOwners,
+			})
 
-		err = c.multiSigPersister.CreateMultiSig(multiSig)
-		if err != nil {
-			return errors.WithMessage(err, "error creating multi sig")
+			err = c.multiSigPersister.CreateMultiSig(multiSig)
+			if err != nil {
+				return errors.WithMessage(err, "error creating multi sig")
+			}
+			return c.updateMultiSigOwners(multiSigAddr)
 		}
-		return c.updateMultiSigOwners(multiSigAddr)
+
+		// persister returned error other than no results
+		return err
 	}
 
 	payload := event.EventPayload()
