@@ -355,7 +355,8 @@ func (p *ParameterizerEventProcessor) getExistingParameter(event *crawlermodel.E
 	}
 	// get parameterization from db, use its `name` value to get parameter
 	paramProposal, err := p.paramProposalPersister.ParamProposalByPropID(propID, true)
-	if err != nil && err != cpersist.ErrPersisterNoResults {
+	if err != nil {
+		log.Errorf("Error getting parameter proposal for propID: %s", propID)
 		return nil, err
 	}
 	// get parameter from db

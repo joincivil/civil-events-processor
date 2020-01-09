@@ -43,7 +43,7 @@ func (ep *TestEventPersister) RetrieveEvents(criteria *crawlermodel.RetrieveEven
 	return ep.events, nil
 }
 
-func (ep *TestEventPersister) SaveEvents(events []*crawlermodel.Event) error {
+func (ep *TestEventPersister) SaveEvents(events []*crawlermodel.Event) []error {
 	ep.events = append(ep.events, events...)
 	return nil
 }
@@ -239,13 +239,15 @@ func TestProcessorPubSub(t *testing.T) {
 	watchedEvent2 := returnContractApplicationWatchedEvent(t, contracts.NewsroomAddr)
 
 	proc := processor.NewEventProcessor(&processor.NewEventProcessorParams{
-		Client:             contracts.Client,
-		ListingPersister:   testPersister,
-		RevisionPersister:  testPersister,
-		GovEventPersister:  testPersister,
-		ChallengePersister: testPersister,
-		PollPersister:      testPersister,
-		AppealPersister:    testPersister,
+		Client:                 contracts.Client,
+		ListingPersister:       testPersister,
+		RevisionPersister:      testPersister,
+		GovEventPersister:      testPersister,
+		ChallengePersister:     testPersister,
+		PollPersister:          testPersister,
+		AppealPersister:        testPersister,
+		MultiSigPersister:      testPersister,
+		MultiSigOwnerPersister: testPersister,
 	})
 	var wg sync.WaitGroup
 	wg.Add(2)

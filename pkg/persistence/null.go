@@ -34,6 +34,11 @@ func (n *NullPersister) ListingByAddress(address common.Address) (*model.Listing
 	return &model.Listing{}, nil
 }
 
+// ListingsByOwnerAddress retrieves listings based on owner address
+func (n *NullPersister) ListingsByOwnerAddress(address common.Address) ([]*model.Listing, error) {
+	return []*model.Listing{}, nil
+}
+
 // ListingByCleanedNewsroomURL returns listing that matches given url
 func (n *NullPersister) ListingByCleanedNewsroomURL(cleanedURL string) (*model.Listing, error) {
 	return &model.Listing{}, nil
@@ -261,8 +266,28 @@ func (n *NullPersister) CreateDefaultValues(config *utils.ProcessorConfig) error
 	return nil
 }
 
+// GovernmentParameterByName gets a parameter from persistence using paramName
+func (n *NullPersister) GovernmentParameterByName(paramName string) (*model.GovernmentParameter, error) {
+	return &model.GovernmentParameter{}, nil
+}
+
+// GovernmentParametersByName gets a slice of parameters by name
+func (n *NullPersister) GovernmentParametersByName(paramName []string) ([]*model.GovernmentParameter, error) {
+	return []*model.GovernmentParameter{}, nil
+}
+
+// UpdateGovernmentParameter updates the value of a parameter in table
+func (n *NullPersister) UpdateGovernmentParameter(parameter *model.GovernmentParameter, updatedFields []string) error {
+	return nil
+}
+
 // CreateParameterProposal creates a new parameter proposal
 func (n *NullPersister) CreateParameterProposal(paramProposal *model.ParameterProposal) error {
+	return nil
+}
+
+// CreateGovernmentParameterProposal creates a new government parameter proposal
+func (n *NullPersister) CreateGovernmentParameterProposal(paramProposal *model.GovernmentParameterProposal) error {
 	return nil
 }
 
@@ -281,6 +306,21 @@ func (n *NullPersister) UpdateParamProposal(paramProposal *model.ParameterPropos
 	return nil
 }
 
+// GovernmentParamProposalByPropID gets a parameter proposal from persistence using propID
+func (n *NullPersister) GovernmentParamProposalByPropID(propID [32]byte, active bool) (*model.GovernmentParameterProposal, error) {
+	return &model.GovernmentParameterProposal{}, nil
+}
+
+// GovernmentParamProposalByName gets parameter proposals by name from persistence
+func (n *NullPersister) GovernmentParamProposalByName(name string, active bool) ([]*model.GovernmentParameterProposal, error) {
+	return []*model.GovernmentParameterProposal{}, nil
+}
+
+// UpdateGovernmentParamProposal updates parameter propsal in table
+func (n *NullPersister) UpdateGovernmentParamProposal(paramProposal *model.GovernmentParameterProposal, updatedFields []string) error {
+	return nil
+}
+
 // CreateUserChallengeData creates a new UserChallengeData
 func (n *NullPersister) CreateUserChallengeData(userChallengeData *model.UserChallengeData) error {
 	return nil
@@ -295,4 +335,34 @@ func (n *NullPersister) UserChallengeDataByCriteria(criteria *model.UserChalleng
 // user=true updates for user + pollID, user=false updates for pollID
 func (n *NullPersister) UpdateUserChallengeData(userChallengeData *model.UserChallengeData, updatedFields []string, updateWithUserAddress bool) error {
 	return nil
+}
+
+// CreateMultiSig creates a new MultiSig
+func (n *NullPersister) CreateMultiSig(multiSig *model.MultiSig) error {
+	return nil
+}
+
+// UpdateMultiSig updates fields on an existing multi sig
+func (n *NullPersister) UpdateMultiSig(multiSig *model.MultiSig, updatedFields []string) error {
+	return nil
+}
+
+// MultiSigOwners gets the owners of a multi sig
+func (n *NullPersister) MultiSigOwners(multiSigAddress common.Address) ([]*model.MultiSigOwner, error) {
+	return []*model.MultiSigOwner{}, nil
+}
+
+// CreateMultiSigOwner creates a new MultiSigOwner
+func (n *NullPersister) CreateMultiSigOwner(multiSigOwner *model.MultiSigOwner) error {
+	return nil
+}
+
+// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
+func (n *NullPersister) DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error {
+	return nil
+}
+
+// MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
+func (n *NullPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
+	return []*model.MultiSigOwner{}, nil
 }

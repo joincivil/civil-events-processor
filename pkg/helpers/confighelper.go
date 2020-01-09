@@ -78,6 +78,46 @@ func ListingPersisterFromSqlx(db *sqlx.DB, versionNumber string) (model.ListingP
 	return p.(model.ListingPersister), nil
 }
 
+// MultiSigPersister is a helper function to return the correct multi sig persister based on
+// the given configuration
+func MultiSigPersister(config cconfig.PersisterConfig, versionNumber string) (model.MultiSigPersister, error) {
+	p, err := Persister(config, versionNumber)
+	if err != nil {
+		return nil, err
+	}
+	return p.(model.MultiSigPersister), nil
+}
+
+// MultiSigPersisterFromSqlx is a helper function to return the correct multi sig persister based on
+// the given configuration
+func MultiSigPersisterFromSqlx(db *sqlx.DB, versionNumber string) (model.MultiSigPersister, error) {
+	p, err := PersisterFromSqlx(db, versionNumber)
+	if err != nil {
+		return nil, err
+	}
+	return p.(model.MultiSigPersister), nil
+}
+
+// MultiSigOwnerPersister is a helper function to return the correct multi sig owner persister based on
+// the given configuration
+func MultiSigOwnerPersister(config cconfig.PersisterConfig, versionNumber string) (model.MultiSigOwnerPersister, error) {
+	p, err := Persister(config, versionNumber)
+	if err != nil {
+		return nil, err
+	}
+	return p.(model.MultiSigOwnerPersister), nil
+}
+
+// MultiSigOwnerPersisterFromSqlx is a helper function to return the correct multi sig persister based on
+// the given configuration
+func MultiSigOwnerPersisterFromSqlx(db *sqlx.DB, versionNumber string) (model.MultiSigOwnerPersister, error) {
+	p, err := PersisterFromSqlx(db, versionNumber)
+	if err != nil {
+		return nil, err
+	}
+	return p.(model.MultiSigOwnerPersister), nil
+}
+
 // ContentRevisionPersister is a helper function to return the correct revision persister based on
 // the given configuration
 func ContentRevisionPersister(config cconfig.PersisterConfig, versionNumber string) (model.ContentRevisionPersister, error) {

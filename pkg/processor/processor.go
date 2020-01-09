@@ -72,50 +72,75 @@ func NewEventProcessor(params *NewEventProcessorParams) *EventProcessor {
 		params.UserChallengeDataPersister,
 		params.ErrRep,
 	)
+	multiSigProcessor := NewMultiSigEventProcessor(
+		params.Client,
+		params.MultiSigPersister,
+		params.MultiSigOwnerPersister,
+		params.GooglePubSub,
+		params.PubSubMultiSigTopicName,
+	)
+	govtParameterizerProcessor := NewGovernmentEventProcessor(
+		params.Client,
+		params.GovernmentParameterProposalPersister,
+		params.GovernmentParameterPersister,
+		params.PollPersister,
+		params.ErrRep,
+	)
 	return &EventProcessor{
-		tcrEventProcessor:      tcrEventProcessor,
-		plcrEventProcessor:     plcrEventProcessor,
-		newsroomEventProcessor: newsroomEventProcessor,
-		cvlTokenProcessor:      cvlTokenProcessor,
-		parameterizerProcessor: parameterizerProcessor,
-		googlePubSub:           params.GooglePubSub,
-		pubSubEventsTopicName:  params.PubSubEventsTopicName,
-		pubSubTokenTopicName:   params.PubSubTokenTopicName,
-		errRep:                 params.ErrRep,
+		tcrEventProcessor:       tcrEventProcessor,
+		plcrEventProcessor:      plcrEventProcessor,
+		newsroomEventProcessor:  newsroomEventProcessor,
+		cvlTokenProcessor:       cvlTokenProcessor,
+		parameterizerProcessor:  parameterizerProcessor,
+		multiSigProcessor:       multiSigProcessor,
+		governmentProcessor:     govtParameterizerProcessor,
+		googlePubSub:            params.GooglePubSub,
+		pubSubEventsTopicName:   params.PubSubEventsTopicName,
+		pubSubTokenTopicName:    params.PubSubTokenTopicName,
+		pubSubMultiSigTopicName: params.PubSubMultiSigTopicName,
+		errRep:                  params.ErrRep,
 	}
 }
 
 // NewEventProcessorParams defines the params needed to be passed to the processor
 type NewEventProcessorParams struct {
-	Client                     bind.ContractBackend
-	ListingPersister           model.ListingPersister
-	RevisionPersister          model.ContentRevisionPersister
-	GovEventPersister          model.GovernanceEventPersister
-	ChallengePersister         model.ChallengePersister
-	PollPersister              model.PollPersister
-	AppealPersister            model.AppealPersister
-	TokenTransferPersister     model.TokenTransferPersister
-	ParameterProposalPersister model.ParamProposalPersister
-	ParameterPersister         model.ParameterPersister
-	UserChallengeDataPersister model.UserChallengeDataPersister
-	GooglePubSub               *pubsub.GooglePubSub
-	PubSubEventsTopicName      string
-	PubSubTokenTopicName       string
-	ErrRep                     cerrors.ErrorReporter
+	Client                               bind.ContractBackend
+	ListingPersister                     model.ListingPersister
+	RevisionPersister                    model.ContentRevisionPersister
+	GovEventPersister                    model.GovernanceEventPersister
+	ChallengePersister                   model.ChallengePersister
+	PollPersister                        model.PollPersister
+	AppealPersister                      model.AppealPersister
+	TokenTransferPersister               model.TokenTransferPersister
+	ParameterProposalPersister           model.ParamProposalPersister
+	ParameterPersister                   model.ParameterPersister
+	UserChallengeDataPersister           model.UserChallengeDataPersister
+	MultiSigPersister                    model.MultiSigPersister
+	MultiSigOwnerPersister               model.MultiSigOwnerPersister
+	GovernmentParameterProposalPersister model.GovernmentParamProposalPersister
+	GovernmentParameterPersister         model.GovernmentParameterPersister
+	GooglePubSub                         *pubsub.GooglePubSub
+	PubSubEventsTopicName                string
+	PubSubTokenTopicName                 string
+	PubSubMultiSigTopicName              string
+	ErrRep                               cerrors.ErrorReporter
 }
 
 // EventProcessor handles the processing of raw events into aggregated data
 // for use via the API.
 type EventProcessor struct {
-	tcrEventProcessor      *TcrEventProcessor
-	plcrEventProcessor     *PlcrEventProcessor
-	newsroomEventProcessor *NewsroomEventProcessor
-	cvlTokenProcessor      *CvlTokenEventProcessor
-	parameterizerProcessor *ParameterizerEventProcessor
-	googlePubSub           *pubsub.GooglePubSub
-	pubSubEventsTopicName  string
-	pubSubTokenTopicName   string
-	errRep                 cerrors.ErrorReporter
+	tcrEventProcessor       *TcrEventProcessor
+	plcrEventProcessor      *PlcrEventProcessor
+	newsroomEventProcessor  *NewsroomEventProcessor
+	cvlTokenProcessor       *CvlTokenEventProcessor
+	parameterizerProcessor  *ParameterizerEventProcessor
+	multiSigProcessor       *MultiSigEventProcessor
+	governmentProcessor     *GovernmentEventProcessor
+	googlePubSub            *pubsub.GooglePubSub
+	pubSubEventsTopicName   string
+	pubSubTokenTopicName    string
+	pubSubMultiSigTopicName string
+	errRep                  cerrors.ErrorReporter
 }
 
 // Process runs the processor with the given set of raw CivilEvents
@@ -128,6 +153,9 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 	}
 	if !e.pubsubEnabled(e.pubSubTokenTopicName) {
 		log.Info("CvlToken events pubsub is disabled, set the project ID and topic in the config.")
+	}
+	if !e.pubsubEnabled(e.pubSubMultiSigTopicName) {
+		log.Info("MultiSig events pubsub is disabled, set the project ID and topic in the config.")
 	}
 
 	for _, event := range events {
@@ -195,9 +223,25 @@ func (e *EventProcessor) Process(events []*crawlermodel.Event) error {
 			continue
 		}
 
-		_, err = e.parameterizerProcessor.Process(event)
+		ran, err = e.parameterizerProcessor.Process(event)
 		if err != nil {
 			log.Errorf("Error processing parameterizer event: err: %v\n", err)
+		}
+		if ran {
+			continue
+		}
+
+		ran, err = e.multiSigProcessor.Process(event)
+		if err != nil {
+			log.Errorf("Error processing multi sig event: err: %v\n", err)
+		}
+		if ran {
+			continue
+		}
+
+		_, err = e.governmentProcessor.Process(event)
+		if err != nil {
+			log.Errorf("Error processing government event: err: %v\n", err)
 		}
 	}
 	log.Info("Finished Processing")

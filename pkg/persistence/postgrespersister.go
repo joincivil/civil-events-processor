@@ -139,6 +139,12 @@ func (p *PostgresPersister) ListingsByAddresses(addresses []common.Address) ([]*
 	return p.listingsByAddressesFromTableInOrder(addresses, listingTableName)
 }
 
+// ListingsByOwnerAddress returns a slice of Listings based on owner address
+func (p *PostgresPersister) ListingsByOwnerAddress(ownerAddress common.Address) ([]*model.Listing, error) {
+	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
+	return p.listingsByOwnerAddressFromTable(ownerAddress, listingTableName)
+}
+
 // ListingByAddress retrieves listings based on addresses
 func (p *PostgresPersister) ListingByAddress(address common.Address) (*model.Listing, error) {
 	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
@@ -401,6 +407,60 @@ func (p *PostgresPersister) UpdateParameter(parameter *model.Parameter, updatedF
 	return p.updateParameterInTable(parameter, updatedFields, parameterTableName)
 }
 
+// CreateMultiSig creates a new multi sig
+func (p *PostgresPersister) CreateMultiSig(multiSig *model.MultiSig) error {
+	multiSigTableName := p.GetTableName(postgres.MultiSigTableBaseName)
+	return p.createMultiSigInTable(multiSig, multiSigTableName)
+}
+
+// UpdateMultiSig updates fields on an existing multi sig
+func (p *PostgresPersister) UpdateMultiSig(multiSig *model.MultiSig, updatedFields []string) error {
+	multiSigTableName := p.GetTableName(postgres.MultiSigTableBaseName)
+	return p.updateMultiSigInTable(multiSig, updatedFields, multiSigTableName)
+}
+
+// CreateMultiSigOwner creates a new multi sig owner
+func (p *PostgresPersister) CreateMultiSigOwner(multiSigOwner *model.MultiSigOwner) error {
+	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
+	return p.createMultiSigOwnerInTable(multiSigOwner, multiSigOwnerTableName)
+}
+
+// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
+func (p *PostgresPersister) DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error {
+	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
+	return p.deleteMultiSigOwnerInTable(multiSigAddress, ownerAddress, multiSigOwnerTableName)
+}
+
+// MultiSigOwners gets the owners of a multi sig
+func (p *PostgresPersister) MultiSigOwners(multiSigAddress common.Address) ([]*model.MultiSigOwner, error) {
+	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
+	return p.getMultiSigOwners(multiSigAddress, multiSigOwnerTableName)
+}
+
+// MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
+func (p *PostgresPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
+	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
+	return p.getMultiSigOwnersByOwnerAddr(ownerAddress, multiSigOwnerTableName)
+}
+
+// GovernmentParametersByName gets the parameter with given name
+func (p *PostgresPersister) GovernmentParametersByName(paramNames []string) ([]*model.GovernmentParameter, error) {
+	parameterTableName := p.GetTableName(postgres.GovernmentParameterTableBaseName)
+	return p.govtParametersByName(paramNames, parameterTableName)
+}
+
+// GovernmentParameterByName gets the parameter with given name
+func (p *PostgresPersister) GovernmentParameterByName(paramName string) (*model.GovernmentParameter, error) {
+	parameterTableName := p.GetTableName(postgres.GovernmentParameterTableBaseName)
+	return p.govtParameterByName(paramName, parameterTableName)
+}
+
+// UpdateGovernmentParameter updates a parameter
+func (p *PostgresPersister) UpdateGovernmentParameter(parameter *model.GovernmentParameter, updatedFields []string) error {
+	parameterTableName := p.GetTableName(postgres.GovernmentParameterTableBaseName)
+	return p.updateGovernmentParameterInTable(parameter, updatedFields, parameterTableName)
+}
+
 // SaveVersion saves the version for this persistence
 func (p *PostgresPersister) SaveVersion(versionNumber *string) error {
 	if versionNumber == nil || *versionNumber == "" {
@@ -479,6 +539,31 @@ func (p *PostgresPersister) UpdateParamProposal(paramProposal *model.ParameterPr
 	return p.updateParamProposalInTable(paramProposal, updatedFields, paramProposalTableName)
 }
 
+// CreateGovernmentParameterProposal creates a new parameter proposal
+func (p *PostgresPersister) CreateGovernmentParameterProposal(paramProposal *model.GovernmentParameterProposal) error {
+	paramProposalTableName := p.GetTableName(postgres.GovernmentParameterProposalTableBaseName)
+	return p.createGovernmentParameterProposalInTable(paramProposal, paramProposalTableName)
+}
+
+// GovernmentParamProposalByPropID gets parameter proposal by propID
+func (p *PostgresPersister) GovernmentParamProposalByPropID(propID [32]byte, active bool) (*model.GovernmentParameterProposal, error) {
+	paramProposalTableName := p.GetTableName(postgres.GovernmentParameterProposalTableBaseName)
+	return p.govtParamProposalByPropIDFromTable(propID, active, paramProposalTableName)
+}
+
+// GovernmentParamProposalByName gets parameter proposals by name. active=true will get only active
+func (p *PostgresPersister) GovernmentParamProposalByName(name string, active bool) ([]*model.GovernmentParameterProposal, error) {
+	paramProposalTableName := p.GetTableName(postgres.GovernmentParameterProposalTableBaseName)
+	return p.govtParamProposalByNameFromTable(name, active, paramProposalTableName)
+}
+
+// UpdateGovernmentParamProposal updates a parameter proposal
+func (p *PostgresPersister) UpdateGovernmentParamProposal(paramProposal *model.GovernmentParameterProposal,
+	updatedFields []string) error {
+	paramProposalTableName := p.GetTableName(postgres.GovernmentParameterProposalTableBaseName)
+	return p.updateGovernmentParamProposalInTable(paramProposal, updatedFields, paramProposalTableName)
+}
+
 // CreateUserChallengeData creates a new UserChallengeData
 func (p *PostgresPersister) CreateUserChallengeData(userChallengeData *model.UserChallengeData) error {
 	userChallengeDataTableName := p.GetTableName(postgres.UserChallengeDataTableBaseName)
@@ -514,6 +599,10 @@ func (p *PostgresPersister) CreateTables() error {
 	parameterProposalQuery := postgres.CreateParameterProposalTableQuery(p.GetTableName(postgres.ParameterProposalTableBaseName))
 	userChallengeDataQuery := postgres.CreateUserChallengeDataTableQuery(p.GetTableName(postgres.UserChallengeDataTableBaseName))
 	parameterTableQuery := postgres.CreateParameterTableQuery(p.GetTableName(postgres.ParameterTableBaseName))
+	multiSigTableQuery := postgres.CreateMultiSigTableQuery(p.GetTableName(postgres.MultiSigTableBaseName))
+	multiSigOwnerTableQuery := postgres.CreateMultiSigOwnerTableQuery(p.GetTableName(postgres.MultiSigOwnerTableBaseName))
+	governmentParameterTableQuery := postgres.CreateGovernmentParameterTableQuery(p.GetTableName(postgres.GovernmentParameterTableBaseName))
+	governmentParameterProposalQuery := postgres.CreateGovernmentParameterProposalTableQuery(p.GetTableName(postgres.GovernmentParameterProposalTableBaseName))
 
 	_, err := p.db.Exec(contRevTableQuery)
 	if err != nil {
@@ -559,24 +648,44 @@ func (p *PostgresPersister) CreateTables() error {
 	if err != nil {
 		return fmt.Errorf("Error creating parameter table in postgres: %v", err)
 	}
+	_, err = p.db.Exec(multiSigTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating multi sig table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(multiSigOwnerTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating multi sig owner table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(governmentParameterTableQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating government parameter table in postgres: %v", err)
+	}
+	_, err = p.db.Exec(governmentParameterProposalQuery)
+	if err != nil {
+		return fmt.Errorf("Error creating government parameter proposal table in postgres: %v", err)
+	}
 
 	return nil
 }
 
 // CreateDefaultValues creates default values for tables that need them
 func (p *PostgresPersister) CreateDefaultValues(config *utils.ProcessorConfig) error {
-	return p.createDefaultParameterizerValues(config.ParameterizerDefaults())
+	err := p.createDefaultParameterizerValues(config.ParameterizerDefaults(), p.GetTableName(postgres.ParameterTableBaseName))
+	if err != nil {
+		return err
+	}
+	return p.createDefaultParameterizerValues(config.GovernmentParameterDefaults(), p.GetTableName(postgres.GovernmentParameterTableBaseName))
 }
 
-func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string) error {
-	parameterTableCountQuery := postgres.CheckTableCount(p.GetTableName(postgres.ParameterTableBaseName))
+func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaults map[string]string, tableName string) error {
+	parameterTableCountQuery := postgres.CheckTableCount(tableName)
 	var numRowsb int
 	err := p.db.QueryRow(parameterTableCountQuery).Scan(&numRowsb)
 	if err != nil {
 		return fmt.Errorf("Error checking parameter table count: %v", err)
 	}
 	if numRowsb == 0 {
-		err = p.createDefaultParameterValues(parameterizerDefaults)
+		err = p.createDefaultParameterValues(parameterizerDefaults, tableName)
 		if err != nil {
 			return err
 		}
@@ -584,9 +693,8 @@ func (p *PostgresPersister) createDefaultParameterizerValues(parameterizerDefaul
 	return nil
 }
 
-func (p *PostgresPersister) insertParameter(paramName string, value string) error {
-	parameterTableName := p.GetTableName(postgres.ParameterTableBaseName)
-	addParameterValue := fmt.Sprintf(`INSERT INTO %s ("param_name", "value") VALUES ('%s', '%s')`, parameterTableName, paramName, value) // nolint: gosec
+func (p *PostgresPersister) insertParameter(paramName string, value string, tableName string) error {
+	addParameterValue := fmt.Sprintf(`INSERT INTO %s ("param_name", "value") VALUES ('%s', '%s')`, tableName, paramName, value) // nolint: gosec
 	_, err := p.db.Exec(addParameterValue)
 	if err != nil {
 		return fmt.Errorf("Error inserting default parameter value: %v", err)
@@ -594,9 +702,9 @@ func (p *PostgresPersister) insertParameter(paramName string, value string) erro
 	return nil
 }
 
-func (p *PostgresPersister) createDefaultParameterValues(parameterizerDefaults map[string]string) error {
+func (p *PostgresPersister) createDefaultParameterValues(parameterizerDefaults map[string]string, tableName string) error {
 	for paramName, value := range parameterizerDefaults {
-		err := p.insertParameter(paramName, value)
+		err := p.insertParameter(paramName, value, tableName)
 		if err != nil {
 			return fmt.Errorf("Errors inserting parameter: %s value: %s - err: %v", paramName, value, err)
 		}
@@ -645,6 +753,11 @@ func (p *PostgresPersister) CreateIndices() error {
 	_, err = p.db.Exec(indexQuery)
 	if err != nil {
 		return errors.Wrap(err, "error creating token_transfer table indices")
+	}
+	indexQuery = postgres.CreateMultiSigOwnerTableIndicesQuery(p.GetTableName(postgres.MultiSigOwnerTableBaseName))
+	_, err = p.db.Exec(indexQuery)
+	if err != nil {
+		return errors.Wrap(err, "error creating multi sig owner table indices")
 	}
 	return err
 }
@@ -810,6 +923,28 @@ func (p *PostgresPersister) listingsByAddressesFromTableInOrder(addresses []comm
 	return listings, nil
 }
 
+func (p *PostgresPersister) listingsByOwnerAddressFromTable(ownerAddress common.Address,
+	tableName string) ([]*model.Listing, error) {
+
+	listings := []*model.Listing{}
+	dbListings := []*postgres.Listing{}
+	stringAddress := ownerAddress.String()
+	queryString := p.listingByOwnerAddressQuery(tableName, stringAddress)
+	err := p.db.Select(&dbListings, queryString)
+	if err != nil {
+		return listings, errors.Wrap(err, "error retrieving listings from table")
+	}
+
+	if len(dbListings) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	for _, dbListing := range dbListings {
+		listings = append(listings, dbListing.DbToListingData())
+	}
+	return listings, nil
+}
+
 func (p *PostgresPersister) listingsByCleanedNewsroomURLsFromTableInOrder(newsroomURLs []string,
 	tableName string) ([]*model.Listing, error) {
 	if len(newsroomURLs) == 0 {
@@ -969,6 +1104,12 @@ func (p *PostgresPersister) listingsByCriteriaQuery(criteria *model.ListingCrite
 func (p *PostgresPersister) listingByAddressesQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE contract_address IN (?);", fieldNames, tableName) // nolint: gosec
+	return queryString
+}
+
+func (p *PostgresPersister) listingByOwnerAddressQuery(tableName string, ownerAddress string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE LOWER(owner) = LOWER('%s');", fieldNames, tableName, ownerAddress) // nolint: gosec
 	return queryString
 }
 
@@ -1537,6 +1678,82 @@ func (p *PostgresPersister) parameterByNameQuery(tableName string) string {
 	return queryString
 }
 
+func (p *PostgresPersister) govtParametersByName(paramNames []string, tableName string) ([]*model.GovernmentParameter, error) {
+	if len(paramNames) <= 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	queryString := p.parameterByNameQuery(tableName)
+	query, args, err := sqlx.In(queryString, paramNames)
+	if err != nil {
+		return nil, errors.Wrap(err, "error preparing 'IN' statement")
+	}
+	query = p.db.Rebind(query)
+
+	rows, err := p.db.Queryx(query, args...)
+
+	defer p.closeRows(rows)
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving parameters from table")
+	}
+
+	parametersMap := map[string]*model.GovernmentParameter{}
+	for rows.Next() {
+		var dbParameter postgres.GovernmentParameter
+		err = rows.StructScan(&dbParameter)
+		if err != nil {
+			return nil, errors.Wrap(err, "error scanning row from IN query")
+		}
+
+		modelParameter := dbParameter.DbToGovernmentParameterData()
+		parametersMap[modelParameter.ParamName()] = modelParameter
+	}
+
+	parameters := make([]*model.GovernmentParameter, len(paramNames))
+	for i, paramName := range paramNames {
+		retrievedParameter, ok := parametersMap[paramName]
+		if ok {
+			parameters[i] = retrievedParameter
+		} else {
+			parameters[i] = nil
+		}
+	}
+
+	return parameters, nil
+}
+
+func (p *PostgresPersister) govtParameterByName(paramName string, tableName string) (*model.GovernmentParameter, error) {
+	queryString := p.govtParameterByNameQuery(tableName)
+	query, args, err := sqlx.In(queryString, paramName)
+	if err != nil {
+		return nil, errors.Wrap(err, "error preparing 'IN' statement")
+	}
+	query = p.db.Rebind(query)
+	rows, err := p.db.Queryx(query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "error querying database")
+	}
+	defer p.closeRows(rows)
+
+	parameter := &model.GovernmentParameter{}
+	for rows.Next() {
+		var dbParameter postgres.GovernmentParameter
+		err = rows.StructScan(&dbParameter)
+		if err != nil {
+			return nil, errors.Wrap(err, "error scanning row from IN query")
+		}
+		parameter = dbParameter.DbToGovernmentParameterData()
+	}
+
+	return parameter, nil
+}
+
+func (p *PostgresPersister) govtParameterByNameQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.GovernmentParameter{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE param_name IN (?);", fieldNames, tableName) // nolint: gosec
+	return queryString
+}
+
 func (p *PostgresPersister) challengesByChallengeIDsQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Challenge{}, false, "")
 	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE challenge_id IN (?);", fieldNames, tableName) // nolint: gosec
@@ -1739,6 +1956,32 @@ func (p *PostgresPersister) updateParameterInTable(parameter *model.Parameter, u
 
 func (p *PostgresPersister) updateParameterQuery(updatedFields []string, tableName string) (string, error) {
 	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.Parameter{})
+	if err != nil {
+		return "", err
+	}
+	queryString.WriteString(" WHERE param_name=:param_name;") // nolint: gosec
+	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) updateGovernmentParameterInTable(parameter *model.GovernmentParameter, updatedFields []string, tableName string) error {
+	queryString, err := p.updateGovernmentParameterQuery(updatedFields, tableName)
+	if err != nil {
+		return errors.Wrap(err, "error creating query string for update")
+	}
+	dbParameter := postgres.NewGovernmentParameter(parameter)
+	result, err := p.db.NamedExec(queryString, dbParameter)
+	if err != nil {
+		return errors.Wrap(err, "error updating fields in poll table")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateGovernmentParameterQuery(updatedFields []string, tableName string) (string, error) {
+	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.GovernmentParameter{})
 	if err != nil {
 		return "", err
 	}
@@ -2193,6 +2436,117 @@ func (p *PostgresPersister) paramProposalQueryByName(tableName string, active bo
 	return queryString
 }
 
+func (p *PostgresPersister) createGovernmentParameterProposalInTable(paramProposal *model.GovernmentParameterProposal,
+	tableName string) error {
+	dbParamProposal := postgres.NewGovernmentParameterProposal(paramProposal)
+	queryString := p.insertIntoDBQueryString(tableName, postgres.GovernmentParameterProposal{})
+	_, err := p.db.NamedExec(queryString, dbParamProposal)
+	if err != nil {
+		return fmt.Errorf("Error saving government parameter proposal to table: %v", err)
+	}
+	return nil
+}
+
+func (p *PostgresPersister) govtParamProposalByPropIDFromTable(
+	propID [32]byte,
+	active bool,
+	tableName string,
+) (*model.GovernmentParameterProposal, error) {
+
+	paramProposalData := []postgres.GovernmentParameterProposal{}
+	queryString := p.govtParamProposalQuery(tableName, active)
+	propIDString := cbytes.Byte32ToHexString(propID)
+	err := p.db.Select(&paramProposalData, queryString, propIDString)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving government parameter proposal from table: %v", err)
+	}
+	if len(paramProposalData) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+	paramProposal, err := paramProposalData[0].DbToGovernmentParameterProposalData()
+	if err != nil {
+		return nil, err
+	}
+	return paramProposal, nil
+}
+
+func (p *PostgresPersister) govtParamProposalByNameFromTable(name string,
+	active bool, tableName string) ([]*model.GovernmentParameterProposal, error) {
+
+	paramProposalData := []postgres.GovernmentParameterProposal{}
+	queryString := p.govtParamProposalQueryByName(tableName, active)
+	err := p.db.Select(&paramProposalData, queryString, name)
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving parameter proposals from table: %v", err)
+	}
+
+	if len(paramProposalData) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	paramProposals := make([]*model.GovernmentParameterProposal, len(paramProposalData))
+
+	for index, dbProp := range paramProposalData {
+		modelProp, err := dbProp.DbToGovernmentParameterProposalData()
+		if err != nil {
+			return nil, err
+		}
+		paramProposals[index] = modelProp
+	}
+
+	return paramProposals, nil
+}
+
+func (p *PostgresPersister) updateGovernmentParamProposalInTable(paramProposal *model.GovernmentParameterProposal,
+	updatedFields []string, tableName string) error {
+
+	paramProposal.SetLastUpdatedDateTs(ctime.CurrentEpochSecsInInt64())
+	updatedFields = append(updatedFields, lastUpdatedDateDBModelName)
+
+	queryString, err := p.updateGovernmentParamProposalQuery(updatedFields, tableName)
+	if err != nil {
+		return fmt.Errorf("Error creating query string for update: %v ", err)
+	}
+	dbParamProposal := postgres.NewGovernmentParameterProposal(paramProposal)
+
+	result, err := p.db.NamedExec(queryString, dbParamProposal)
+	if err != nil {
+		return fmt.Errorf("Error updating fields in db: %v", err)
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateGovernmentParamProposalQuery(updatedFields []string, tableName string) (string, error) {
+	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.GovernmentParameterProposal{})
+	if err != nil {
+		return "", err
+	}
+	queryString.WriteString(" WHERE prop_id=:prop_id;") // nolint: gosec
+	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) govtParamProposalQuery(tableName string, active bool) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.GovernmentParameterProposal{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE prop_id=$1", fieldNames, tableName) // nolint: gosec
+	if active {
+		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
+	}
+	return queryString
+}
+
+func (p *PostgresPersister) govtParamProposalQueryByName(tableName string, active bool) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.GovernmentParameterProposal{}, false, "")
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE name=$1", fieldNames, tableName) // nolint: gosec
+	if active {
+		queryString = fmt.Sprintf("%s AND expired=false;", queryString)
+	}
+	return queryString
+}
+
 func (p *PostgresPersister) createUserChallengeDataInTable(userChallengeData *model.UserChallengeData,
 	tableName string) error {
 	dbUserChall := postgres.NewUserChallengeData(userChallengeData)
@@ -2334,6 +2688,137 @@ func (p *PostgresPersister) updateUserChallengeDataQuery(updatedFields []string,
 		queryString.WriteString(" AND latest_vote=true;") //nolint: gosec
 	}
 	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) createMultiSigInTable(multiSig *model.MultiSig,
+	tableName string) error {
+	dbMultiSig := postgres.NewMultiSig(multiSig)
+	queryString := p.insertIntoDBQueryString(tableName, postgres.MultiSig{})
+	_, err := p.db.NamedExec(queryString, dbMultiSig)
+	if err != nil {
+		return errors.Wrap(err, "error saving multi sig to table")
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateMultiSigInTable(multiSig *model.MultiSig, updatedFields []string, tableName string) error {
+	queryString, err := p.updateMultiSigQuery(updatedFields, tableName)
+	if err != nil {
+		return errors.Wrap(err, "error creating query string for update")
+	}
+	dbMultiSig := postgres.NewMultiSig(multiSig)
+	result, err := p.db.NamedExec(queryString, dbMultiSig)
+	if err != nil {
+		return errors.Wrap(err, "error updating fields in db")
+	}
+	err = p.checkUpdateRowsAffected(result)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PostgresPersister) updateMultiSigQuery(updatedFields []string, tableName string) (string, error) {
+	queryString, err := p.updateDBQueryBuffer(updatedFields, tableName, postgres.MultiSig{})
+	if err != nil {
+		return "", err
+	}
+	queryString.WriteString(" WHERE lower(contract_address)=lower(:contract_address);") // nolint: gosec
+	return queryString.String(), nil
+}
+
+// getMultiSigOwners gets the owners of a multi sig
+func (p *PostgresPersister) getMultiSigOwners(multiSigAddress common.Address, tableName string) ([]*model.MultiSigOwner, error) {
+	multiSigOwners := []*model.MultiSigOwner{}
+	queryString := p.multiSigOwnersByMultiSigAddressQuery(tableName)
+
+	dbMultiSigOwners := []*postgres.MultiSigOwner{}
+	err := p.db.Select(&dbMultiSigOwners, queryString, multiSigAddress.Hex())
+	if err != nil {
+		return multiSigOwners, errors.Wrap(err, "error retrieving multi sig owners from table")
+	}
+
+	if len(dbMultiSigOwners) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	for _, dbMultiSigOwner := range dbMultiSigOwners {
+		multiSigOwners = append(multiSigOwners, dbMultiSigOwner.DbToMultiSigOwnerData())
+	}
+
+	return multiSigOwners, nil
+}
+
+// multiSigOwnersByMultiSigAddressQuery returns the multi sig owners associated with a multi sig
+func (p *PostgresPersister) multiSigOwnersByMultiSigAddressQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.MultiSigOwner{}, false, "")
+	queryString := fmt.Sprintf( // nolint: gosec
+		"SELECT %s FROM %s WHERE lower(multi_sig_address) = lower($1);",
+		fieldNames,
+		tableName,
+	)
+	return queryString
+}
+
+// getMultiSigOwnersByOwnerAddr gets the multi sig owners of an owner
+func (p *PostgresPersister) getMultiSigOwnersByOwnerAddr(ownerAddress common.Address, tableName string) ([]*model.MultiSigOwner, error) {
+	multiSigOwners := []*model.MultiSigOwner{}
+	queryString := p.multiSigOwnersByOwnerAddressQuery(tableName)
+
+	dbMultiSigOwners := []*postgres.MultiSigOwner{}
+	err := p.db.Select(&dbMultiSigOwners, queryString, ownerAddress.Hex())
+	if err != nil {
+		return multiSigOwners, errors.Wrap(err, "error retrieving multi sig owners from table")
+	}
+
+	if len(dbMultiSigOwners) == 0 {
+		return nil, cpersist.ErrPersisterNoResults
+	}
+
+	for _, dbMultiSigOwner := range dbMultiSigOwners {
+		multiSigOwners = append(multiSigOwners, dbMultiSigOwner.DbToMultiSigOwnerData())
+	}
+
+	return multiSigOwners, nil
+}
+
+// multiSigOwnersByMultiSigAddressQuery returns the multi sig owners associated with a multi sig
+func (p *PostgresPersister) multiSigOwnersByOwnerAddressQuery(tableName string) string {
+	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.MultiSigOwner{}, false, "")
+	queryString := fmt.Sprintf( // nolint: gosec
+		"SELECT %s FROM %s WHERE lower(owner_address) = lower($1);",
+		fieldNames,
+		tableName,
+	)
+	return queryString
+}
+
+func (p *PostgresPersister) createMultiSigOwnerInTable(multiSigOwner *model.MultiSigOwner,
+	tableName string) error {
+	dbMultiSigOwner := postgres.NewMultiSigOwner(multiSigOwner)
+	queryString := p.insertIntoDBQueryString(tableName, postgres.MultiSigOwner{})
+	_, err := p.db.NamedExec(queryString, dbMultiSigOwner)
+	if err != nil {
+		return errors.Wrap(err, "error saving multi sig owner to table")
+	}
+	return nil
+}
+
+func (p *PostgresPersister) deleteMultiSigOwnerInTable(
+	multiSigAddress common.Address,
+	ownerAddress common.Address,
+	tableName string) error {
+	queryString := p.deleteMultiSigOwnerQuery(tableName, multiSigAddress, ownerAddress)
+	_, err := p.db.Exec(queryString)
+	if err != nil {
+		return errors.Wrap(err, "error deleting multi sig owner in db")
+	}
+	return nil
+}
+
+func (p *PostgresPersister) deleteMultiSigOwnerQuery(tableName string, multiSigAddress common.Address, ownerAddress common.Address) string {
+	queryString := fmt.Sprintf("DELETE FROM %s WHERE lower(multi_sig_address) = lower('%s') AND lower(owner_address) = lower('%s')", tableName, multiSigAddress.String(), ownerAddress.String()) // nolint: gosec
+	return queryString
 }
 
 func (p *PostgresPersister) typeExistsInCronTable(tableName string, dataType string) (string, error) {

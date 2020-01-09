@@ -10,6 +10,12 @@ import (
 func testListingPersister(p model.ListingPersister) {
 }
 
+func testMultiSigPersister(p model.MultiSigPersister) {
+}
+
+func testMultiSigOwnerPersister(p model.MultiSigOwnerPersister) {
+}
+
 func testContentRevisionPersister(p model.ContentRevisionPersister) {
 }
 
@@ -42,4 +48,6 @@ func TestNullInterface(t *testing.T) {
 	testChallengePersister(p)
 	testAppealPersister(p)
 	testTokenTransferPersister(p)
+	testMultiSigPersister(p)
+	testMultiSigOwnerPersister(p)
 }

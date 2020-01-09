@@ -98,6 +98,8 @@ type ListingPersister interface {
 	ListingsByAddresses(addresses []common.Address) ([]*Listing, error)
 	// ListingByAddress retrieves listings based on addresses
 	ListingByAddress(address common.Address) (*Listing, error)
+	// ListingsByOwnerAddress retrieves listings based on owner address
+	ListingsByOwnerAddress(address common.Address) ([]*Listing, error)
 	// CreateListing creates a new listing
 	CreateListing(listing *Listing) error
 	// UpdateListing updates fields on an existing listing
@@ -106,6 +108,30 @@ type ListingPersister interface {
 	DeleteListing(listing *Listing) error
 	// ListingByCleanedNewsroomURL retrieves a listing that matches the given url
 	ListingByCleanedNewsroomURL(cleanedURL string) (*Listing, error)
+	// Close shuts down the persister
+	Close() error
+}
+
+// MultiSigPersister is the interface to store the multisig data related to the processor
+type MultiSigPersister interface {
+	// CreateMultiSig creates a new MultiSig
+	CreateMultiSig(multiSig *MultiSig) error
+	// UpdateMultiSig updates fields on an existing multi sig
+	UpdateMultiSig(multiSig *MultiSig, updatedFields []string) error
+	// MultiSigOwners gets the owners of a multi sig
+	MultiSigOwners(multiSigAddress common.Address) ([]*MultiSigOwner, error)
+	// Close shuts down the persister
+	Close() error
+}
+
+// MultiSigOwnerPersister is the interface to store the multi sig owner data related to the processor
+type MultiSigOwnerPersister interface {
+	// CreateMultiSigOwner creates a new MultiSigOwner
+	CreateMultiSigOwner(multiSigOwner *MultiSigOwner) error
+	// DeleteMultiSigOwner deletes a multi sig owner associated with a multi sig
+	DeleteMultiSigOwner(multiSigAddress common.Address, ownerAddress common.Address) error
+	// MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
+	MultiSigOwnersByOwner(ownerAddress common.Address) ([]*MultiSigOwner, error)
 	// Close shuts down the persister
 	Close() error
 }
@@ -275,6 +301,34 @@ type ParamProposalPersister interface {
 	ParamProposalByName(name string, active bool) ([]*ParameterProposal, error)
 	// UpdateParamProposal updates parameter propsal in table
 	UpdateParamProposal(paramProposal *ParameterProposal, updatedFields []string) error
+	// Close shuts down the persister
+	Close() error
+}
+
+// GovernmentParameterPersister is the interface to store ParameterData
+type GovernmentParameterPersister interface {
+	// GovernmentParameterByName gets a parameter by name
+	GovernmentParameterByName(paramName string) (*GovernmentParameter, error)
+	// GovernmentParametersByName gets a slice of parameter by name
+	GovernmentParametersByName(paramName []string) ([]*GovernmentParameter, error)
+	// UpdateGovernmentParameter updates a parameter value
+	UpdateGovernmentParameter(parameter *GovernmentParameter, updatedFields []string) error
+	// CreateDefaultValues creates Government Parameter default values
+	CreateDefaultValues(config *utils.ProcessorConfig) error
+	// Close shuts down the persister
+	Close() error
+}
+
+// GovernmentParamProposalPersister is the persister interface to store ParameterProposal
+type GovernmentParamProposalPersister interface {
+	// CreateGovernmentParameterProposal creates a new parameter proposal
+	CreateGovernmentParameterProposal(paramProposal *GovernmentParameterProposal) error
+	// GovernmentParamProposalByPropID gets a parameter proposal from persistence using propID
+	GovernmentParamProposalByPropID(propID [32]byte, active bool) (*GovernmentParameterProposal, error)
+	// GovernmentParamProposalByName gets parameter proposals by name from persistence
+	GovernmentParamProposalByName(name string, active bool) ([]*GovernmentParameterProposal, error)
+	// UpdateGovernmentParamProposal updates parameter propsal in table
+	UpdateGovernmentParamProposal(paramProposal *GovernmentParameterProposal, updatedFields []string) error
 	// Close shuts down the persister
 	Close() error
 }

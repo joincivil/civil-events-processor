@@ -30,26 +30,28 @@ import (
 )
 
 const (
-	postgresPort                   = 5432
-	postgresDBName                 = "civil_crawler"
-	postgresUser                   = "docker"
-	postgresPswd                   = "docker"
-	postgresHost                   = "localhost"
-	listingTestTableName           = "listing_test"
-	contentRevisionTestTableName   = "content_revision_test"
-	govTestTableName               = "governance_event_test"
-	cronTestTableName              = "cron_test"
-	challengeTestTableName         = "challenge_test"
-	pollTestTableName              = "poll_test"
-	appealTestTableName            = "appeal_test"
-	tokenTransferTestTableName     = "token_transfer_test"
-	versionTestTableName           = "version_test"
-	parameterProposalTestTableName = "parameter_proposal_test"
-	parameterTableTestName         = "parameter_table_test"
-	userChallengeDataTestTableName = "user_challenge_data_test"
-	testAddress                    = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
-	testAddress2                   = "0x22e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d331d"
-	testAddress3                   = "0x11e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d371d"
+	postgresPort                             = 5432
+	postgresDBName                           = "civil_crawler"
+	postgresUser                             = "docker"
+	postgresPswd                             = "docker"
+	postgresHost                             = "localhost"
+	listingTestTableName                     = "listing_test"
+	contentRevisionTestTableName             = "content_revision_test"
+	govTestTableName                         = "governance_event_test"
+	cronTestTableName                        = "cron_test"
+	challengeTestTableName                   = "challenge_test"
+	pollTestTableName                        = "poll_test"
+	appealTestTableName                      = "appeal_test"
+	tokenTransferTestTableName               = "token_transfer_test"
+	versionTestTableName                     = "version_test"
+	parameterProposalTestTableName           = "parameter_proposal_test"
+	parameterTableTestName                   = "parameter_table_test"
+	userChallengeDataTestTableName           = "user_challenge_data_test"
+	governmentParameterTableTestName         = "government_parameter_test"
+	governmentParameterProposalTestTableName = "government_parameter_proposal_test"
+	testAddress                              = "0x77e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d311d"
+	testAddress2                             = "0x22e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d331d"
+	testAddress3                             = "0x11e5aaBddb760FBa989A1C4B2CDd4aA8Fa3d371d"
 )
 
 func setupDBConnection(t *testing.T) *PostgresPersister {
@@ -92,6 +94,10 @@ func setupTestTable(t *testing.T, tableName string) *PostgresPersister {
 		queryString = postgres.CreateUserChallengeDataTableQuery(persister.GetTableName(tableName))
 	case "parameter_test":
 		queryString = postgres.CreateParameterTableQuery(persister.GetTableName(tableName))
+	case "government_parameter_test":
+		queryString = postgres.CreateGovernmentParameterTableQuery(persister.GetTableName(tableName))
+	case "government_parameter_proposal_test":
+		queryString = postgres.CreateGovernmentParameterProposalTableQuery(persister.GetTableName(tableName))
 	}
 
 	_, err := persister.db.Query(queryString)
@@ -167,6 +173,18 @@ func setupAllTestTables(t *testing.T, persister *PostgresPersister) {
 	if err != nil {
 		t.Errorf("Couldn't create test table %s: %v", parameterTableTestName, err)
 	}
+
+	queryString = postgres.CreateGovernmentParameterTableQuery(persister.GetTableName(governmentParameterTableTestName))
+	_, err = persister.db.Exec(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", governmentParameterTableTestName, err)
+	}
+
+	queryString = postgres.CreateGovernmentParameterProposalTableQuery(persister.GetTableName(governmentParameterProposalTestTableName))
+	_, err = persister.db.Exec(queryString)
+	if err != nil {
+		t.Errorf("Couldn't create test table %s: %v", governmentParameterProposalTestTableName, err)
+	}
 }
 
 func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
@@ -212,7 +230,15 @@ func deleteAllTestTables(t *testing.T, persister *PostgresPersister) {
 	}
 	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(parameterTableTestName)))
 	if err != nil {
-		t.Errorf("Couldn't delete test table %s: %v", userChallengeDataTestTableName, err)
+		t.Errorf("Couldn't delete test table %s: %v", parameterTableTestName, err)
+	}
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(governmentParameterTableTestName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", governmentParameterTableTestName, err)
+	}
+	_, err = persister.db.Exec(fmt.Sprintf("DROP TABLE %v;", persister.GetTableName(governmentParameterProposalTestTableName)))
+	if err != nil {
+		t.Errorf("Couldn't delete test table %s: %v", governmentParameterProposalTestTableName, err)
 	}
 }
 
@@ -296,6 +322,9 @@ func TestTableSetup(t *testing.T) {
 	checkTableExists(t, appealTestTableName, persister)
 	checkTableExists(t, tokenTransferTestTableName, persister)
 	checkTableExists(t, parameterTableTestName, persister)
+	checkTableExists(t, parameterProposalTestTableName, persister)
+	checkTableExists(t, governmentParameterTableTestName, persister)
+	checkTableExists(t, governmentParameterProposalTestTableName, persister)
 
 	deleteAllTestTables(t, persister)
 	deleteTestVersionTable(t, persister)

@@ -13,6 +13,7 @@ import (
 
 	crawlerhelpers "github.com/joincivil/civil-events-crawler/pkg/helpers"
 	crawlermodel "github.com/joincivil/civil-events-crawler/pkg/model"
+	crawlerutils "github.com/joincivil/civil-events-crawler/pkg/utils"
 
 	"github.com/joincivil/civil-events-processor/pkg/helpers"
 	"github.com/joincivil/civil-events-processor/pkg/model"
@@ -106,27 +107,41 @@ func SetupKillNotify(persisters *InitializedPersisters) {
 func initPubSubEvents(config *utils.ProcessorConfig, ps *cpubsub.GooglePubSub) (*cpubsub.GooglePubSub, error) {
 	// If no events topic name, disable
 	if config.PubSubEventsTopicName == "" {
+		log.Infof("no pub sub events topic name")
 		return nil, nil
 	}
+	if config.PubSubTokenTopicName == "" {
+		log.Infof("no pub sub token topic name")
+		return nil, nil
+	}
+	if config.PubSubMultiSigTopicName == "" {
+		log.Infof("no pub sub multi sig topic name")
+		return nil, nil
+	}
+
 	err := ps.StartPublishers()
 	return ps, err
 }
 
 // InitializedPersisters contains initialized persisters needed to run processor
 type InitializedPersisters struct {
-	Persister         *persistence.PostgresPersister
-	Cron              model.CronPersister
-	Event             crawlermodel.EventDataPersister
-	Listing           model.ListingPersister
-	ContentRevision   model.ContentRevisionPersister
-	GovernanceEvent   model.GovernanceEventPersister
-	Challenge         model.ChallengePersister
-	Poll              model.PollPersister
-	Appeal            model.AppealPersister
-	TokenTransfer     model.TokenTransferPersister
-	ParameterProposal model.ParamProposalPersister
-	Parameter         model.ParameterPersister
-	UserChallengeData model.UserChallengeDataPersister
+	Persister                   *persistence.PostgresPersister
+	Cron                        model.CronPersister
+	Event                       crawlermodel.EventDataPersister
+	Listing                     model.ListingPersister
+	ContentRevision             model.ContentRevisionPersister
+	GovernanceEvent             model.GovernanceEventPersister
+	Challenge                   model.ChallengePersister
+	Poll                        model.PollPersister
+	Appeal                      model.AppealPersister
+	TokenTransfer               model.TokenTransferPersister
+	ParameterProposal           model.ParamProposalPersister
+	Parameter                   model.ParameterPersister
+	UserChallengeData           model.UserChallengeDataPersister
+	MultiSig                    model.MultiSigPersister
+	MultiSigOwner               model.MultiSigOwnerPersister
+	GovernmentParameterProposal model.GovernmentParamProposalPersister
+	GovernmentParameter         model.GovernmentParameterPersister
 }
 
 func initSqlxDB(config *utils.ProcessorConfig) (*sqlx.DB, error) {
@@ -173,7 +188,9 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 		return nil, err
 	}
 
-	eventPersister, err := crawlerhelpers.EventPersisterFromSqlx(db)
+	// Empty config here will set this to latest version of event tables
+	crawlerConfig := &crawlerutils.CrawlerConfig{}
+	eventPersister, err := crawlerhelpers.EventPersisterFromSqlx(db, crawlerConfig)
 	if err != nil {
 		log.Errorf("Error getting the event persister: %v", err)
 		return nil, err
@@ -186,19 +203,23 @@ func InitPersisters(config *utils.ProcessorConfig) (*InitializedPersisters, erro
 	}
 
 	return &InitializedPersisters{
-		Persister:         persister.(*persistence.PostgresPersister),
-		Cron:              persister.(model.CronPersister),
-		Event:             eventPersister,
-		Listing:           persister.(model.ListingPersister),
-		ContentRevision:   persister.(model.ContentRevisionPersister),
-		GovernanceEvent:   persister.(model.GovernanceEventPersister),
-		Challenge:         persister.(model.ChallengePersister),
-		Poll:              persister.(model.PollPersister),
-		Appeal:            persister.(model.AppealPersister),
-		TokenTransfer:     persister.(model.TokenTransferPersister),
-		ParameterProposal: persister.(model.ParamProposalPersister),
-		Parameter:         persister.(model.ParameterPersister),
-		UserChallengeData: persister.(model.UserChallengeDataPersister),
+		Persister:                   persister.(*persistence.PostgresPersister),
+		Cron:                        persister.(model.CronPersister),
+		Event:                       eventPersister,
+		Listing:                     persister.(model.ListingPersister),
+		ContentRevision:             persister.(model.ContentRevisionPersister),
+		GovernanceEvent:             persister.(model.GovernanceEventPersister),
+		Challenge:                   persister.(model.ChallengePersister),
+		Poll:                        persister.(model.PollPersister),
+		Appeal:                      persister.(model.AppealPersister),
+		TokenTransfer:               persister.(model.TokenTransferPersister),
+		ParameterProposal:           persister.(model.ParamProposalPersister),
+		Parameter:                   persister.(model.ParameterPersister),
+		UserChallengeData:           persister.(model.UserChallengeDataPersister),
+		MultiSig:                    persister.(model.MultiSigPersister),
+		MultiSigOwner:               persister.(model.MultiSigOwnerPersister),
+		GovernmentParameterProposal: persister.(model.GovernmentParamProposalPersister),
+		GovernmentParameter:         persister.(model.GovernmentParameterPersister),
 	}, nil
 }
 

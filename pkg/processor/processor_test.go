@@ -205,6 +205,8 @@ func TestProcessor(t *testing.T) {
 		PollPersister:          persister,
 		AppealPersister:        persister,
 		TokenTransferPersister: persister,
+		MultiSigPersister:      persister,
+		MultiSigOwnerPersister: persister,
 	}
 	proc := processor.NewEventProcessor(processorParams)
 	events := setupEventList(t, contracts)
