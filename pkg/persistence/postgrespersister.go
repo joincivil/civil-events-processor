@@ -1172,7 +1172,7 @@ func (p *PostgresPersister) updateListingQuery(updatedFields []string, tableName
 
 func (p *PostgresPersister) allListingAddressesFromTable(tableName string) ([]string, error) {
 	dbListingAddresses := []string{}
-	queryString := fmt.Sprintf("SELECT contract_address FROM %s", tableName)
+	queryString := fmt.Sprintf("SELECT contract_address FROM %s", tableName) // nolint: gosec
 	err := p.db.Select(&dbListingAddresses, queryString)
 	if err != nil {
 		return dbListingAddresses, errors.Wrap(err, "wasn't able to get listing contract addresses from postgres table")
@@ -1182,7 +1182,7 @@ func (p *PostgresPersister) allListingAddressesFromTable(tableName string) ([]st
 
 func (p *PostgresPersister) allMultiSigAddressesFromTable(tableName string) ([]string, error) {
 	dbMultiSigAddresses := []string{}
-	queryString := fmt.Sprintf("SELECT contract_address FROM %s", tableName)
+	queryString := fmt.Sprintf("SELECT contract_address FROM %s", tableName) // nolint: gosec
 	err := p.db.Select(&dbMultiSigAddresses, queryString)
 	if err != nil {
 		return dbMultiSigAddresses, errors.Wrap(err, "wasn't able to get multi sig contract addresses from postgres table")
