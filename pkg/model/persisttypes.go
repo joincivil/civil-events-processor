@@ -108,6 +108,8 @@ type ListingPersister interface {
 	DeleteListing(listing *Listing) error
 	// ListingByCleanedNewsroomURL retrieves a listing that matches the given url
 	ListingByCleanedNewsroomURL(cleanedURL string) (*Listing, error)
+	// AllListingAddresses returns all addresses for listings in persistence
+	AllListingAddresses() ([]string, error)
 	// Close shuts down the persister
 	Close() error
 }
@@ -120,6 +122,8 @@ type MultiSigPersister interface {
 	UpdateMultiSig(multiSig *MultiSig, updatedFields []string) error
 	// MultiSigOwners gets the owners of a multi sig
 	MultiSigOwners(multiSigAddress common.Address) ([]*MultiSigOwner, error)
+	// AllMultiSigAddresses returns all addresses for multi sigs in persistence
+	AllMultiSigAddresses() ([]string, error)
 	// Close shuts down the persister
 	Close() error
 }
