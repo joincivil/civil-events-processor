@@ -1115,7 +1115,7 @@ func (p *PostgresPersister) listingByOwnerAddressQuery(tableName string, ownerAd
 
 func (p *PostgresPersister) listingByCleanedNewsroomURLsQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
-	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE cleaned_url IN (?);", fieldNames, tableName) // nolint: gosec
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE cleaned_url IN (?) AND whitelisted = TRUE;", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
 
