@@ -132,6 +132,15 @@ func (t *TestPersister) UpdateListing(listing *model.Listing, updatedFields []st
 	return nil
 }
 
+// AllListingAddresses returns all listing addresses in persistence
+func (t *TestPersister) AllListingAddresses() ([]string, error) {
+	keys := make([]string, 0, len(t.Listings))
+	for k := range t.Listings {
+		keys = append(keys, k)
+	}
+	return keys, nil
+}
+
 // DeleteListing removes a listing
 func (t *TestPersister) DeleteListing(listing *model.Listing) error {
 	addressHex := listing.ContractAddress().Hex()
@@ -763,6 +772,11 @@ func (t *TestPersister) DeleteMultiSigOwner(multiSigAddress common.Address, owne
 // MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
 func (t *TestPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
 	return []*model.MultiSigOwner{}, nil
+}
+
+// AllMultiSigAddresses returns all multi sig addresses in persistence
+func (t *TestPersister) AllMultiSigAddresses() ([]string, error) {
+	return []string{}, nil
 }
 
 // TestScraper is a testscraper

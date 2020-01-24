@@ -169,6 +169,12 @@ func (p *PostgresPersister) UpdateListing(listing *model.Listing, updatedFields 
 	return p.updateListingInTable(listing, updatedFields, listingTableName)
 }
 
+// AllListingAddresses returns all listing addresses in the listing table
+func (p *PostgresPersister) AllListingAddresses() ([]string, error) {
+	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
+	return p.allListingAddressesFromTable(listingTableName)
+}
+
 // DeleteListing removes a listing
 func (p *PostgresPersister) DeleteListing(listing *model.Listing) error {
 	listingTableName := p.GetTableName(postgres.ListingTableBaseName)
@@ -441,6 +447,12 @@ func (p *PostgresPersister) MultiSigOwners(multiSigAddress common.Address) ([]*m
 func (p *PostgresPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
 	multiSigOwnerTableName := p.GetTableName(postgres.MultiSigOwnerTableBaseName)
 	return p.getMultiSigOwnersByOwnerAddr(ownerAddress, multiSigOwnerTableName)
+}
+
+// AllMultiSigAddresses returns all multi sig addresses in the multi sig table
+func (p *PostgresPersister) AllMultiSigAddresses() ([]string, error) {
+	multiSigTableName := p.GetTableName(postgres.MultiSigTableBaseName)
+	return p.allMultiSigAddressesFromTable(multiSigTableName)
 }
 
 // GovernmentParametersByName gets the parameter with given name
@@ -1115,7 +1127,7 @@ func (p *PostgresPersister) listingByOwnerAddressQuery(tableName string, ownerAd
 
 func (p *PostgresPersister) listingByCleanedNewsroomURLsQuery(tableName string) string {
 	fieldNames, _ := cpostgres.StructFieldsForQuery(postgres.Listing{}, false, "")
-	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE cleaned_url IN (?);", fieldNames, tableName) // nolint: gosec
+	queryString := fmt.Sprintf("SELECT %s FROM %s WHERE cleaned_url IN (?) AND whitelisted = TRUE;", fieldNames, tableName) // nolint: gosec
 	return queryString
 }
 
@@ -1156,6 +1168,26 @@ func (p *PostgresPersister) updateListingQuery(updatedFields []string, tableName
 	}
 	queryString.WriteString(" WHERE contract_address=:contract_address;") // nolint: gosec
 	return queryString.String(), nil
+}
+
+func (p *PostgresPersister) allListingAddressesFromTable(tableName string) ([]string, error) {
+	dbListingAddresses := []string{}
+	queryString := fmt.Sprintf("SELECT contract_address FROM %s", tableName) // nolint: gosec
+	err := p.db.Select(&dbListingAddresses, queryString)
+	if err != nil {
+		return dbListingAddresses, errors.Wrap(err, "wasn't able to get listing contract addresses from postgres table")
+	}
+	return dbListingAddresses, nil
+}
+
+func (p *PostgresPersister) allMultiSigAddressesFromTable(tableName string) ([]string, error) {
+	dbMultiSigAddresses := []string{}
+	queryString := fmt.Sprintf("SELECT contract_address FROM %s", tableName) // nolint: gosec
+	err := p.db.Select(&dbMultiSigAddresses, queryString)
+	if err != nil {
+		return dbMultiSigAddresses, errors.Wrap(err, "wasn't able to get multi sig contract addresses from postgres table")
+	}
+	return dbMultiSigAddresses, nil
 }
 
 func (p *PostgresPersister) deleteListingFromTable(listing *model.Listing, tableName string) error {

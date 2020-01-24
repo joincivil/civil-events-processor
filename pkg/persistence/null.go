@@ -54,6 +54,11 @@ func (n *NullPersister) UpdateListing(listing *model.Listing, updatedFields []st
 	return nil
 }
 
+// AllListingAddresses returns all listing addresses in persistence
+func (n *NullPersister) AllListingAddresses() ([]string, error) {
+	return []string{}, nil
+}
+
 // DeleteListing removes a listing
 func (n *NullPersister) DeleteListing(listing *model.Listing) error {
 	return nil
@@ -365,4 +370,9 @@ func (n *NullPersister) DeleteMultiSigOwner(multiSigAddress common.Address, owne
 // MultiSigOwnersByOwner gets multi sig owners of multi sigs owned by address
 func (n *NullPersister) MultiSigOwnersByOwner(ownerAddress common.Address) ([]*model.MultiSigOwner, error) {
 	return []*model.MultiSigOwner{}, nil
+}
+
+// AllMultiSigAddresses returns all multi sig addresses in persistence
+func (n *NullPersister) AllMultiSigAddresses() ([]string, error) {
+	return []string{}, nil
 }
